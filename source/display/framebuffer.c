@@ -801,9 +801,12 @@ void FbRotCharacter(unsigned char charin)
     G_Fb.changed = 1;
 }
 
+
+
 void FbRoundedRect(unsigned char width, unsigned char height, unsigned char stroke)
 {
     if (width <= stroke * 2 || height <= stroke * 2) return;
+
     unsigned char y_min = G_Fb.pos.y;
     unsigned char y_max = G_Fb.pos.y + height - 1;
     unsigned char x_min = G_Fb.pos.x;
@@ -840,6 +843,8 @@ void FbRoundedRect(unsigned char width, unsigned char height, unsigned char stro
 
     G_Fb.changed = 1;
 }
+
+
 
 void FbFilledRectangle(unsigned char width, unsigned char height)
 {
@@ -1039,6 +1044,40 @@ int FbOnScreen(int x, int y)
 	if (y < 0 || y >= LCD_YSIZE)
 		return 0;
 	return 1;
+}
+
+void FbDDACircle(int center_x, int center_y, int radius)
+{
+	int current_x = center_x;
+	int current_y = center_y;
+
+	int r2 = radius + radius;
+	int x = radius;
+	int y = 0;
+	int delta_y = -2;
+	int delta_x = r2 + r2 - 4;
+	int delta = r2 - 1;
+
+	while (y <= x) {
+		FbPoint(current_x - x, current_y - y);
+		FbPoint(current_x + x, current_y - y);
+		FbPoint(current_x - x, current_y + y);
+		FbPoint(current_x + x, current_y + y);
+
+		FbPoint(current_x - y, current_y - x);
+		FbPoint(current_x + y, current_y - x);
+		FbPoint(current_x - y, current_y + x);
+		FbPoint(current_x + y, current_y + x);
+
+		delta += delta_y;
+		delta_y -= 4;
+		++y;
+
+		int mask = (delta >> 31);
+		delta += delta_x & mask;
+		delta_x -= 4 & mask;
+		x += mask;
+	}
 }
 
 void FbCircle(int cx, int cy, int r)
