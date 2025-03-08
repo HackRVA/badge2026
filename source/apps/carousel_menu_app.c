@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <string.h>
 
-#include "carousel_menu_app.h"
 #include "colors.h"
 #include "button.h"
 #include "framebuffer.h"
+#include "carousel_menu_app.h"
+#include "menu_icon.h"
 
 #define CAROUSEL_MENU_FG_COLOR GREEN
 #define CAROUSEL_MENU_BG_COLOR BLACK
@@ -179,41 +181,26 @@ static void check_buttons(void)
 static void draw_screen(void)
 {
 	struct menu_t *m = current_context->menu;
+	struct menu_t *item = &m[current_context->current_item];
+	struct menu_icon *icon = item->icon;
 
-	if (!current_context->screen_changed)
-		return;
+	//if (!current_context->screen_changed)
+	//	return;
 
 	FbColor(CAROUSEL_MENU_FG_COLOR);
 	FbBackgroundColor(CAROUSEL_MENU_BG_COLOR);
 	FbClear();
 
-	int nitems = count_menu_items(current_context->menu);
-
-	int x = 0;
-	int y = 0;
-	for (int i = 0; i < nitems; i++) {
-		if (i < current_context->top_item) /* skip to the top item */
-			continue;
-		FbMove(x, y);
-		if (i == current_context->current_item) {
-			FbColor(CAROUSEL_MENU_FG_COLOR);
-			FbFilledRectangle(LCD_XSIZE, 10);
-			FbColor(CAROUSEL_MENU_BG_COLOR);
-			FbBackgroundColor(CAROUSEL_MENU_FG_COLOR);
-		} else {
-			FbColor(CAROUSEL_MENU_BG_COLOR);
-			FbFilledRectangle(LCD_XSIZE, 10);
-			FbColor(CAROUSEL_MENU_FG_COLOR);
-			FbBackgroundColor(CAROUSEL_MENU_BG_COLOR);
-		}
-		FbMove(x, y);
-		FbWriteString(m[i].name);
-		if (m[i].attrib & LAST_ITEM)
-			break;
-		y += 10;
-		if (y > 150)
-			break;
+	if (icon) {
+		FbDrawObject(icon->points, icon->npoints, icon->color, LCD_XSIZE / 2, LCD_YSIZE / 2, 512);
+	} else {
+		FbMove(LCD_XSIZE / 2 - 40, LCD_YSIZE / 2 - 40);
+		FbRectangle(80, 80);
 	}
+	int len = strlen(item->name);
+	FbMove((LCD_XSIZE - 8 * len) / 2, LCD_YSIZE - 16);
+	FbWriteString(item->name);
+
 	FbSwapBuffers();
 	current_context->screen_changed = 0;
 }

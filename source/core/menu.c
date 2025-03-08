@@ -21,7 +21,9 @@
 #include "audio.h"
 #include "led_pwm.h"
 #include "music.h"
+#define DEFINE_MENU_ICON_GLOBALS 1
 #include "menu_icon.h"
+#undef DEFINE_MENU_ICON_GLOBALS
 #include "stacktrace.h"
 #include "key_value_storage.h"
 

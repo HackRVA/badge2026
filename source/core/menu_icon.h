@@ -11,6 +11,7 @@ struct menu_icon {
 	const struct point *points;
 };
 
+#ifdef DEFINE_MENU_ICON_GLOBALS
 const struct point games_icon_points[] = {
 	{ -60, 28 },
 	{ -45, -38 },
@@ -1949,5 +1950,6 @@ struct menu_icon aagunner_icon = {
 	.color = GREEN,
 	.points = &aagunner_icon_points[0],
 };
+#endif /* DEFINE_MENU_ICON_GLOBALS */
 
 #endif
