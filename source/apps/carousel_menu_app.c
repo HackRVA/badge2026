@@ -5,6 +5,7 @@
 #include "button.h"
 #include "framebuffer.h"
 #include "carousel_menu_app.h"
+#include "default_menu_app.h"
 #include "menu_icon.h"
 
 #define CAROUSEL_MENU_FG_COLOR GREEN
@@ -48,6 +49,17 @@ static int count_menu_items(struct menu_t *m)
 		if (m[i].attrib & LAST_ITEM)
 			return i + 1;
 	}
+}
+
+static int menu_has_icons(struct menu_t *m)
+{
+	for (int i = 0; ; i++) {
+		if (m[i].icon)
+			return 1;
+		if (m[i].attrib & LAST_ITEM)
+			break;
+	}
+	return 0;
 }
 
 static void move_left(void)
@@ -146,12 +158,16 @@ static void do_selection(void)
 	switch (t) {
 	case MENU:
 		if (current_menu_stack_idx < MAX_APP_STACK_DEPTH - 1) {
+			struct menu_t *submenu = (struct menu_t *)
+				&m[current_context->current_item].data.menu[0];
+			if (menu_has_icons(submenu))
+				app.app_func = carousel_menu_app_cb;
+			else
+				app.app_func = default_menu_app_cb;
 			current_menu_stack_idx++;
-			app.app_func = carousel_menu_app_cb;
 			app.wake_up = 1;
 			app.app_context = &context_stack[current_menu_stack_idx];
-			init_default_menu_app_context(app.app_context,
-				(struct menu_t *) &m[current_context->current_item].data.menu[0]);
+			init_default_menu_app_context(app.app_context, submenu);
 			app.menu = m;
 			app.current_selection = current_context->current_item;
 			push_app(app);
