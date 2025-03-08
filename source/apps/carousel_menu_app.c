@@ -50,7 +50,7 @@ static int count_menu_items(struct menu_t *m)
 	}
 }
 
-static void move_up(void)
+static void move_left(void)
 {
 	if (current_context->current_item > 0) {
 		current_context->current_item--;
@@ -60,7 +60,7 @@ static void move_up(void)
 	}
 }
 
-static void move_down(void)
+static void move_right(void)
 {
 	int nitems = count_menu_items(current_context->menu);
 	if (current_context->current_item < nitems - 1) {
@@ -159,13 +159,25 @@ static void do_selection(void)
 	}
 }
 
+/* Select, but only if what is being selected is a menu. */
+static void move_down(void)
+{
+	struct menu_t *m = current_context->menu;
+	enum menu_item_type t = m[current_context->current_item].type;
+
+	if (t == MENU)
+		do_selection();
+}
+
 static void check_buttons(void)
 {
     int down_latches = button_down_latches();
 	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+		move_left();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
+		move_right();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
-		move_up();
+		go_back();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		move_down();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
@@ -175,7 +187,7 @@ static void check_buttons(void)
 	}
 	/* skip items tagged to be skipped */
 	while (current_context->menu[current_context->current_item].attrib & SKIP_ITEM)
-		move_down();
+		move_right();
 }
 
 static void draw_screen(void)
