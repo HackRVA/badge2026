@@ -54,9 +54,18 @@ static void move_left(void)
 {
 	if (current_context->current_item > 0) {
 		current_context->current_item--;
+		/* skip "back" items */
+		if (current_context->menu[current_context->current_item].type == BACK)
+			current_context->current_item--;
 		if (current_context->top_item > current_context->current_item)
 			current_context->top_item--;
 		current_context->screen_changed = 1;
+	} else { /* wrap around to the end */
+		int nitems = count_menu_items(current_context->menu);
+		current_context->current_item = nitems - 1;
+		/* skip "back" items */
+		if (current_context->menu[current_context->current_item].type == BACK)
+			current_context->current_item--;
 	}
 }
 
@@ -65,8 +74,23 @@ static void move_right(void)
 	int nitems = count_menu_items(current_context->menu);
 	if (current_context->current_item < nitems - 1) {
 		current_context->current_item++;
+
+		/* skip "back" items */
+		if (current_context->menu[current_context->current_item].type == BACK)
+			current_context->current_item++;
+		if (current_context->current_item >= nitems)
+			current_context->current_item = 0; /* wrap around */
+
 		if (current_context->top_item < current_context->current_item - 15)
 			current_context->top_item++;
+		current_context->screen_changed = 1;
+	} else {
+		current_context->current_item = 0;
+		/* skip "back" items */
+		if (current_context->menu[current_context->current_item].type == BACK)
+			current_context->current_item++;
+		if (current_context->current_item >= nitems)
+			current_context->current_item = 0; /* wrap around */
 		current_context->screen_changed = 1;
 	}
 }
