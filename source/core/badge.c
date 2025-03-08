@@ -98,13 +98,32 @@ void pop_app(void)
 	app_stack[app_stack_idx].wake_up = 1;
 }
 
+void exec_app(struct badge_app app)
+{
+	app_stack[app_stack_idx] = app;
+	app_stack[app_stack_idx].wake_up = 1;
+}
+
 void push_app(struct badge_app app)
 {
 	if (app_stack_idx >= MAX_APP_STACK_DEPTH)
 		return;
 	app_stack_idx++;
-	app_stack[app_stack_idx] = app;
-	app_stack[app_stack_idx].wake_up = 1;
+	exec_app(app);
+}
+
+static int current_menu_app = 0;
+
+void use_default_menu_cb(__attribute__((unused)) struct badge_app *app)
+{
+	current_menu_app = 0;
+	exec_app(default_menu_app);
+}
+
+void use_carousel_menu_cb(__attribute__((unused)) struct badge_app *app)
+{
+	current_menu_app = 1;
+	exec_app(carousel_menu_app);
 }
 
 static void maybe_start_screensaver(void)
@@ -138,6 +157,7 @@ uint64_t ProcessIO(void) // 30 fps
 {
     static const uint64_t frame_interval_us_default = 1000000/30;
     static struct default_menu_app_context menu_context;
+    struct badge_app *menu_app[] = { &default_menu_app, &carousel_menu_app, };
 
     if (app_stack_idx == -1) { /* No apps at all yet? */
 
@@ -145,8 +165,9 @@ uint64_t ProcessIO(void) // 30 fps
 	/* When the initial badge app exits, it will pop off, leaving the menu */
 
 	init_default_menu_app_context(&menu_context, (void *) &main_m[0]);
+	default_menu_app.app_context = &menu_context;
 	carousel_menu_app.app_context = &menu_context;
-	push_app(carousel_menu_app);
+	push_app(*menu_app[current_menu_app]);
 	push_app((struct badge_app) { .app_func = INITIAL_BADGE_APP, .app_context = 0, .wake_up = 1 });
     }
     maybe_start_screensaver();

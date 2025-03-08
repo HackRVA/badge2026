@@ -97,6 +97,8 @@ static const struct menu_t settings_m[] = {
    {"ID", VERT_ITEM, MENU, { .menu = myBadgeid_m }, &id_icon, },
    {"QC",  VERT_ITEM, FUNCTION, { .func = QC_cb }, &qc_icon, },
    {"Clear NVRAM", VERT_ITEM, FUNCTION, { .func = clear_nvram_cb }, &clear_nvram_icon, },
+   {"Default menu", VERT_ITEM, FUNCTION, { .func = use_default_menu_cb }, NULL },
+   {"Carousel menu", VERT_ITEM, FUNCTION, { .func = use_carousel_menu_cb }, NULL },
    {"Back",         VERT_ITEM|LAST_ITEM, BACK, {NULL}, NULL, },
 };
 
