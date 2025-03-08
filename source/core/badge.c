@@ -16,6 +16,7 @@
 #include "xorshift.h"
 #include "mic_pdm.h"
 #include "default_menu_app.h"
+#include "carousel_menu_app.h"
 #include "screensaver_app.h"
 
 /*
@@ -144,8 +145,8 @@ uint64_t ProcessIO(void) // 30 fps
 	/* When the initial badge app exits, it will pop off, leaving the menu */
 
 	init_default_menu_app_context(&menu_context, (void *) &main_m[0]);
-	default_menu_app.app_context = &menu_context;
-	push_app(default_menu_app);
+	carousel_menu_app.app_context = &menu_context;
+	push_app(carousel_menu_app);
 	push_app((struct badge_app) { .app_func = INITIAL_BADGE_APP, .app_context = 0, .wake_up = 1 });
     }
     maybe_start_screensaver();

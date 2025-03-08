@@ -1,31 +1,21 @@
 #include <stdio.h>
 
-#include "default_menu_app.h"
+#include "carousel_menu_app.h"
 #include "colors.h"
 #include "button.h"
 #include "framebuffer.h"
 
-#define DEFAULT_MENU_FG_COLOR WHITE
-#define DEFAULT_MENU_BG_COLOR BLACK
+#define CAROUSEL_MENU_FG_COLOR GREEN
+#define CAROUSEL_MENU_BG_COLOR BLACK
 
 static struct default_menu_app_context context_stack[MAX_APP_STACK_DEPTH];
 static int current_menu_stack_idx = -1;
 static struct default_menu_app_context *current_context = NULL;
 
-void init_default_menu_app_context(struct default_menu_app_context *c, struct menu_t *m)
-{
-	c->menu = m;
-	c->top_item = 0;
-	c->current_item = 0;
-	c->selected_item = -1;
-	c->screen_changed = 1;
-
-}
-
 void default_menu_app_cb(struct badge_app *app);
 
-struct badge_app default_menu_app = {
-	.app_func = default_menu_app_cb,
+struct badge_app carousel_menu_app = {
+	.app_func = carousel_menu_app_cb,
 	.app_context = 0,
 	.wake_up = 1,
 	/* these are set in do_selection just before calling app_func() */
@@ -34,19 +24,19 @@ struct badge_app default_menu_app = {
 };
 
 /* Program states.  Initial state is DEFAULT_MENU_APP_INIT */
-enum default_menu_app_state_t {
-	DEFAULT_MENU_APP_INIT,
-	DEFAULT_MENU_APP_RUN,
-	DEFAULT_MENU_APP_EXIT,
+enum carousel_menu_app_state_t {
+	CAROUSEL_MENU_APP_INIT,
+	CAROUSEL_MENU_APP_RUN,
+	CAROUSEL_MENU_APP_EXIT,
 };
 
-static enum default_menu_app_state_t default_menu_app_state = DEFAULT_MENU_APP_INIT;
+static enum carousel_menu_app_state_t carousel_menu_app_state = CAROUSEL_MENU_APP_INIT;
 
-static void default_menu_app_init(void)
+static void carousel_menu_app_init(void)
 {
 	FbInit();
 	FbClear();
-	default_menu_app_state = DEFAULT_MENU_APP_RUN;
+	carousel_menu_app_state = CAROUSEL_MENU_APP_RUN;
 	current_context->screen_changed = 1;
 }
 
@@ -87,7 +77,7 @@ static void go_back(void)
 		if (current_menu_stack_idx >= 0)
 			current_context = &context_stack[current_menu_stack_idx];
 		else
-			current_context = default_menu_app.app_context;
+			current_context = carousel_menu_app.app_context;
 	}
 }
 
@@ -131,7 +121,7 @@ static void do_selection(void)
 	case MENU:
 		if (current_menu_stack_idx < MAX_APP_STACK_DEPTH - 1) {
 			current_menu_stack_idx++;
-			app.app_func = default_menu_app_cb;
+			app.app_func = carousel_menu_app_cb;
 			app.wake_up = 1;
 			app.app_context = &context_stack[current_menu_stack_idx];
 			init_default_menu_app_context(app.app_context,
@@ -193,8 +183,8 @@ static void draw_screen(void)
 	if (!current_context->screen_changed)
 		return;
 
-	FbColor(DEFAULT_MENU_FG_COLOR);
-	FbBackgroundColor(DEFAULT_MENU_BG_COLOR);
+	FbColor(CAROUSEL_MENU_FG_COLOR);
+	FbBackgroundColor(CAROUSEL_MENU_BG_COLOR);
 	FbClear();
 
 	int nitems = count_menu_items(current_context->menu);
@@ -206,15 +196,15 @@ static void draw_screen(void)
 			continue;
 		FbMove(x, y);
 		if (i == current_context->current_item) {
-			FbColor(DEFAULT_MENU_FG_COLOR);
+			FbColor(CAROUSEL_MENU_FG_COLOR);
 			FbFilledRectangle(LCD_XSIZE, 10);
-			FbColor(DEFAULT_MENU_BG_COLOR);
-			FbBackgroundColor(DEFAULT_MENU_FG_COLOR);
+			FbColor(CAROUSEL_MENU_BG_COLOR);
+			FbBackgroundColor(CAROUSEL_MENU_FG_COLOR);
 		} else {
-			FbColor(DEFAULT_MENU_BG_COLOR);
+			FbColor(CAROUSEL_MENU_BG_COLOR);
 			FbFilledRectangle(LCD_XSIZE, 10);
-			FbColor(DEFAULT_MENU_FG_COLOR);
-			FbBackgroundColor(DEFAULT_MENU_BG_COLOR);
+			FbColor(CAROUSEL_MENU_FG_COLOR);
+			FbBackgroundColor(CAROUSEL_MENU_BG_COLOR);
 		}
 		FbMove(x, y);
 		FbWriteString(m[i].name);
@@ -228,33 +218,33 @@ static void draw_screen(void)
 	current_context->screen_changed = 0;
 }
 
-static void default_menu_app_run(void)
+static void carousel_menu_app_run(void)
 {
 	check_buttons();
 	draw_screen();
 }
 
-static void default_menu_app_exit(void)
+static void carousel_menu_app_exit(void)
 {
-	default_menu_app_state = DEFAULT_MENU_APP_INIT; /* So that when we start again, we do not immediately exit */
+	carousel_menu_app_state = CAROUSEL_MENU_APP_INIT; /* So that when we start again, we do not immediately exit */
 	(void) pop_app();
 }
 
-void default_menu_app_cb(struct badge_app *app)
+void carousel_menu_app_cb(struct badge_app *app)
 {
 	current_context = app->app_context;
 	if (app->wake_up)
 		current_context->screen_changed = 1;
 
-	switch (default_menu_app_state) {
-	case DEFAULT_MENU_APP_INIT:
-		default_menu_app_init();
+	switch (carousel_menu_app_state) {
+	case CAROUSEL_MENU_APP_INIT:
+		carousel_menu_app_init();
 		break;
-	case DEFAULT_MENU_APP_RUN:
-		default_menu_app_run();
+	case CAROUSEL_MENU_APP_RUN:
+		carousel_menu_app_run();
 		break;
-	case DEFAULT_MENU_APP_EXIT:
-		default_menu_app_exit();
+	case CAROUSEL_MENU_APP_EXIT:
+		carousel_menu_app_exit();
 		break;
 	default:
 		break;
