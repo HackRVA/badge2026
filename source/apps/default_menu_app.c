@@ -65,7 +65,17 @@ static void move_up(void)
 		if (current_context->top_item > current_context->current_item)
 			current_context->top_item--;
 		current_context->screen_changed = 1;
+	} else {
+		int nitems = count_menu_items(current_context->menu);
+		current_context->current_item = nitems - 1;
+		current_context->top_item = nitems - 1 - 15;
+		if (current_context->top_item < 0)
+			current_context->top_item = 0;
+		current_context->screen_changed = 1;
+
 	}
+	if (current_context->menu[current_context->current_item].attrib & SKIP_ITEM)
+		move_up();
 }
 
 static void move_down(void)
@@ -76,7 +86,13 @@ static void move_down(void)
 		if (current_context->top_item < current_context->current_item - 15)
 			current_context->top_item++;
 		current_context->screen_changed = 1;
+	} else {
+		current_context->current_item = 0;
+		current_context->top_item = 0;
+		current_context->screen_changed = 1;
 	}
+	if (current_context->menu[current_context->current_item].attrib & SKIP_ITEM)
+		move_down();
 }
 
 static void go_back(void)
