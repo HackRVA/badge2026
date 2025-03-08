@@ -187,7 +187,9 @@ static void check_buttons(void)
 {
     int down_latches = button_down_latches();
 	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+		go_back();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
+		do_selection();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		move_up();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
