@@ -28,7 +28,9 @@ if (NOT PICO_EXTRAS_PATH)
         FetchContent_Declare(
                 PICO_EXTRAS
                 GIT_REPOSITORY https://github.com/raspberrypi/pico-extras
-                GIT_TAG master
+                # this is based on the existing convention on this repo
+                # it's possible for them to change this
+                GIT_TAG sdk-${PICO_SDK_VERSION}
         )
         if (NOT PICO_EXTRAS)
             message("Downloading PICO EXTRAS")

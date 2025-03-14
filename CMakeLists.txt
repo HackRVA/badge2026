@@ -9,6 +9,12 @@ set(SIMULATOR_AUDIO "yes") # change to "no" to avoid compiling audio code in sim
 set(BADGE_HAS_ROTARY_SWITCHES "no")
 set(BUILD_IMAGE_TEST_PROGRAM "no") # change to "yes" to build image test app
 
+if (DEFINED ENV{PICO_SDK_VERSION})
+    set(PICO_SDK_VERSION $ENV{PICO_SDK_VERSION})
+else()
+    set(PICO_SDK_VERSION "1.5.1")
+endif()
+
 if (${TARGET} STREQUAL "PICO")
     # Pull in SDK (must be before project).
     # Also does toolchain setup - configures us to use arm-none-eabi-gcc
