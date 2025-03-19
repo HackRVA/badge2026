@@ -29,6 +29,8 @@ if (${TARGET} STREQUAL "PICO")
             nec_receive_library
             pico_pdm_microphone)
 
+    add_st7735sdriver_sources(${PRODUCT})
+
     # enable usb output, disable uart output
     pico_enable_stdio_usb(${PRODUCT} 1)
     pico_enable_stdio_uart(${PRODUCT} 0)
