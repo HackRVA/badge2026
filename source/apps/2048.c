@@ -31,7 +31,7 @@ static enum twenty_forty_state_t {
 
 static bool first_launch = true;
 static const char *menu_items[NUM_MENU_ITEMS] = {
-	"play game",
+	"play",
 	"reset",
 	"how to play",
 	"exit",
@@ -136,6 +136,7 @@ static void reset_moved_tiles(void)
 static void reset_game(void)
 {
 	board = 0;
+  first_launch = false;
 	spawn_tile();
 	spawn_tile();
 	reset_moved_tiles();
@@ -283,6 +284,7 @@ static void twenty_forty_eight_init(void)
 
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	screen_changed = 1;
+  first_launch = true;
 
 	tile_size =
 		(((LCD_XSIZE - (GRID_SIZE + 1) * tile_spacing) / GRID_SIZE) /
@@ -350,14 +352,6 @@ static void check_buttons(void)
 		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_EXIT;
 	}
 	prev_board = board;
-}
-
-static void twenty_forty_eight_exit(void)
-{
-	twenty_forty_eight_state =
-		TWENTY_FORTY_EIGHT_INIT; /* So that when we start again, we do
-					    not immediately exit */
-	returnToMenus();
 }
 
 static void draw_menu(void)
@@ -530,6 +524,12 @@ static void draw_screen(void)
 	}
 	FbSwapBuffers();
 	screen_changed = 0;
+}
+
+static void twenty_forty_eight_exit(void)
+{
+	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_INIT; /* So that when we start again, we do not immediately exit */
+  pop_app();
 }
 
 void twenty_forty_eight_cb(__attribute__((unused)) struct menu_t *m)

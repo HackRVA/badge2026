@@ -66,7 +66,6 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
-	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
 	{"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },
 	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, &badge_monsters_icon, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, &moonpatrol_icon, },
@@ -78,6 +77,7 @@ static const struct menu_t games_m[] = {
 	{"Battlezone", VERT_ITEM, FUNCTION, { .func = battlezone_cb }, &battlezone_icon, },
 	{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, &slotmachine_icon, },
 	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, &breakout_icon, },
+	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
 	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, &hacker_sim_icon, },
 	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, &game_of_life_icon, },
 #ifdef BUILD_IMAGE_TEST_PROGRAM

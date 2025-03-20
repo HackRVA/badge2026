@@ -801,6 +801,46 @@ void FbRotCharacter(unsigned char charin)
     G_Fb.changed = 1;
 }
 
+void FbRoundedRect(unsigned char width, unsigned char height, unsigned char stroke)
+{
+    if (width <= stroke * 2 || height <= stroke * 2) return;
+    unsigned char y_min = G_Fb.pos.y;
+    unsigned char y_max = G_Fb.pos.y + height - 1;
+    unsigned char x_min = G_Fb.pos.x;
+    unsigned char x_max = G_Fb.pos.x + width - 1;
+
+    if (y_max >= LCD_YSIZE) y_max = LCD_YSIZE - 1;
+    if (y_min >= LCD_YSIZE) y_min = LCD_YSIZE - 1;
+
+    for (int i = 0; i < stroke; i++) {
+        for (int x = x_min + stroke; x < x_max - stroke; x++) {
+            if (FbOnScreen(x, y_min + i)) {
+                FbPoint(x, y_min + i);
+                fb_mark_row_changed(x, y_min + i);
+            }
+            if (FbOnScreen(x, y_max - stroke + i)) {
+                FbPoint(x, y_max - stroke + i);
+                fb_mark_row_changed(x, y_max - stroke + i);
+            }
+        }
+    }
+
+    for (int i = 0; i < stroke; i++) {
+        for (int y = y_min + stroke; y < y_max - stroke; y++) {
+            if (FbOnScreen(x_min + i, y)) {
+                FbPoint(x_min + i, y);
+                fb_mark_row_changed(x_min + i, y);
+            }
+            if (FbOnScreen(x_max - stroke + i, y)) {
+                FbPoint(x_max - stroke + i, y);
+                fb_mark_row_changed(x_max - stroke + i, y);
+            }
+        }
+    }
+
+    G_Fb.changed = 1;
+}
+
 void FbFilledRectangle(unsigned char width, unsigned char height)
 {
     unsigned int y, x, endX, endY;
