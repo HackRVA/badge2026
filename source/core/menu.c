@@ -53,6 +53,7 @@
 #include "aagunner.h"
 #include "rover_adventure.h"
 #include "2048.h"
+#include "jsdemo.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -66,6 +67,7 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
+	{"jsdemo", VERT_ITEM, FUNCTION, { .func = js_demo_cb }, NULL },
 	{"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },
 	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, &badge_monsters_icon, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, &moonpatrol_icon, },

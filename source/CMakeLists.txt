@@ -1,11 +1,16 @@
 
 add_executable(${PRODUCT} main.c)
 
+include(duktape.cmake)
+target_include_directories(${PRODUCT} PRIVATE "${DUKTAPE_SOURCE_DIR}/src")
+target_link_libraries(${PRODUCT} duktape)
+
 add_subdirectory(hal)
 add_subdirectory(apps)
 add_subdirectory(cli)
 add_subdirectory(core)
 add_subdirectory(display)
+
 
 if (${TARGET} STREQUAL "PICO")
     # pull in Pico subcomponents
@@ -27,7 +32,8 @@ if (${TARGET} STREQUAL "PICO")
             hardware_i2c
             nec_transmit_library
             nec_receive_library
-            pico_pdm_microphone)
+            pico_pdm_microphone
+          )
 
     add_st7735sdriver_sources(${PRODUCT})
 
