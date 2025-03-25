@@ -20,7 +20,6 @@ if (${TARGET} STREQUAL "PICO")
     # Also does toolchain setup - configures us to use arm-none-eabi-gcc
     include(pico_sdk_import.cmake)
     include(pico_extras_import.cmake)
-    include(st7735S_import.cmake)
 endif()
 
 project(${PRODUCT} C CXX ASM)
