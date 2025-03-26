@@ -1,6 +1,5 @@
 #include "demo.externals.h"
 
-#define BUTTON_STATE_ADDR 0x0000
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 160
 
