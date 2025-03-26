@@ -46,9 +46,10 @@ const BUTTON_RIGHT: u32 = 0x8;
 const BUTTON_A: u32 = 0x10;
 const BUTTON_B: u32 = 0x20;
 
-function isButtonPressed(buttonMask: u32): bool {
-  return (load<u32>(BUTTON_STATE_ADDR) & buttonMask) != 0;
-}
+let currentInput: u32 = 0;
+//function isButtonPressed(buttonMask: u32): bool {
+//  return (load<u32>(BUTTON_STATE_ADDR) & buttonMask) != 0;
+//}
 
 class Rectangle {
   x: u8;
@@ -152,8 +153,10 @@ let circle4 = new Circle(50, 120, 18, PaletteGetColorFromIndex(11), -1, -1);
 let circle5 = new Circle(30, 30, 20, PaletteGetColorFromIndex(12), 1, 1);
 let circle6 = new Circle(90, 50, 15, PaletteGetColorFromIndex(13), -1, 2);
 
-export function update(): void {
-  if (!isButtonPressed(BUTTON_RIGHT)) {
+export function update(buttonMask: u32): void {
+  currentInput = buttonMask;
+
+  if ((currentInput & BUTTON_RIGHT) == 0) {
     rect1.update();
     rect2.update();
     rect3.update();
@@ -163,7 +166,7 @@ export function update(): void {
     rect7.update();
     rect8.update();
   }
-  if (!isButtonPressed(BUTTON_LEFT)) {
+  if ((currentInput & BUTTON_LEFT) == 0) {
     circle1.update();
     circle2.update();
     circle3.update();
@@ -173,7 +176,7 @@ export function update(): void {
   }
 }
 
-export function render(): void {
+export function draw(): void {
   FbClear();
   PaletteDrawGrid(0, 0, 8);
 
@@ -185,7 +188,7 @@ export function render(): void {
   FbColor(PaletteGetColorFromIndex(2));
   FbRoundedRectangle(40, 40, stroke);
 
-  if (!isButtonPressed(BUTTON_DOWN)) {
+  if ((currentInput & BUTTON_DOWN) == 0) {
     rect1.renderFilled();
     rect2.renderFilled();
     rect3.renderFilled();
@@ -196,7 +199,7 @@ export function render(): void {
     rect8.renderFilled();
   }
 
-  if (!isButtonPressed(BUTTON_UP)) {
+  if ((currentInput & BUTTON_UP) == 0) {
     circle1.renderFilled();
     circle2.renderFilled();
     circle3.renderFilled();
@@ -204,6 +207,7 @@ export function render(): void {
     circle5.renderFilled();
     circle6.renderFilled();
   }
+
   FbSwapBuffers();
 }
 

@@ -10,10 +10,10 @@ struct wasmrt {
 	IM3Module module;
 	IM3Function func_run;
 	IM3Function func_update;
-	IM3Function func_render;
+	IM3Function func_draw;
 	IM3Function func_init;
 	IM3Function func_checkButtons;
-	uint8_t *mem;
+  uint32_t button_mask;
 };
 
 struct wasmrt wasmrt_create(void);

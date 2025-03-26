@@ -55,6 +55,7 @@
 #include "2048.h"
 #include "wasmdemo.h"
 #include "cwasmdemo.h"
+#include "gowasmdemo.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -68,6 +69,7 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
+	{"Go Wasm Demo", VERT_ITEM, FUNCTION, { .func = gowasmdemo_cb }, NULL },
 	{"C Wasm Demo", VERT_ITEM, FUNCTION, { .func = cwasmdemo_cb }, NULL },
 	{"Wasm Demo", VERT_ITEM, FUNCTION, { .func = wasmdemo_cb }, NULL },
 	{"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },

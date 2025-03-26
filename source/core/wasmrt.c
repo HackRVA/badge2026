@@ -322,10 +322,14 @@ m3ApiRawFunction(u8ToString_wasm)
 
 static void button_callback(BADGE_BUTTON button, bool state)
 {
-	if (!active_rt || !active_rt->mem)
+	if (!active_rt) {
 		return;
+	}
 
-	uint32_t *input = (uint32_t *)(active_rt->mem + BUTTON_STATE_ADDR);
+  printf("Button %d %s\n", button, state ? "pressed" : "released");
+
+	uint32_t *input = &active_rt->button_mask;
+
 	if (state) {
 		switch (button) {
 		case BADGE_BUTTON_UP:
@@ -422,7 +426,8 @@ static void load_wasm(
 		rt->module, "Fb", "swapBuffers", "v(v)", &fb_swap_buffers_wasm);
 
 	/*m3_LinkRawFunction(*/
-	/*	rt->module, "Fb", "writeString", "v(*)", &fb_write_string_wasm);*/
+	/*	rt->module, "Fb", "writeString", "v(*)",
+	 * &fb_write_string_wasm);*/
 
 	m3_LinkRawFunction(rt->module, "Palette", "drawGrid", "v(iii)",
 		&palette_draw_grid_wasm);
@@ -434,20 +439,8 @@ static void load_wasm(
 	m3_LinkRawFunction(
 		rt->module, "Utils", "u8ToString", "i(i)", &u8ToString_wasm);
 
-	rt->mem = m3_GetMemory(rt->runtime, NULL, 0);
-	if (!rt->mem)
-		FATAL("GetMemory", "failed");
-
-#ifdef BUILD_SIMULATOR
-	static uint8_t dummy_memory[64 * 1024];
-	if (!rt->mem) {
-		printf("WARNING: Using dummy memory\n");
-		rt->mem = dummy_memory;
-	}
-#endif
-
 	m3_FindFunction(&rt->func_update, rt->runtime, "update");
-	m3_FindFunction(&rt->func_render, rt->runtime, "render");
+	m3_FindFunction(&rt->func_draw, rt->runtime, "draw");
 
 	active_rt = rt;
 }
@@ -472,10 +465,10 @@ struct wasmrt wasmrt_create(void)
 		.module = NULL,
 		.func_run = NULL,
 		.func_update = NULL,
-		.func_render = NULL,
+		.func_draw = NULL,
 		.func_init = NULL,
 		.func_checkButtons = NULL,
-		.mem = NULL,
+		.button_mask = 0,
 	};
 }
 
@@ -495,10 +488,10 @@ void wasmrt_cleanup(struct wasmrt *rt)
 	rt->module = NULL;
 	rt->func_run = NULL;
 	rt->func_update = NULL;
-	rt->func_render = NULL;
+	rt->func_draw = NULL;
 	rt->func_init = NULL;
 	rt->func_checkButtons = NULL;
-	rt->mem = NULL;
+	rt->button_mask = 0;
 
 	printf("Wasm runtime cleaned up.\n");
 }
@@ -515,7 +508,8 @@ void wasmrt_update(struct wasmrt *rt)
 	M3Result result;
 
 	if (rt->func_update) {
-		result = m3_CallV(rt->func_update);
+    result = m3_CallV(rt->func_update, rt->button_mask);
+
 		if (result) {
 			M3ErrorInfo info;
 			m3_GetErrorInfo(rt->runtime, &info);
@@ -524,8 +518,8 @@ void wasmrt_update(struct wasmrt *rt)
 		}
 	}
 
-	if (rt->func_render) {
-		result = m3_CallV(rt->func_render);
+	if (rt->func_draw) {
+		result = m3_CallV(rt->func_draw);
 		if (result) {
 			M3ErrorInfo info;
 			m3_GetErrorInfo(rt->runtime, &info);

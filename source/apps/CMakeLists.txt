@@ -26,6 +26,7 @@ target_sources(${PRODUCT} PUBLIC
 	      ${CMAKE_CURRENT_LIST_DIR}/2048.c
 	      ${CMAKE_CURRENT_LIST_DIR}/wasmdemo.c
 	      ${CMAKE_CURRENT_LIST_DIR}/cwasmdemo.c
+	      ${CMAKE_CURRENT_LIST_DIR}/gowasmdemo.c
         # ${CMAKE_CURRENT_LIST_DIR}/badge-app-template.c
 	${CMAKE_CURRENT_LIST_DIR}/aagunner.c
 	${CMAKE_CURRENT_LIST_DIR}/rover_adventure.c
