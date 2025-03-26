@@ -34,10 +34,11 @@ declare function PaletteGetColor(index: u8): u16;
 @external("Palette", "getColorFromIndex")
 declare function PaletteGetColorFromIndex(index: u8): u16;
 
+@external("App", "closeApp")
+declare function CloseApp(): void;
+
 const SCREEN_WIDTH: u8 = 128;
 const SCREEN_HEIGHT: u8 = 160;
-
-const BUTTON_STATE_ADDR: usize = 0x0000;
 
 const BUTTON_UP: u32 = 0x1;
 const BUTTON_DOWN: u32 = 0x2;
@@ -47,9 +48,6 @@ const BUTTON_A: u32 = 0x10;
 const BUTTON_B: u32 = 0x20;
 
 let currentInput: u32 = 0;
-//function isButtonPressed(buttonMask: u32): bool {
-//  return (load<u32>(BUTTON_STATE_ADDR) & buttonMask) != 0;
-//}
 
 class Rectangle {
   x: u8;
@@ -173,6 +171,10 @@ export function update(buttonMask: u32): void {
     circle4.update();
     circle5.update();
     circle6.update();
+  }
+
+  if ((currentInput & BUTTON_B) != 0) {
+    CloseApp();
   }
 }
 

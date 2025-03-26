@@ -1,4 +1,4 @@
-#include "demo.externals.h"
+#include "externals.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 160
@@ -12,14 +12,16 @@
 
 static uint32_t current_input = 0;
 
-__attribute__((export_name("update")))
-void update(int button_mask)
+__attribute__((export_name("update"))) void update(int button_mask)
 {
 	current_input = button_mask;
+
+	if (current_input & BUTTON_B) {
+		close_app();
+	}
 }
 
-__attribute__((export_name("draw")))
-void draw(void)
+__attribute__((export_name("draw"))) void draw(void)
 {
 	fb_clear();
 	palette_draw_grid(0, 0, 8);

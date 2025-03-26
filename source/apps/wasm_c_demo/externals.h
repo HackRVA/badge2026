@@ -39,4 +39,7 @@ uint16_t palette_get_color(uint8_t index);
 __attribute__((import_module("Palette"), import_name("getColorFromIndex")))
 uint16_t palette_get_color_from_index(uint8_t index);
 
+__attribute__((import_module("App"), import_name("closeApp")))
+void close_app(void);
+
 #endif

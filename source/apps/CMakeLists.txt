@@ -24,9 +24,10 @@ target_sources(${PRODUCT} PUBLIC
         # ${CMAKE_CURRENT_LIST_DIR}/badgey.c
         ${CMAKE_CURRENT_LIST_DIR}/image-test.c
 	      ${CMAKE_CURRENT_LIST_DIR}/2048.c
-	      ${CMAKE_CURRENT_LIST_DIR}/wasmdemo.c
-	      ${CMAKE_CURRENT_LIST_DIR}/cwasmdemo.c
-	      ${CMAKE_CURRENT_LIST_DIR}/gowasmdemo.c
+	      ${CMAKE_CURRENT_LIST_DIR}/wasm_c_demo.c
+	      ${CMAKE_CURRENT_LIST_DIR}/wasm_go_demo.c
+	      ${CMAKE_CURRENT_LIST_DIR}/wasm_ts_demo.c
+	      ${CMAKE_CURRENT_LIST_DIR}/wasm_gol_demo.c
         # ${CMAKE_CURRENT_LIST_DIR}/badge-app-template.c
 	${CMAKE_CURRENT_LIST_DIR}/aagunner.c
 	${CMAKE_CURRENT_LIST_DIR}/rover_adventure.c
@@ -38,3 +39,7 @@ add_subdirectory(clue_assets)
 add_subdirectory(new_badge_monsters_assets)
 add_subdirectory(new_badge_monsters)
 target_include_directories(${PRODUCT} PUBLIC .)
+target_include_directories(${PRODUCT} PUBLIC ./wasm_gol_demo/out)
+target_include_directories(${PRODUCT} PUBLIC ./wasm_c_demo/out)
+target_include_directories(${PRODUCT} PUBLIC ./wasm_go_demo/out)
+target_include_directories(${PRODUCT} PUBLIC ./wasm_ts_demo/out)

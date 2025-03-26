@@ -299,6 +299,18 @@ m3ApiRawFunction(fb_rounded_rect_wasm)
 	m3ApiSuccess();
 }
 
+m3ApiRawFunction(close_cb_wasm)
+{
+	(void)runtime;
+	(void)_sp;
+	(void)_ctx;
+	(void)_mem;
+	if (active_rt && active_rt->close_cb) {
+		active_rt->close_cb();
+	}
+	m3ApiSuccess();
+}
+
 #define MAX_DIGITS_U8 3
 m3ApiRawFunction(u8ToString_wasm)
 {
@@ -318,15 +330,11 @@ m3ApiRawFunction(u8ToString_wasm)
 	m3ApiReturn(str);
 }
 
-#define BUTTON_STATE_ADDR 0x0000
-
 static void button_callback(BADGE_BUTTON button, bool state)
 {
 	if (!active_rt) {
 		return;
 	}
-
-	printf("Button %d %s\n", button, state ? "pressed" : "released");
 
 	uint32_t *input = &active_rt->button_mask;
 
@@ -436,6 +444,8 @@ static void load_wasm(
 	m3_LinkRawFunction(rt->module, "Palette", "getColorFromIndex", "i(i)",
 		&palette_get_color_from_index_wasm);
 
+	m3_LinkRawFunction(rt->module, "App", "closeApp", "v(v)", &close_cb_wasm);
+
 	m3_LinkRawFunction(
 		rt->module, "Utils", "u8ToString", "i(i)", &u8ToString_wasm);
 
@@ -463,11 +473,8 @@ struct wasmrt wasmrt_create(void)
 		.env = env,
 		.runtime = NULL,
 		.module = NULL,
-		.func_run = NULL,
 		.func_update = NULL,
 		.func_draw = NULL,
-		.func_init = NULL,
-		.func_checkButtons = NULL,
 		.button_mask = 0,
 	};
 }
@@ -486,21 +493,19 @@ void wasmrt_cleanup(struct wasmrt *rt)
 		active_rt = NULL;
 
 	rt->module = NULL;
-	rt->func_run = NULL;
 	rt->func_update = NULL;
 	rt->func_draw = NULL;
-	rt->func_init = NULL;
-	rt->func_checkButtons = NULL;
 	rt->button_mask = 0;
 
 	printf("Wasm runtime cleaned up.\n");
 }
 
-void wasmrt_load_app(
-	struct wasmrt *rt, unsigned char *wasm_app, int wasm_app_size)
+void wasmrt_load_app(struct wasmrt *rt, unsigned char *wasm_app,
+	int wasm_app_size, void (*close_fn)(void))
 {
 	wasmrt_init();
 	load_wasm(rt, wasm_app, wasm_app_size);
+	rt->close_cb = close_fn;
 }
 
 void wasmrt_update(struct wasmrt *rt)
