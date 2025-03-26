@@ -91,23 +91,7 @@ m3ApiRawFunction(Math_random)
 /*         fileName, lineNumber, columnNumber);*/
 /*}*/
 
-m3ApiRawFunction(EnvAbort)
-{
-	(void)runtime;
-	(void)_sp;
-	(void)_ctx;
-	(void)_mem;
-	m3ApiGetArg(int32_t, message);
-	m3ApiGetArg(int32_t, fileName);
-	m3ApiGetArg(int32_t, lineNumber);
-	m3ApiGetArg(int32_t, columnNumber);
-
-	printf("Abort called! Message: %d, File: %d, Line: %d, Column: %d\n",
-		message, fileName, lineNumber, columnNumber);
-	m3ApiSuccess();
-}
-
-m3ApiRawFunction(FbClear_wasm)
+m3ApiRawFunction(fb_clear_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -117,7 +101,7 @@ m3ApiRawFunction(FbClear_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbColor_wasm)
+m3ApiRawFunction(fb_color_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -128,7 +112,7 @@ m3ApiRawFunction(FbColor_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbMove_wasm)
+m3ApiRawFunction(fb_move_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -140,7 +124,7 @@ m3ApiRawFunction(FbMove_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbPoint_wasm)
+m3ApiRawFunction(fb_point_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -152,7 +136,7 @@ m3ApiRawFunction(FbPoint_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbHorizontalLine_wasm)
+m3ApiRawFunction(fb_horizontal_line_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -166,7 +150,7 @@ m3ApiRawFunction(FbHorizontalLine_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbVerticalLine_wasm)
+m3ApiRawFunction(fb_vertical_line_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -180,7 +164,7 @@ m3ApiRawFunction(FbVerticalLine_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbLine_wasm)
+m3ApiRawFunction(fb_line_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -194,7 +178,7 @@ m3ApiRawFunction(FbLine_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbRectangle_wasm)
+m3ApiRawFunction(fb_rectangle_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -206,7 +190,7 @@ m3ApiRawFunction(FbRectangle_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbCircle_wasm)
+m3ApiRawFunction(fb_circle_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -219,7 +203,7 @@ m3ApiRawFunction(FbCircle_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbFilledCircle_wasm)
+m3ApiRawFunction(fb_filled_circle_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -232,7 +216,7 @@ m3ApiRawFunction(FbFilledCircle_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbWriteString_wasm)
+m3ApiRawFunction(fb_write_string_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -243,7 +227,7 @@ m3ApiRawFunction(FbWriteString_wasm)
 	m3ApiSuccess();
 }
 
-m3ApiRawFunction(FbFilledRectangle_wasm)
+m3ApiRawFunction(fb_filled_rectangle_wasm)
 {
 	(void)runtime;
 	(void)_sp;
@@ -420,27 +404,25 @@ static void load_wasm(
 
 	m3_LinkRawFunction(rt->module, "Math", "random", "f()", &Math_random);
 
-	m3_LinkRawFunction(rt->module, "env", "abort", "v(iiii)", &EnvAbort);
-
-	m3_LinkRawFunction(rt->module, "Fb", "clear", "v()", &FbClear_wasm);
-	m3_LinkRawFunction(rt->module, "Fb", "color", "v(i)", &FbColor_wasm);
-	m3_LinkRawFunction(rt->module, "Fb", "move", "v(ii)", &FbMove_wasm);
+	m3_LinkRawFunction(rt->module, "Fb", "clear", "v()", &fb_clear_wasm);
+	m3_LinkRawFunction(rt->module, "Fb", "color", "v(i)", &fb_color_wasm);
+	m3_LinkRawFunction(rt->module, "Fb", "move", "v(ii)", &fb_move_wasm);
 	m3_LinkRawFunction(
-		rt->module, "Fb", "rectangle", "v(ii)", &FbRectangle_wasm);
+		rt->module, "Fb", "rectangle", "v(ii)", &fb_rectangle_wasm);
 	m3_LinkRawFunction(
-		rt->module, "Fb", "circle", "v(iii)", &FbCircle_wasm);
+		rt->module, "Fb", "circle", "v(iii)", &fb_circle_wasm);
 	m3_LinkRawFunction(rt->module, "Fb", "filledCircle", "v(iii)",
-		&FbFilledCircle_wasm);
+		&fb_filled_circle_wasm);
 	m3_LinkRawFunction(rt->module, "Fb", "filledRectangle", "v(ii)",
-		&FbFilledRectangle_wasm);
+		&fb_filled_rectangle_wasm);
 
 	m3_LinkRawFunction(rt->module, "Fb", "roundedRectangle", "v(iii)",
 		&fb_rounded_rect_wasm);
 	m3_LinkRawFunction(
 		rt->module, "Fb", "swapBuffers", "v(v)", &fb_swap_buffers_wasm);
 
-	m3_LinkRawFunction(
-		rt->module, "Fb", "writeString", "v(*)", &FbWriteString_wasm);
+	/*m3_LinkRawFunction(*/
+	/*	rt->module, "Fb", "writeString", "v(*)", &fb_write_string_wasm);*/
 
 	m3_LinkRawFunction(rt->module, "Palette", "drawGrid", "v(iii)",
 		&palette_draw_grid_wasm);
