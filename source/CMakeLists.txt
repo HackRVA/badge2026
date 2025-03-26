@@ -1,6 +1,8 @@
 
 add_executable(${PRODUCT} main.c)
 
+include(wasm3.cmake)
+
 add_subdirectory(hal)
 add_subdirectory(apps)
 add_subdirectory(cli)

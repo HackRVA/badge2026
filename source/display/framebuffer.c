@@ -1069,6 +1069,28 @@ void FbCircle(int cx, int cy, int r)
 	}
 }
 
+void FbFilledCircle(int x0, int y0, int r)
+{
+	int x = 0;
+	int y = r;
+	int d = 1 - r;
+
+	while (y >= x) {
+		FbHorizontalLine(x0 - x, y0 - y, x0 + x, y0 - y);
+		FbHorizontalLine(x0 - x, y0 + y, x0 + x, y0 + y);
+		FbHorizontalLine(x0 - y, y0 - x, x0 + y, y0 - x);
+		FbHorizontalLine(x0 - y, y0 + x, x0 + y, y0 + x);
+
+		if (d < 0) {
+			d += 2 * x + 3;
+		} else {
+			d += 2 * (x - y) + 5;
+			y--;
+		}
+		x++;
+	}
+}
+
 void FbSwapBuffers()
 {
     if (G_Fb.changed == 0) return;

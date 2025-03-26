@@ -85,6 +85,7 @@ void FbRotWriteLine(const char *string); /* write text rotated 90 degrees clockw
 void FbRotWriteString(const char *string);
 void FbRectangle(unsigned char width, unsigned char height);
 void FbCircle(int x, int y, int r);
+void FbFilledCircle(int x0, int y0, int r);
 
 /** @brief Render the asset with its upper left corner at the current frame buffer location.
  *
