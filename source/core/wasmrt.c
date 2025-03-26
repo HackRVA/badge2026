@@ -326,7 +326,7 @@ static void button_callback(BADGE_BUTTON button, bool state)
 		return;
 	}
 
-  printf("Button %d %s\n", button, state ? "pressed" : "released");
+	printf("Button %d %s\n", button, state ? "pressed" : "released");
 
 	uint32_t *input = &active_rt->button_mask;
 
@@ -508,7 +508,7 @@ void wasmrt_update(struct wasmrt *rt)
 	M3Result result;
 
 	if (rt->func_update) {
-    result = m3_CallV(rt->func_update, rt->button_mask);
+		result = m3_CallV(rt->func_update, rt->button_mask);
 
 		if (result) {
 			M3ErrorInfo info;
