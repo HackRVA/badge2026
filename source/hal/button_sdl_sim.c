@@ -249,45 +249,45 @@ int key_press_cb(SDL_Keysym *keysym)
 	case SDLK_k:
         case SDLK_w:
         case SDLK_UP:
-	    if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+	    if (slp.orientation == SIM_LCD_ORIENTATION_UNROTATED) {
                 button = BADGE_BUTTON_UP;
                 sim_button_status.dpad_up = BUTTON_DISPLAY_DURATION;
             } else {
-                button = BADGE_BUTTON_RIGHT;
-                sim_button_status.dpad_right = BUTTON_DISPLAY_DURATION;
+                button = BADGE_BUTTON_LEFT;
+                sim_button_status.dpad_left = BUTTON_DISPLAY_DURATION;
             }
         break;
 	case SDLK_j:
         case SDLK_s:
         case SDLK_DOWN:
-	    if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+	    if (slp.orientation == SIM_LCD_ORIENTATION_UNROTATED) {
                 button = BADGE_BUTTON_DOWN;
                 sim_button_status.dpad_down = BUTTON_DISPLAY_DURATION;
             } else {
-                button = BADGE_BUTTON_LEFT;
-                sim_button_status.dpad_left = BUTTON_DISPLAY_DURATION;
+                button = BADGE_BUTTON_RIGHT;
+                sim_button_status.dpad_right = BUTTON_DISPLAY_DURATION;
             }
         break;
 	case SDLK_h:
         case SDLK_a:
         case SDLK_LEFT:
-	    if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+	    if (slp.orientation == SIM_LCD_ORIENTATION_UNROTATED) {
                 button = BADGE_BUTTON_LEFT;
                 sim_button_status.dpad_left = BUTTON_DISPLAY_DURATION;
             } else {
-                button = BADGE_BUTTON_UP;
-                sim_button_status.dpad_up = BUTTON_DISPLAY_DURATION;
+                button = BADGE_BUTTON_DOWN;
+                sim_button_status.dpad_down = BUTTON_DISPLAY_DURATION;
             }
         break;
 	case SDLK_l:
         case SDLK_d:
         case SDLK_RIGHT:
-	    if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+	    if (slp.orientation == SIM_LCD_ORIENTATION_UNROTATED) {
                 button = BADGE_BUTTON_RIGHT;
                 sim_button_status.dpad_right = BUTTON_DISPLAY_DURATION;
             } else {
-                button = BADGE_BUTTON_DOWN;
-                sim_button_status.dpad_down = BUTTON_DISPLAY_DURATION;
+                button = BADGE_BUTTON_UP;
+                sim_button_status.dpad_up = BUTTON_DISPLAY_DURATION;
             }
         break;
         case SDLK_SPACE:

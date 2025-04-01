@@ -468,7 +468,7 @@ static void draw_button_inputs(struct sim_lcd_params *slp)
 	struct sim_button_status button_status;
 	int w, h;
 
-	if (slp->orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+	if (slp->orientation == SIM_LCD_ORIENTATION_UNROTATED) {
 		w = badge_image_width;
 		h = badge_image_height;
 	} else {
@@ -521,7 +521,7 @@ static void draw_flare_led(struct sim_lcd_params *slp)
 	if (led_color.red < 75 && led_color.green < 75 && led_color.blue < 75)
 		return;
 
-	if (slp->orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+	if (slp->orientation == SIM_LCD_ORIENTATION_UNROTATED) {
 		w = badge_image_width;
 		h = badge_image_height;
 	} else {
@@ -1033,7 +1033,7 @@ static void process_events(SDL_Window *window)
             break;
         case SDL_MOUSEBUTTONDOWN:
             slp = get_sim_lcd_params();
-            if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+            if (slp.orientation == SIM_LCD_ORIENTATION_UNROTATED) {
                 w = badge_image_width;
                 h = badge_image_height;
             } else {
@@ -1082,7 +1082,7 @@ static void process_events(SDL_Window *window)
             break;
         case SDL_MOUSEWHEEL:
             slp = get_sim_lcd_params();
-            if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) {
+            if (slp.orientation == SIM_LCD_ORIENTATION_UNROTATED) {
                 w = badge_image_width;
                 h = badge_image_height;
             } else {
