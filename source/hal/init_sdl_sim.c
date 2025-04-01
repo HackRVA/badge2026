@@ -266,12 +266,12 @@ void hal_restore_interrupts(__attribute__((unused)) uint32_t state)
 	enable_interrupts();
 }
 
-static char *badge_image_pixels, *landscape_badge_image_pixels, *badge_background_pixels;
+static char *badge_image_pixels, *rotated_badge_image_pixels, *badge_background_pixels;
 static char *quit_confirm_pixels;
 int quit_confirm_active = 0;
 static char *led_pixels;
-static int badge_image_width, badge_image_height;
-static int landscape_badge_image_width, landscape_badge_image_height;
+static int badge_image_width, badge_image_height; /* badge in its "normal" orientation */
+static int rotated_badge_image_width, rotated_badge_image_height; /* rotated 90 deg CCW orientation */
 static int badge_background_width, badge_background_height;
 static int quit_confirm_width, quit_confirm_height;
 static int led_width, led_height;
@@ -280,7 +280,7 @@ static SDL_Joystick *joystick = NULL;
 // static GtkWidget *vbox, *drawing_area;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
-static SDL_Texture *pix_buf, *landscape_pix_buf, *badge_image, *landscape_badge_image, *badge_background_image;
+static SDL_Texture *pix_buf, *landscape_pix_buf, *badge_image, *rotated_badge_image, *badge_background_image;
 static SDL_Texture *led_image;
 static SDL_Texture *quit_confirm_image;
 static char *program_title;
@@ -335,11 +335,11 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 	struct lcd_to_circuit_board_relation lcdp;
 
 	if (!created_textures) {
-		if (landscape_badge_image_pixels) {
-			landscape_badge_image = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC,
-					landscape_badge_image_width, landscape_badge_image_height);
-			SDL_SetTextureBlendMode(landscape_badge_image, SDL_BLENDMODE_BLEND);
-			SDL_UpdateTexture(landscape_badge_image, NULL, landscape_badge_image_pixels, landscape_badge_image_width * 4);
+		if (rotated_badge_image_pixels) {
+			rotated_badge_image = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC,
+					rotated_badge_image_width, rotated_badge_image_height);
+			SDL_SetTextureBlendMode(rotated_badge_image, SDL_BLENDMODE_BLEND);
+			SDL_UpdateTexture(rotated_badge_image, NULL, rotated_badge_image_pixels, rotated_badge_image_width * 4);
 		}
 		if (badge_image_pixels) {
 			badge_image = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC,
@@ -388,8 +388,8 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 	bx1 =   sx1 - fx * lcdp.x1;
 	by1 =   sy1 - fy * lcdp.y1;
 	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE) {
-		bx2 =   bx1 + fx * (landscape_badge_image_width - 1);
-		by2 =   by1 + fy * (landscape_badge_image_height - 1);
+		bx2 =   bx1 + fx * (rotated_badge_image_width - 1);
+		by2 =   by1 + fy * (rotated_badge_image_height - 1);
 	} else {
 		bx2 =   bx1 + fx * (badge_image_width - 1);
 		by2 =   by1 + fy * (badge_image_height - 1);
@@ -410,33 +410,33 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 	}
 	if (bx2 >= sx) {
 		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-			cx2 = landscape_badge_image_width - (bx1 - sx) / fx;
+			cx2 = rotated_badge_image_width - (bx1 - sx) / fx;
 		else
 			cx2 = badge_image_width - (bx1 - sx) / fx;
 		bx2 = sx - 1;
 	} else {
 		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-			cx2 = landscape_badge_image_width - 1;
+			cx2 = rotated_badge_image_width - 1;
 		else
 			cx2 = badge_image_width - 1;
 	}
 	if (by2 >= sy) {
 		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-			cy2 = landscape_badge_image_height - (by2 - sy) / fy;
+			cy2 = rotated_badge_image_height - (by2 - sy) / fy;
 		else
 			cy2 = badge_image_height - (by2 - sy) / fy;
 		by2 = sy - 1;
 	} else {
 		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-			cy2 = landscape_badge_image_height - 1;
+			cy2 = rotated_badge_image_height - 1;
 		else
 			cy2 = badge_image_height - 1;
 	}
 
 	SDL_Rect from_rect = { (int) cx1, (int) cy1, (int) (cx2 - cx1), (int) (cy2 - cy1) };
 	SDL_Rect to_rect = { (int) bx1, (int) by1, (int) (bx2 - bx1), (int) (by2 - by1) };
-	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE && landscape_badge_image)
-		SDL_RenderCopy(renderer, landscape_badge_image, &from_rect, &to_rect);
+	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE && rotated_badge_image)
+		SDL_RenderCopy(renderer, rotated_badge_image, &from_rect, &to_rect);
 	else if (badge_image)
 		SDL_RenderCopy(renderer, badge_image, &from_rect, &to_rect);
 }
@@ -472,8 +472,8 @@ static void draw_button_inputs(struct sim_lcd_params *slp)
 		w = badge_image_width;
 		h = badge_image_height;
 	} else {
-		w = landscape_badge_image_width;
-		h = landscape_badge_image_height;
+		w = rotated_badge_image_width;
+		h = rotated_badge_image_height;
 	}
 	struct button_coord_list bcl = get_button_coords(slp, w, h);
 	button_status = get_sim_button_status();
@@ -525,8 +525,8 @@ static void draw_flare_led(struct sim_lcd_params *slp)
 		w = badge_image_width;
 		h = badge_image_height;
 	} else {
-		w = landscape_badge_image_width;
-		h = landscape_badge_image_height;
+		w = rotated_badge_image_width;
+		h = rotated_badge_image_height;
 	}
 	struct button_coord_list bcl = get_button_coords(slp, w, h);
 	x = bcl.led.x - led_width / 2;
@@ -878,10 +878,10 @@ static void load_badge_images(void)
 	badge_image_height = 723;
 	load_image("../images/badge-image-1024.png", &badge_image_pixels,
 			&badge_image_width, &badge_image_height);
-	landscape_badge_image_width = 723;
-	landscape_badge_image_height = 1024;
-	load_image("../images/badge-image-vert-1024.png", &landscape_badge_image_pixels,
-			&landscape_badge_image_width, &landscape_badge_image_height);
+	rotated_badge_image_width = 723;
+	rotated_badge_image_height = 1024;
+	load_image("../images/badge-image-vert-1024.png", &rotated_badge_image_pixels,
+			&rotated_badge_image_width, &rotated_badge_image_height);
 	badge_background_width = 1024;
 	badge_background_height = 672;
 	load_image("../images/badge-background.png", &badge_background_pixels,
@@ -1037,8 +1037,8 @@ static void process_events(SDL_Window *window)
                 w = badge_image_width;
                 h = badge_image_height;
             } else {
-                w = landscape_badge_image_width;
-                h = landscape_badge_image_height;
+                w = rotated_badge_image_width;
+                h = rotated_badge_image_height;
             }
             bcl = get_button_coords(&slp, w, h);
             mouse_button_down_cb(&event.button, &bcl);
@@ -1086,8 +1086,8 @@ static void process_events(SDL_Window *window)
                 w = badge_image_width;
                 h = badge_image_height;
             } else {
-                w = landscape_badge_image_width;
-                h = landscape_badge_image_height;
+                w = rotated_badge_image_width;
+                h = rotated_badge_image_height;
             }
             bcl = get_button_coords(&slp, w, h);
             mouse_scroll_cb(&event.wheel, &bcl);
@@ -1154,7 +1154,7 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
     SDL_QuitSubSystem(SDL_INIT_EVENTS);
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
     free(badge_image_pixels);
-    free(landscape_badge_image_pixels);
+    free(rotated_badge_image_pixels);
     SDL_Quit();
 
 
