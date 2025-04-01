@@ -370,7 +370,7 @@ static void draw_badge_image(struct sim_lcd_params *slp)
         SDL_GetWindowSize(window, &sx, &sy);
 
 	/* get corners of the screen inside the badge image */
-	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
+	if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
 		lcdp = landscape_lcd_to_board();
 	else
 		lcdp = portrait_lcd_to_board();
@@ -387,7 +387,7 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 	// fx = fy;
 	bx1 =   sx1 - fx * lcdp.x1;
 	by1 =   sy1 - fy * lcdp.y1;
-	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE) {
+	if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED) {
 		bx2 =   bx1 + fx * (rotated_badge_image_width - 1);
 		by2 =   by1 + fy * (rotated_badge_image_height - 1);
 	} else {
@@ -409,25 +409,25 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 		cy1 = 0;
 	}
 	if (bx2 >= sx) {
-		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
+		if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
 			cx2 = rotated_badge_image_width - (bx1 - sx) / fx;
 		else
 			cx2 = badge_image_width - (bx1 - sx) / fx;
 		bx2 = sx - 1;
 	} else {
-		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
+		if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
 			cx2 = rotated_badge_image_width - 1;
 		else
 			cx2 = badge_image_width - 1;
 	}
 	if (by2 >= sy) {
-		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
+		if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
 			cy2 = rotated_badge_image_height - (by2 - sy) / fy;
 		else
 			cy2 = badge_image_height - (by2 - sy) / fy;
 		by2 = sy - 1;
 	} else {
-		if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
+		if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
 			cy2 = rotated_badge_image_height - 1;
 		else
 			cy2 = badge_image_height - 1;
@@ -435,7 +435,7 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 
 	SDL_Rect from_rect = { (int) cx1, (int) cy1, (int) (cx2 - cx1), (int) (cy2 - cy1) };
 	SDL_Rect to_rect = { (int) bx1, (int) by1, (int) (bx2 - bx1), (int) (by2 - by1) };
-	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE && rotated_badge_image)
+	if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED && rotated_badge_image)
 		SDL_RenderCopy(renderer, rotated_badge_image, &from_rect, &to_rect);
 	else if (badge_image)
 		SDL_RenderCopy(renderer, badge_image, &from_rect, &to_rect);

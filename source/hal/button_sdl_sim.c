@@ -104,10 +104,10 @@ static void zoom_out(void)
 static void rotate_simulator(void)
 {
 	struct sim_lcd_params slp = get_sim_lcd_params();
-	if (slp.orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-		set_sim_lcd_params_portrait();
+	if (slp.orientation == SIM_LCD_ORIENTATION_ROTATED)
+		set_sim_lcd_params_unrotated();
 	else
-		set_sim_lcd_params_landscape();
+		set_sim_lcd_params_rotated();
 }
 
 static int mouse_close_enough(int x, int y, struct button_coord *b)
@@ -655,10 +655,10 @@ void handle_window_event(SDL_Window *window, SDL_Event event)
 		SDL_GetWindowSize(window, &width, &height);
 		adjust_sim_lcd_params_defaults(width, height);
 		struct sim_lcd_params slp = get_sim_lcd_params();
-		if (slp.orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-			set_sim_lcd_params_landscape();
+		if (slp.orientation == SIM_LCD_ORIENTATION_ROTATED)
+			set_sim_lcd_params_rotated();
 		else
-			set_sim_lcd_params_portrait();
+			set_sim_lcd_params_unrotated();
 		break;
 	default:
 		break;
