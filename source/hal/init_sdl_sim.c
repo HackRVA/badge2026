@@ -880,7 +880,7 @@ static void load_badge_images(void)
 			&badge_image_width, &badge_image_height);
 	rotated_badge_image_width = 723;
 	rotated_badge_image_height = 1024;
-	load_image("../images/badge-image-vert-1024.png", &rotated_badge_image_pixels,
+	load_image("../images/badge-image-rotated.png", &rotated_badge_image_pixels,
 			&rotated_badge_image_width, &rotated_badge_image_height);
 	badge_background_width = 1024;
 	badge_background_height = 672;
