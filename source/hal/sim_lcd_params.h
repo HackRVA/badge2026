@@ -24,8 +24,8 @@ struct sim_lcd_params get_sim_lcd_params(void);
 void adjust_sim_lcd_params_defaults(int sdl_window_width, int sdl_window_height);
 void set_sim_lcd_params_rotated(void);
 void set_sim_lcd_params_unrotated(void);
-struct lcd_to_circuit_board_relation portrait_lcd_to_board(void);
-struct lcd_to_circuit_board_relation landscape_lcd_to_board(void);
+struct lcd_to_circuit_board_relation rotated_lcd_to_board(void);
+struct lcd_to_circuit_board_relation unrotated_lcd_to_board(void);
 
 #endif
 

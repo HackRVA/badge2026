@@ -371,9 +371,9 @@ static void draw_badge_image(struct sim_lcd_params *slp)
 
 	/* get corners of the screen inside the badge image */
 	if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
-		lcdp = landscape_lcd_to_board();
+		lcdp = rotated_lcd_to_board();
 	else
-		lcdp = portrait_lcd_to_board();
+		lcdp = unrotated_lcd_to_board();
 
 	/* corners of the sim screen on the computer screen */
 	sx1 = slp->xoffset;

@@ -4,7 +4,7 @@
 /* "Landscape" and "Portrait" here refer to the LCD screen, not the badge as a whole */
 #define PORTRAITXY(x, y) { ((float) (x) / 1024.0f), ((float) (y) / 1527.0f) }
 #define LANDSCAPEXY(x, y) { ((float) (x) / 1478.0f), ((float) (y) / 1024.0f) }
-static const struct button_coord_list portrait_button_coords = {
+static const struct button_coord_list rotated_button_coords = {
 	.a_button = PORTRAITXY(758, 1130),
 	.b_button = PORTRAITXY(923, 1089),
 #if BADGE_HAS_ROTARY_SWITCHES
@@ -18,7 +18,7 @@ static const struct button_coord_list portrait_button_coords = {
 	.led = PORTRAITXY(648, 202),
 };
 
-static const struct button_coord_list landscape_button_coords = {
+static const struct button_coord_list unrotated_button_coords = {
 	.a_button = LANDSCAPEXY(1130, 262),
 	.b_button = LANDSCAPEXY(1086, 96),
 #if BADGE_HAS_ROTARY_SWITCHES
@@ -47,10 +47,10 @@ struct button_coord_list get_button_coords(struct sim_lcd_params *slp, int badge
 
 
 	/* Get corners of the screen inside the badge image */
-	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-		lcdp = landscape_lcd_to_board();
+	if (slp->orientation == SIM_LCD_ORIENTATION_UNROTATED)
+		lcdp = unrotated_lcd_to_board();
 	else
-		lcdp = portrait_lcd_to_board();
+		lcdp = rotated_lcd_to_board();
 
 	/* coords of sim screen on computer screen */
 	sx1 = slp->xoffset;
@@ -62,10 +62,10 @@ struct button_coord_list get_button_coords(struct sim_lcd_params *slp, int badge
         bx1 =   sx1 - f * lcdp.x1;
         by1 =   sy1 - f * lcdp.y1;
 
-	if (slp->orientation == SIM_LCD_ORIENTATION_LANDSCAPE)
-		current_button_coords = landscape_button_coords;
+	if (slp->orientation == SIM_LCD_ORIENTATION_ROTATED)
+		current_button_coords = rotated_button_coords;
 	else
-		current_button_coords = portrait_button_coords;
+		current_button_coords = unrotated_button_coords;
 	adjust_button_coords(&current_button_coords.a_button, bx1, by1, f, badge_image_width, badge_image_height);
 	adjust_button_coords(&current_button_coords.b_button, bx1, by1, f, badge_image_width, badge_image_height);
 #if BADGE_HAS_ROTARY_SWITCHES

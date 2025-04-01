@@ -4,18 +4,18 @@
 
 static const struct lcd_to_circuit_board_relation landscape_lcd_mapping = {
 	/* corners of the screen inside the badge image */
-	.x1 = 474,
-	.y1 = 283,
-	.x2 = 1023,
-	.y2 = 749,
+	.x1 = 316,
+	.y1 = 57,
+	.x2 = 721,
+	.y2 = 319,
 };
 
 static const struct lcd_to_circuit_board_relation portrait_lcd_mapping = {
 	/* corners of the screen inside the badge image */
-	.x1 = 270,
-	.y1 = 472,
-	.x2 = 739,
-	.y2 = 1029,
+	.x1 = 205,
+	.y1 = 321,
+	.x2 = 497,
+	.y2 = 706,
 };
 
 static const struct sim_lcd_params initial_default_sim_lcd_params = {
@@ -94,12 +94,12 @@ void set_sim_lcd_params_rotated(void)
 	sim_lcd_params = default_rotated_sim_lcd_params;
 }
 
-struct lcd_to_circuit_board_relation portrait_lcd_to_board(void)
+struct lcd_to_circuit_board_relation rotated_lcd_to_board(void)
 {
 	return portrait_lcd_mapping;
 }
 
-struct lcd_to_circuit_board_relation landscape_lcd_to_board(void)
+struct lcd_to_circuit_board_relation unrotated_lcd_to_board(void)
 {
 	return landscape_lcd_mapping;
 }
