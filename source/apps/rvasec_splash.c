@@ -60,7 +60,7 @@ static void brand_preproduction_firmware(int blink)
 #define SPLASH_SHIFT_DOWN 85
 void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 {
-    extern const struct asset2 RVAsec_13;
+    extern const struct asset2 RVAsec_14;
     static unsigned short wait = 0;
     static unsigned char loading_txt_idx = 0,
     load_bar = 0;
@@ -80,7 +80,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
     } else if(wait < 120){
 	FbBackgroundColor(0x21c5);
         FbMove(0, 0);
-        FbImage2(&RVAsec_13, 0);
+        FbImage2(&RVAsec_14, 0);
         FbMove(4,SPLASH_SHIFT_DOWN);
 
         FbColor(WHITE);
@@ -107,7 +107,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 
     } else if(wait < 160){
         FbMove(0, 0);
-        FbImage2(&RVAsec_13, 0);
+        FbImage2(&RVAsec_14, 0);
 #if 0
 	/* Draw the griddy horizon thing */
         FbMove(10,SPLASH_SHIFT_DOWN);

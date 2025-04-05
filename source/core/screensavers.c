@@ -214,7 +214,7 @@ void nametag_screensaver(void)
 
 void disp_asset_saver(void)
 {
-    extern const struct asset2 RVAsec_13;
+    extern const struct asset2 RVAsec_14;
 
     static unsigned char imgnum = 0;
     if(!animation_count){
@@ -234,7 +234,7 @@ void disp_asset_saver(void)
 	case 0:
         case 2:
             FbMove(0,0);
-            FbImage2(&RVAsec_13, 0);
+            FbImage2(&RVAsec_14, 0);
             break;
 
         case 3:
