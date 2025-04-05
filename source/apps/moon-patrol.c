@@ -113,14 +113,14 @@ static struct waypoint {
 	int x, y;
 	char label;
 } waypoint[NUMWAYPOINTS] = {
-	{ (0 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, '0' },
-	{ (1 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'A' },
-	{ (2 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'B' },
-	{ (3 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'C' },
-	{ (4 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'D' },
-	{ (5 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'E' },
-	{ (6 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'F' },
-	{ (7 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * 150, 'G' },
+	{ (0 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), '0' },
+	{ (1 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'A' },
+	{ (2 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'B' },
+	{ (3 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'C' },
+	{ (4 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'D' },
+	{ (5 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'E' },
+	{ (6 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'F' },
+	{ (7 * 256 * TERRAIN_SEG_LENGTH * TERRAIN_LEN) / (NUMWAYPOINTS + 4), 256 * (LCD_YSIZE - 10), 'G' },
 };
 static int last_waypoint_reached = 0;
 #define MAXLIVES 5
@@ -855,7 +855,7 @@ static void moonpatrol_init(void)
 	FbInit();
 	FbClear();
 	generate_terrain();
-	generate_hills(foothill, FOOTHILLS_LEN, 120 * 256, 80 * 256, 20);
+	generate_hills(foothill, FOOTHILLS_LEN, (LCD_YSIZE - 40) * 256, LCD_YSIZE * 256 / 2, 20);
 	generate_hills(mountain, MOUNTAINS_LEN, 60 * 256, 20 * 256, 10);
 	moonpatrol_state = MOONPATROL_SETUP;
 	init_player();
@@ -989,9 +989,9 @@ static void draw_terrain(void)
 				FbClippedLine(x1, y1, x2, y2);
 			} else if (feature_active(i, FEATURE_CRATER) ||
 					(terrain_feature[i] & FEATURE_BOMB_CRATER)) {
-				FbClippedLine(x1, y1, x1 + (x2 - x1) / 3, 159);
-				FbClippedLine(x1 + (x2 - x1) / 3, 159, x1 + 2 * (x2 - x1) / 3, 159);
-				FbClippedLine(x1 + 2 * (x2 - x1) / 3, 159, x2, y2);
+				FbClippedLine(x1, y1, x1 + (x2 - x1) / 3, LCD_YSIZE - 1);
+				FbClippedLine(x1 + (x2 - x1) / 3, LCD_YSIZE - 1, x1 + 2 * (x2 - x1) / 3, LCD_YSIZE - 1);
+				FbClippedLine(x1 + 2 * (x2 - x1) / 3, LCD_YSIZE - 1, x2, y2);
 			} else {
 				FbClippedLine(x1, y1, x2, y2);
 			}
