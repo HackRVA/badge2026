@@ -529,7 +529,7 @@ static void fractal_mountain(int start, int middle, int end)
 static void init_mountains(void)
 {
 	for (int i = 0; i < 128; i++)
-		mountain[i] = 80;
+		mountain[i] = LCD_YSIZE / 2;
 	mountain[32] = 20;
 	fractal_mountain(0, 32, 96);
 }
@@ -901,15 +901,15 @@ static void project_vertex(struct camera *c, struct bz_vertex *v, struct bz_obje
 
 	v->px = (int) (((int64_t) c->eyedist * (int64_t) x) / -z);
 	v->py = (int) (((int64_t) c->eyedist * (int64_t) y) / -z);
-	v->px = v->px + (64 * 256);
-	v->py = (160 * 256) - (v->py + (80 * 256));
+	v->px = v->px + (LCD_XSIZE * 256 / 2);
+	v->py = (LCD_YSIZE * 256) - (v->py + (LCD_YSIZE * 256 / 2));
 }
 
 static int onscreen(int x, int y)
 {
-	if (x < 0 || x >= 128)
+	if (x < 0 || x >= LCD_XSIZE)
 		return 0;
-	if (y < 0 || y >= 160)
+	if (y < 0 || y >= LCD_YSIZE)
 		return 0;
 	return 1;
 }
@@ -961,7 +961,7 @@ static void draw_mountains(void)
 	int j;
 
 	FbColor(TERRAIN_COLOR);
-	for (int i = 0; i < 23; i++) {
+	for (int i = 0; i < 33; i++) {
 		j = i + camera.orientation;
 		if (j > 127)
 			j -= 128;
@@ -979,7 +979,7 @@ static void draw_mountains(void)
 static void draw_horizon(void)
 {
 	FbColor(TERRAIN_COLOR);
-	FbHorizontalLine(0, 80, 128, 80);
+	FbHorizontalLine(0, LCD_YSIZE / 2, LCD_XSIZE, LCD_YSIZE / 2);
 }
 
 static int inside_view_frustum(struct camera *c, struct bz_object *o)
@@ -1042,8 +1042,8 @@ static void draw_spark(struct camera *c, struct bz_spark *s)
 
 	sx = (c->eyedist * x) / -z;
 	sy = (c->eyedist * y) / -z;
-	sx = sx + (64 * 256);
-	sy = (160 * 256) - (sy + (80 * 256));
+	sx = sx + (LCD_XSIZE * 256 / 2);
+	sy = (LCD_YSIZE * 256) - (sy + (LCD_YSIZE * 256 / 2));
 	if (onscreen(sx >> 8, sy >> 8))
 		FbPoint(sx >> 8, sy >> 8);
 }
@@ -1058,7 +1058,7 @@ static void draw_sparks(struct camera *c)
 static void draw_radar(void)
 {
 	static int radar_angle = 0;
-	const int rx = 64;
+	const int rx = LCD_XSIZE / 2;
 	const int ry = 10;
 
 	radar_angle++;
@@ -1068,10 +1068,10 @@ static void draw_radar(void)
 	int y = (sine(radar_angle) * 10) >> 8;
 	FbColor(RADAR_COLOR);
 	FbLine(rx, ry, rx + x, ry + y);
-	FbVerticalLine(64, 0, 64, 2);
-	FbVerticalLine(64, 18, 64, 20);
-	FbHorizontalLine(54, 10, 56, 10);
-	FbHorizontalLine(72, 10, 74, 10);
+	FbVerticalLine(LCD_XSIZE / 2, 0, LCD_XSIZE / 2, 2);
+	FbVerticalLine(LCD_XSIZE / 2, 18, LCD_XSIZE / 2, 20);
+	FbHorizontalLine(LCD_XSIZE / 2 - 10, 10, LCD_XSIZE / 2 - 8, 10);
+	FbHorizontalLine(LCD_XSIZE / 2 + 8, 10, LCD_XSIZE / 2 + 10, 10);
 
 	if ((radar_angle & 0x03) == 0x03)
 		return; /* Make radar blips blink by not drawing them every few frames */
@@ -1102,10 +1102,10 @@ static void draw_radar(void)
 static void draw_reticle(void)
 {
 	FbColor(RETICLE_COLOR);
-	FbLine(50, 80, 55, 80);
-	FbLine(75, 80, 80, 80);
-	FbLine(64, 70, 64, 75);
-	FbLine(64, 85, 64, 90);
+	FbLine(LCD_XSIZE / 2 - 14, LCD_YSIZE / 2, LCD_XSIZE / 2 - 9, LCD_YSIZE / 2);
+	FbLine(LCD_XSIZE / 2 + 11, LCD_YSIZE / 2, LCD_XSIZE / 2 + 16, LCD_YSIZE / 2);
+	FbLine(LCD_XSIZE / 2, LCD_YSIZE / 2 - 10, LCD_XSIZE / 2, LCD_YSIZE / 2 - 5);
+	FbLine(LCD_XSIZE / 2, LCD_YSIZE / 2 + 10, LCD_XSIZE / 2, LCD_YSIZE / 2 + 5);
 }
 
 static void explosion(int x, int y, int z, int count, int chunks)
