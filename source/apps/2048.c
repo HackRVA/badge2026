@@ -136,7 +136,7 @@ static void reset_moved_tiles(void)
 static void reset_game(void)
 {
 	board = 0;
-  first_launch = false;
+	first_launch = false;
 	spawn_tile();
 	spawn_tile();
 	reset_moved_tiles();
@@ -284,13 +284,16 @@ static void twenty_forty_eight_init(void)
 
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	screen_changed = 1;
-  first_launch = true;
+	first_launch = true;
 
 	tile_size =
 		(((LCD_XSIZE - (GRID_SIZE + 1) * tile_spacing) / GRID_SIZE) /
 			2) +
-		16;
-	grid_x = tile_spacing;
+		8;
+	grid_x = (LCD_XSIZE -
+			 (tile_size * GRID_SIZE +
+				 tile_spacing * (GRID_SIZE - 1))) /
+		2;
 	grid_y = (LCD_YSIZE -
 			 (tile_size * GRID_SIZE +
 				 tile_spacing * (GRID_SIZE - 1))) /
@@ -466,8 +469,8 @@ static void draw_game_board(void)
 	for (int row = 0; row < GRID_SIZE; row++) {
 		for (int col = 0; col < GRID_SIZE; col++) {
 			int tile_value = get_tile(row, col);
-			int x = col * (tile_size + tile_spacing);
-			int y = row * (tile_size + tile_spacing);
+			int x = grid_x + col * (tile_size + tile_spacing);
+			int y = grid_y + row * (tile_size + tile_spacing);
 
 			int scaled_size =
 				(tile_size * tile_scale[row][col]) / 100;
@@ -528,8 +531,8 @@ static void draw_screen(void)
 
 static void twenty_forty_eight_exit(void)
 {
-	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_INIT; /* So that when we start again, we do not immediately exit */
-  pop_app();
+	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_INIT;
+	pop_app();
 }
 
 void twenty_forty_eight_cb(__attribute__((unused)) struct menu_t *m)
