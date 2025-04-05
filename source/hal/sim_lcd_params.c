@@ -23,16 +23,16 @@ static const struct sim_lcd_params initial_default_sim_lcd_params = {
 	/* Landscape and portrait refer to the orientation of the LCD screen, not the badge as a whole */
 	.xoffset = 1,
 	.yoffset = 1,
-	.width = LCD_XSIZE * 3,
-	.height = LCD_YSIZE * 3,
+	.width = LCD_YSIZE * 3,
+	.height = LCD_XSIZE * 3,
 };
 
 static const struct sim_lcd_params initial_default_landscape_sim_lcd_params = {
 	.orientation = SIM_LCD_ORIENTATION_LANDSCAPE, /* LCD screen orientation */
 	.xoffset = 1,
 	.yoffset = 1,
-	.width = LCD_YSIZE * 3,
-	.height = LCD_XSIZE * 3,
+	.width = LCD_XSIZE * 3,
+	.height = LCD_YSIZE * 3,
 };
 
 static struct sim_lcd_params default_sim_lcd_params;

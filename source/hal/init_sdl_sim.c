@@ -748,7 +748,7 @@ static int draw_window(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Texture
     static uint8_t display_array_with_alpha[LCD_YSIZE][LCD_XSIZE][4];
     static uint8_t landscape_display_array_with_alpha[LCD_XSIZE][LCD_YSIZE][4];
 
-    if (slp.orientation == SIM_LCD_ORIENTATION_PORTRAIT) { /* LCD screen orientation */
+    if (slp.orientation == SIM_LCD_ORIENTATION_LANDSCAPE) { /* LCD screen orientation */
         float level = (float) lcd_brightness / 255.0f;
         for (int y = 0; y < LCD_YSIZE; y++) {
             for (int x = 0; x < LCD_XSIZE; x++) {
@@ -766,15 +766,15 @@ static int draw_window(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Texture
         SDL_Rect from_rect = { 0, 0, LCD_XSIZE, LCD_YSIZE };
         SDL_Rect to_rect = { slp.xoffset, slp.yoffset, slp.width, slp.height };
         SDL_RenderCopy(renderer, texture, &from_rect, &to_rect);
-    } else { /* landscape */
+    } else { /* portrait */
         float level = (float) lcd_brightness / 255.0f;
         for (int x = 0; x < LCD_XSIZE; x++) {
             for (int y = 0; y < LCD_YSIZE; y++) {
                 /* SDL texture seems to want data in BGRA order, and since we're copying
                  * anyway, we can emulate LCD brightness here too. */
-                landscape_display_array_with_alpha[LCD_XSIZE - x - 1][y][2] = (uint8_t) (level * display_array[y][x][0]);
-                landscape_display_array_with_alpha[LCD_XSIZE - x - 1][y][1] = (uint8_t) (level * display_array[y][x][1]);
-                landscape_display_array_with_alpha[LCD_XSIZE - x - 1][y][0] = (uint8_t) (level * display_array[y][x][2]);
+                landscape_display_array_with_alpha[x][LCD_YSIZE - y - 1][2] = (uint8_t) (level * display_array[y][x][0]);
+                landscape_display_array_with_alpha[x][LCD_YSIZE - y - 1][1] = (uint8_t) (level * display_array[y][x][1]);
+                landscape_display_array_with_alpha[x][LCD_YSIZE - y - 1][0] = (uint8_t) (level * display_array[y][x][2]);
 	        /* I tried to implement lcd brightness via alpha channel, but it doesn't seem to work */
                 /* display_array_with_alpha[y][x][3] = 255 - lcd_brightness; */
                 landscape_display_array_with_alpha[x][y][3] = 255;

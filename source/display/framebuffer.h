@@ -15,8 +15,8 @@ enum {
     FB_MOVE, 			/* (x 8bit, y 8bit) where the next stuff goes */
 };
 
-#define LCD_XSIZE 128
-#define LCD_YSIZE 160
+#define LCD_XSIZE 160
+#define LCD_YSIZE 128
 
 /* the output buffer */
 #define FBSIZE (LCD_XSIZE * LCD_YSIZE)
