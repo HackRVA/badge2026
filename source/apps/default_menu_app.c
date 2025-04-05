@@ -7,6 +7,7 @@
 
 #define DEFAULT_MENU_FG_COLOR WHITE
 #define DEFAULT_MENU_BG_COLOR BLACK
+#define MENU_ROWS_PER_SCREEN 10
 
 static struct default_menu_app_context context_stack[MAX_APP_STACK_DEPTH];
 static int current_menu_stack_idx = -1;
@@ -68,7 +69,7 @@ static void move_up(void)
 	} else {
 		int nitems = count_menu_items(current_context->menu);
 		current_context->current_item = nitems - 1;
-		current_context->top_item = nitems - 1 - 15;
+		current_context->top_item = nitems - 1 - MENU_ROWS_PER_SCREEN;
 		if (current_context->top_item < 0)
 			current_context->top_item = 0;
 		current_context->screen_changed = 1;
@@ -83,7 +84,7 @@ static void move_down(void)
 	int nitems = count_menu_items(current_context->menu);
 	if (current_context->current_item < nitems - 1) {
 		current_context->current_item++;
-		if (current_context->top_item < current_context->current_item - 15)
+		if (current_context->top_item < current_context->current_item - MENU_ROWS_PER_SCREEN)
 			current_context->top_item++;
 		current_context->screen_changed = 1;
 	} else {
@@ -239,7 +240,7 @@ static void draw_screen(void)
 		if (m[i].attrib & LAST_ITEM)
 			break;
 		y += 10;
-		if (y > 150)
+		if (y > LCD_YSIZE - 10)
 			break;
 	}
 	FbSwapBuffers();
