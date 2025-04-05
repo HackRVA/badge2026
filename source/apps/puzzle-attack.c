@@ -7,7 +7,8 @@
  * - display timer to show that there is a time limit
  * - have a win condition
  * - provide way to increase difficulty (like making the rows generate faster)
- * - balance the gameplay (i.e. is there a reasonable amount of time to play)
+ * - balance the gameplay (e.g. is the time limit reasonable, 
+ *    should the row generation be slowed down)
  * - multiple rounds?
  *
  * --
