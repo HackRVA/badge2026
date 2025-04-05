@@ -7,7 +7,7 @@
  * - display timer to show that there is a time limit
  * - have a win condition
  * - provide way to increase difficulty (like making the rows generate faster)
- * - balance the gameplay (e.g. is the time limit reasonable, 
+ * - balance the gameplay (e.g. is the time limit reasonable,
  *    should the row generation be slowed down)
  * - multiple rounds?
  *
@@ -17,13 +17,13 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "button.h"
 #include "colors.h"
 #include "framebuffer.h"
 #include "menu.h"
 #include "palette.h"
+#include "random.h"
 #include "rtc.h"
 #include "ui.h"
 #include "xorshift.h"
@@ -129,8 +129,9 @@ static int cursor_x = 0;
 static int cursor_y = 0;
 static bool swap_requested = false;
 static int score = 0;
-static uint tick = 0;
+static int tick = 0;
 static uint64_t last_tick_time = 0;
+static unsigned int xorshift_state = 0;
 
 #define NUM_MENU_ITEMS 4
 #define MENU_ITEM_SPACING 30
@@ -166,9 +167,8 @@ static void shift_grid_up(void)
 }
 static void insert_row(void)
 {
-	for (int x = 0; x < GRID_COLS; x++) {
-		grid[GRID_ROWS - 1][x] = rand() % 5;
-	}
+	for (int x = 0; x < GRID_COLS; x++)
+		grid[GRID_ROWS - 1][x] = xorshift(&xorshift_state) % 5;
 }
 
 static void previous_menu_item(void)
@@ -386,6 +386,10 @@ static void puzzle_attack_update(void)
 }
 static void puzzle_attack_init(void)
 {
+	if (xorshift_state == 0) {
+		random_insecure_bytes(
+			(uint8_t *)&xorshift_state, sizeof(xorshift_state));
+	}
 	puzzle_attack_state = PUZZLE_ATTACK_MENU;
 	FbInit();
 	FbClear();
