@@ -8,6 +8,8 @@
 #include <display.h>
 #include <st7735s.h>
 
+static void update_madctl(void);
+
 /*- ST7735S Driver Glue ------------------------------------------------------*/
 static bool dma_transfer_started = true;
 static int dma_channel = -1;
@@ -70,7 +72,7 @@ void display_init_device(void) {
     lcd_hardwareReset();
     lcd_initialize();
     lcd_setSleepMode(LCD_SLEEP_OUT);
-    lcd_setMemoryAccessControl(LCD_MADCTL_BGR);
+    update_madctl();
     lcd_setInterfacePixelFormat(LCD_PIXEL_FORMAT_565);
     lcd_setGammaPredefined(LCD_GAMMA_PREDEFINED_3);
     lcd_setDisplayInversion(LCD_INVERSION_OFF);
@@ -138,16 +140,15 @@ void display_pixels(unsigned short *pixel, int number) {
 static bool inverted = false;
 static bool rotated = false;
 
-static void update_madctl(void) {
+static void update_madctl(void)
+{
 
-    char flags = LCD_MADCTL_BGR;
+    char flags = LCD_MADCTL_BGR | LCD_MADCTL_MV
+                 | LCD_MADCTL_MX;
 
-    if (inverted) {
-        flags |= LCD_MADCTL_MX | LCD_MADCTL_MY;
-    }
-
-    if (rotated) {
-        flags |= LCD_MADCTL_MV;
+    if (!inverted) {
+        flags &= ~LCD_MADCTL_MX;
+        flags |= LCD_MADCTL_MY;
     }
 
     lcd_setMemoryAccessControl(flags);
