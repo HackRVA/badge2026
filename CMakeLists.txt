@@ -29,6 +29,9 @@ enable_testing()
 
 if (${TARGET} STREQUAL "WASM")
 	set(CMAKE_EXECUTABLE_SUFFIX ".html")
+	set(PNG_LIBRARY "-sUSE_LIBPNG")
+	set(PNG_PNG_INCLUDE_DIR "${EMSCRIPTEN_ROOT}/system/include")
+	set(SIMULATOR_AUDIO "no")
 endif()
 
 if (${BUILD_IMAGE_TEST_PROGRAM} STREQUAL "yes")
@@ -69,6 +72,23 @@ endif()
 
 if (${TARGET} STREQUAL "WASM")
 	add_compile_options(-sUSE_SDL=2 -sUSE_LIBPNG)
+	add_compile_options(
+		-sUSE_SDL=2
+		-sUSE_LIBPNG
+		-sUSE_ZLIB
+		-pthread
+	)
+
+	add_link_options(
+		-sALLOW_MEMORY_GROWTH=1
+		-pthread
+		-sPTHREAD_POOL_SIZE_STRICT=8
+		-sUSE_SDL=2
+		-sUSE_LIBPNG
+		-sUSE_ZLIB
+		-sASYNCIFY
+		--preload-file ${CMAKE_SOURCE_DIR}/images@/images
+	)
 endif()
 
 if (${BADGE_HAS_ROTARY_SWITCHES} STREQUAL "yes")
