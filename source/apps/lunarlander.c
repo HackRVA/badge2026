@@ -264,9 +264,9 @@ static void draw_fuel_gauge_ticks(void)
 {
 	int i;
 	FbColor(WHITE);
-	FbVerticalLine(127, 5, 127, 105);
+	FbVerticalLine(LCD_XSIZE - 1, 5, LCD_XSIZE - 1, 105);
 	for (i = 0; i <= 10; i++)
-		FbHorizontalLine(120, 5 + i * 10, 126, 5 + i * 10);
+		FbHorizontalLine(LCD_XSIZE - 8, 5 + i * 10, LCD_XSIZE - 2, 5 + i * 10);
 }
 
 static void draw_fuel_gauge_marker(struct lander_data *lander, int color)
@@ -277,9 +277,9 @@ static void draw_fuel_gauge_marker(struct lander_data *lander, int color)
 	y1 = y2 - 5;
 	y3 = y2 + 5;
 	FbColor(color);
-	FbVerticalLine(115, y1, 115, y3);
-	FbLine(115, y1, 122, y2);
-	FbLine(115, y3, 122, y2);
+	FbVerticalLine(LCD_XSIZE - 13, y1, LCD_XSIZE - 13, y3);
+	FbLine(LCD_XSIZE - 13, y1, LCD_XSIZE - 7, y2);
+	FbLine(LCD_XSIZE - 13, y3, LCD_XSIZE - 7, y2);
 }
 
 static void draw_fuel_gauge(struct lander_data *lander, int color)
@@ -308,8 +308,8 @@ static void draw_sparks(struct lander_data *lander, int color)
 		y1 = ((spark[i].y - lander->y - spark[i].vy) >> 8) + sy;
 		x2 = ((spark[i].x - lander->x) >> 8) + sx;
 		y2 = ((spark[i].y - lander->y) >> 8) + sy;
-		if (x1 >= 0 && x1 <= 127 && y1 >= 0 && y1 <= 127 &&
-			x2 >= 0 && x2 <= 127 && y2 >= 0 && y2 <= 127)
+		if (x1 >= 0 && x1 <= LCD_XSIZE - 1 && y1 >= 0 && y1 <= LCD_YSIZE - 1 &&
+			x2 >= 0 && x2 <= LCD_XSIZE - 1 && y2 >= 0 && y2 <= LCD_YSIZE - 1)
 			FbLine(x1, y1, x2, y2);
 	}
 }
@@ -584,7 +584,7 @@ static void draw_terrain_segment(struct lander_data *lander, int i, int color)
 			if (color != BLACK)
 				FbColor(GREEN);
 			FbLine(sx2, sy1, sx2, y2);
-			if (y2 < 120 && sx2 < 120) {
+			if (y2 < LCD_YSIZE - 8 && sx2 < LCD_XSIZE - 8) {
 				FbLine(sx2, y2, sx2 + 7, y2 + 3);
 				FbLine(sx2 + 7, y2 + 3, sx2, y2 + 6);
 			}
