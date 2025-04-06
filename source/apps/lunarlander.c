@@ -762,7 +762,7 @@ static void lunarlander_exit(void)
 	pop_app();
 }
 
-int lunarlander_cb(__attribute__((unused)) struct badge_app *app)
+void lunarlander_cb(__attribute__((unused)) struct badge_app *app)
 {
 	switch (lunarlander_state) {
 	case LUNARLANDER_INIT:
@@ -780,5 +780,4 @@ int lunarlander_cb(__attribute__((unused)) struct badge_app *app)
 	default:
 		break;
 	}
-	return 0;
 }
