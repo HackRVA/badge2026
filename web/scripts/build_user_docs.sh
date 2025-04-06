@@ -1,9 +1,8 @@
 #!/bin/bash
 
-source ./scripts/download_mdbook.sh
+source ./scripts/download_bbook.sh
 mkdir -p .dist
 
-# .bin/mdbook build docs/user_docs --dest-dir ../../.dist/
 cd docs/user_docs
 ../../.bin/bbook build
 cd ../../

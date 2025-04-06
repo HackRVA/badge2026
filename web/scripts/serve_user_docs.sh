@@ -1,5 +1,7 @@
 #!/bin/sh
 
-source ./scripts/build_user_docs.sh
+source ./scripts/download_bbook.sh
 
-.bin/mdbook serve -p 8888 docs/user_docs --dest-dir ../../.dist/ --open
+cd docs/user_docs
+../../.bin/bbook serve
+cd ../..
