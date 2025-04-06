@@ -67,8 +67,19 @@ func main() {
 	fs := http.FileServer(http.Dir(*destDir))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
-		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+		// let's explicitly state which files should be handled strictly
+		// this way we can still load in external resources
+		// e.g. an embedded youtube video
+		strictFiles := []string{"/sim.html", "/badge2025_c.js", "/badge2025_c.wasm", "/badge2025_c.data"}
+
+		for _, f := range strictFiles {
+			if r.URL.Path == f {
+				w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+				w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+				break
+			}
+		}
+
 		fs.ServeHTTP(w, r)
 	})
 

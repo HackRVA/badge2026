@@ -5,9 +5,13 @@ multilingual = false
 src = "src"
 title = "HackRVA Badge"
 
+[output]
 [output.html]
-default-theme="navy"
-git-repository-url = "https://github.com/hackrva/badge2023"
-git-repository-icon = "fa-github"
-edit-url-template = "https://github.com/hackrva/badge2023/edit/main/web/docs/user_docs/{path}"
-site-url = "/badge2023/"
+additional-css = []
+default-theme = "dark"
+edit-url-template = ""
+github-repo-icon = "fa-github"
+github-repo-url = "https://github.com/hackrva/badge2025/"
+hide-sidebar = false
+site-url = ""
+additional-js= ["wasm-simulator.js"]

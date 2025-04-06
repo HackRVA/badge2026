@@ -39,4 +39,7 @@ emmake make
 
 echo ""
 echo ""
-echo "run \`go run ./tools/wasm_serve.go\` to serve wasm frontend"
+echo "build user docs:"
+echo "  \`cd web && make build-user-docs && cd ..\`"
+echo "serve wasm frontend:"
+echo "  \`go run ./tools/wasm_serve.go --dest ./web/docs/user_docs/.book/\`"
