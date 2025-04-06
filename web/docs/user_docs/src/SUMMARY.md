@@ -1,6 +1,6 @@
 # Summary
 
-- [Sim](./sim.md)
+- [Simulator](./sim.md)
 - [About](./intro.md)
 - [Hardware](./hardware.md)
 - [Software](./software.md)
