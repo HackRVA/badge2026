@@ -186,7 +186,7 @@ static int move_spark(int i)
 	y = spark[i].y / 256;
 
 	/* return 1 if offscreen (dead), 0 if still alive/onscreen */
-	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= 151);
+	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= LCD_YSIZE - 9);
 }
 
 static void move_sparks(void)
@@ -286,7 +286,7 @@ static int move_bullet(int i)
 	}
 
 	/* return 1 if offscreen (dead), 0 if still alive/onscreen */
-	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= 151);
+	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= LCD_YSIZE - 9);
 }
 
 static void move_bullets(void)
@@ -354,7 +354,7 @@ static int move_missile(int i)
 		m->mirv_count = 0;
 	}
 
-	if (y >= 151) {
+	if (y >= LCD_YSIZE - 9) {
 		for (int j = 0; j < 100; j++) {
 			int angle, v, vx, vy;
 
@@ -370,7 +370,7 @@ static int move_missile(int i)
 	}
 
 	/* return 1 if offscreen (dead), 0 if still alive/onscreen */
-	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= 151);
+	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= LCD_YSIZE - 9);
 }
 
 static void move_missiles(void)
@@ -646,7 +646,7 @@ static void check_buttons(void)
 		vx = (cosine(aagunner.angle) * BULLET_VEL) / 256;
 		vy = (sine(aagunner.angle) * BULLET_VEL) / 256;
 		aagunner.firing_cooldown = FIRING_COOLDOWN;
-		add_bullet(256 * 64, 256 * 150, vx, vy);
+		add_bullet(LCD_XSIZE * 256 / 2, 256 * (LCD_YSIZE - 10), vx, vy);
 	}
 }
 
@@ -654,8 +654,8 @@ static void draw_aiming_indicator(void)
 {
 	int x, y;
 
-	const int x0 = 64;
-	const int y0 = 150;
+	const int x0 = LCD_XSIZE / 2;
+	const int y0 = LCD_YSIZE - 10;
 	FbColor(GREEN);
 
 	for (int i = 0; i < 8; i++) {
@@ -674,7 +674,7 @@ static void draw_screen(void)
 {
 	if (!screen_changed)
 		return;
-	FbDrawObject(skyline, ARRAY_SIZE(skyline), GREEN, 64, 90, 512);
+	FbDrawObject(skyline, ARRAY_SIZE(skyline), GREEN, LCD_XSIZE / 2, LCD_YSIZE / 2 - 5, 512);
 	draw_aiming_indicator();
 	draw_bullets();
 	draw_missiles();
