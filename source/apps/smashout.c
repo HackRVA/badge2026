@@ -38,9 +38,11 @@ static struct smashout_ball {
 	int x, y, vx, vy;
 } ball, oldball;
 
+#define NUM_BRICK_ROWS 4
+#define NUM_BRICK_COLUMNS (LCD_XSIZE / 8)
 static struct smashout_brick {
 	unsigned char x, y, alive; /* upper left corner of brick */
-} brick[4 * 16];
+} brick[NUM_BRICK_ROWS * NUM_BRICK_COLUMNS];
 
 /* When a brick is destroyed, it emits sparks.  On linux, it looks good
  * if the sparks are the same color as the destroyed brick.  On the badge
@@ -81,11 +83,11 @@ static void init_bricks(void)
 {
 	int i, j;
 
-	for (i = 0; i < 4; i++) {
-		for (j = 0; j < 16; j++) {
-			brick[i * 16 + j].x = j * BRICK_WIDTH;
-			brick[i * 16 + j].y = SPACE_ABOVE_BRICKS + i * BRICK_HEIGHT;
-			brick[i * 16 + j].alive = 1;
+	for (i = 0; i < NUM_BRICK_ROWS; i++) {
+		for (j = 0; j < NUM_BRICK_COLUMNS; j++) {
+			brick[i * NUM_BRICK_COLUMNS + j].x = j * BRICK_WIDTH;
+			brick[i * NUM_BRICK_COLUMNS + j].y = SPACE_ABOVE_BRICKS + i * BRICK_HEIGHT;
+			brick[i * NUM_BRICK_COLUMNS + j].alive = 1;
 		}
 	}
 }
@@ -145,7 +147,7 @@ static void smashout_draw_paddle(void)
 
 static void smashout_draw_brick(int row, int col)
 {
-	struct smashout_brick *b = &brick[row * 16 + col];
+	struct smashout_brick *b = &brick[row * NUM_BRICK_COLUMNS + col];
 	if (b->alive)
 		FbColor(brick_color[row]);
 	else
@@ -159,10 +161,10 @@ static void smashout_draw_bricks(void)
 	int i, j;
 	int count = 0;
 
-	for (i = 0; i < 4; i++)
-		for (j = 0; j < 16; j++) {
+	for (i = 0; i < NUM_BRICK_ROWS; i++)
+		for (j = 0; j < NUM_BRICK_COLUMNS; j++) {
 			smashout_draw_brick(i, j);
-			if (brick[i * 16 + j].alive)
+			if (brick[i * NUM_BRICK_COLUMNS + j].alive)
 				count++;
 		}
 
@@ -362,8 +364,8 @@ static void smashout_move_ball(void)
 		/* Figure out which brick we are intersecting */
 		int col = ball.x / (BRICK_WIDTH * 8);
 		int row = (ball.y - 8 * SPACE_ABOVE_BRICKS) / (8 * BRICK_HEIGHT);
-		if (col >= 0 && col <= 15 && row >= 0 && row <= 3) {
-			struct smashout_brick *b = &brick[row * 16 + col];
+		if (col >= 0 && col < NUM_BRICK_COLUMNS && row >= 0 && row <= 3) {
+			struct smashout_brick *b = &brick[row * NUM_BRICK_COLUMNS + col];
 			if (b->alive) {
 				b->alive = 0;
 				score_inc++;
