@@ -45,10 +45,9 @@ func copyDir(src, dst string) error {
 }
 
 func main() {
-	port := "8080"
-
+	port := flag.String("port", "8080", "Port to serve on")
 	srcDir := flag.String("src", "", "Source directory to copy from (optional)")
-	destDir := flag.String("dest", "./build_wasm/source/", "Destination directory to copy to (used for serving)")
+	destDir := flag.String("dir", "./build_wasm/source/", "Destination directory to copy to (used for serving)")
 
 	flag.Parse()
 
@@ -83,8 +82,8 @@ func main() {
 		fs.ServeHTTP(w, r)
 	})
 
-	fmt.Printf("Serving on http://localhost:%s\n", port)
-	err := http.ListenAndServe("0.0.0.0:"+port, nil)
+	fmt.Printf("Serving on http://0.0.0.0:%s\n", *port)
+	err := http.ListenAndServe("0.0.0.0:"+*port, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
 		os.Exit(1)
