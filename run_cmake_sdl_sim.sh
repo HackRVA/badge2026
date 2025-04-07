@@ -1,4 +1,4 @@
 #!/bin/sh
 
-cmake -S . -B build_sdl_sim/ -DTARGET=SDL_SIMULATOR -DCMAKE_BUILD_TYPE=DEBUG -G "Unix Makefiles"
+cmake -S . -B build_sdl_sim/ -DTARGET=SDL_SIMULATOR -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -G "Unix Makefiles"
 
