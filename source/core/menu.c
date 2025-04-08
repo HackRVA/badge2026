@@ -48,7 +48,7 @@
 // #include "tank-vs-tank.h"
 #include "clue.h"
 #include "moon-patrol.h"
-// #include "badgey.h"
+#include "badgey.h"
 #include "badge-app-template.h"
 #include "aagunner.h"
 #include "rover_adventure.h"
@@ -69,6 +69,7 @@ static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
 	{"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },
 	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, &badge_monsters_icon, },
+	{"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, &bba_icon, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, &moonpatrol_icon, },
 	{"AA Gunner", VERT_ITEM, FUNCTION, { .func = aagunner_cb }, &aagunner_icon },
 	{"Clue", VERT_ITEM, FUNCTION, { .func = clue_cb }, &clue_icon },
