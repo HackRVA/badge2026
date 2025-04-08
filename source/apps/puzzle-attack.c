@@ -28,6 +28,7 @@
 #include "ui.h"
 #include "xorshift.h"
 
+static void check_matches_and_collapse(void);
 static enum puzzle_attack_state_t {
 	PUZZLE_ATTACK_INIT = 0,
 	PUZZLE_ATTACK_RUN,
@@ -83,9 +84,9 @@ static const uint8_t circle_bitmap[] = {
 static const uint8_t square_bitmap[] = {
 	0b0000000,
 	0b0000000,
-	0b0011110,
-	0b0011110,
-	0b0011110,
+	0b0111110,
+	0b0111110,
+	0b0111110,
 	0b0000000,
 	0b0000000,
 };
@@ -122,8 +123,27 @@ static const uint8_t star_bitmap[] = {
 #define GRID_COLS 6
 #define GRID_ROWS 10
 #define BLOCK_SIZE 8
+#define BLOCK_SPACING 4
+#define CURSOR_OUTLINE_SIZE 1
+#define CURSOR_COLOR WHITE
+#define AREA_OUTLINE_SIZE 1
+#define AREA_OUTLINE_COLOR_INDEX 6
+#define AREA_FILL_COLOR_INDEX 1
+#define SCORE_COLOR_INDEX 12
+#define GAME_OVER_COLOR_INDEX 13
+#define MENU_OUTLINE_SIZE 3
+#define MENU_OUTLINE_COLOR_INDEX 12
+#define MENU_FILL_COLOR_INDEX 2
+#define MENU_TEXT_COLOR_INDEX 7
+#define MENU_SELECTED_OUTLINE_COLOR_INDEX 6
+#define MENU_SELECTED_FILL_COLOR_INDEX 5
 
-static enum BLOCK_TYPE grid[GRID_ROWS][GRID_COLS];
+struct block {
+	enum BLOCK_TYPE type;
+	bool remove_animation_active;
+	int remove_animation_progress;
+};
+static struct block grid[GRID_ROWS][GRID_COLS];
 
 static int cursor_x = 0;
 static int cursor_y = 0;
@@ -132,6 +152,7 @@ static int score = 0;
 static int tick = 0;
 static uint64_t last_tick_time = 0;
 static unsigned int xorshift_state = 0;
+static int hang_time = 80;
 
 #define NUM_MENU_ITEMS 4
 #define MENU_ITEM_SPACING 30
@@ -148,13 +169,17 @@ static const char *menu_items[NUM_MENU_ITEMS] = {
 	"exit",
 };
 
+static void insert_row(void);
 static void init_grid(void)
 {
 	for (int y = 0; y < GRID_ROWS; y++) {
 		for (int x = 0; x < GRID_COLS; x++) {
-			grid[y][x] = EMPTY_BLOCK;
+			grid[y][x].type = EMPTY_BLOCK;
+			grid[y][x].remove_animation_active = false;
+			grid[y][x].remove_animation_progress = 0;
 		}
 	}
+	insert_row();
 }
 
 static void shift_grid_up(void)
@@ -165,10 +190,14 @@ static void shift_grid_up(void)
 		}
 	}
 }
+
 static void insert_row(void)
 {
-	for (int x = 0; x < GRID_COLS; x++)
-		grid[GRID_ROWS - 1][x] = xorshift(&xorshift_state) % 5;
+	for (int x = 0; x < GRID_COLS; x++) {
+		grid[GRID_ROWS - 1][x].type = xorshift(&xorshift_state) % 5;
+		grid[GRID_ROWS - 1][x].remove_animation_active = false;
+		grid[GRID_ROWS - 1][x].remove_animation_progress = 0;
+	}
 }
 
 static void previous_menu_item(void)
@@ -189,7 +218,6 @@ static void reset_game(void)
 {
 	puzzle_attack_state = PUZZLE_ATTACK_INIT;
 	score = 0;
-	/*first_launch = false;*/
 }
 
 static void handle_menu_options(void)
@@ -197,8 +225,6 @@ static void handle_menu_options(void)
 	switch (current_menu_item) {
 	case 0:
 		puzzle_attack_state = PUZZLE_ATTACK_RUN;
-		/*if (first_launch)*/
-		/*  reset_game();*/
 		break;
 	case 1:
 		reset_game();
@@ -255,56 +281,36 @@ struct Point {
 	int16_t x, y;
 };
 
-static bool check_matches(void)
+static bool is_part_of_match(int x, int y);
+static void register_block_for_removal(int x, int y)
 {
-	bool matched = false;
-	int runStart, runLength, currentBlock;
-	int matchCount = 0;
+	if (x >= 0 && x < GRID_COLS && y >= 0 && y < GRID_ROWS) {
+		grid[y][x].remove_animation_active = true;
+		grid[y][x].remove_animation_progress = 1;
+	}
+}
 
-	/* horizontal - run–detection loop */
+static void register_blocks_for_removal(void)
+{
 	for (int y = 0; y < GRID_ROWS; y++) {
-		runStart = 0;
-		currentBlock = grid[y][0];
-		for (int x = 1; x <= GRID_COLS; x++) {
-			if (x < GRID_COLS && grid[y][x] == currentBlock &&
-				currentBlock != EMPTY_BLOCK) {
-				continue;
-			}
-			runLength = x - runStart;
-			if (currentBlock != EMPTY_BLOCK && runLength >= 3) {
-				matched = true;
-				matchCount += runLength;
-				for (int k = runStart; k < x; k++) {
-					grid[y][k] = EMPTY_BLOCK;
-				}
-			}
-			if (x < GRID_COLS) {
-				runStart = x;
-				currentBlock = grid[y][x];
+		for (int x = 0; x < GRID_COLS; x++) {
+			if (is_part_of_match(x, y)) {
+				register_block_for_removal(x, y);
 			}
 		}
 	}
+}
 
-	/* vertical - run–detection loop */
-	for (int x = 0; x < GRID_COLS; x++) {
-		runStart = 0;
-		currentBlock = grid[0][x];
-		for (int y = 1; y <= GRID_ROWS; y++) {
-			if (y < GRID_ROWS && grid[y][x] == currentBlock &&
-				currentBlock != EMPTY_BLOCK) {
-				continue;
-			}
-			runLength = y - runStart;
-			if (currentBlock != EMPTY_BLOCK && runLength >= 3) {
+static bool check_matches(void)
+{
+	bool matched = false;
+	int matchCount = 0;
+
+	for (int y = 0; y < GRID_ROWS; y++) {
+		for (int x = 0; x < GRID_COLS; x++) {
+			if (is_part_of_match(x, y)) {
 				matched = true;
-				matchCount = runLength;
-				for (int k = runStart; k < y; k++) {
-					grid[k][x] = EMPTY_BLOCK;
-				}
-			}
-			if (y < GRID_ROWS) {
-				runStart = y;
-				currentBlock = grid[y][x];
+				matchCount++;
 			}
 		}
 	}
@@ -316,41 +322,106 @@ static bool check_matches(void)
 	return matched;
 }
 
-static void collapse_grid(void)
+static bool collapse_grid(void)
 {
-	for (int x = 0; x < GRID_COLS; x++) {
-		int writeRow = GRID_ROWS - 1;
+	bool collapsed = false;
 
-		/* copy non-empty blocks down */
-		for (int y = GRID_ROWS - 1; y >= 0; y--) {
-			if (grid[y][x] != EMPTY_BLOCK) {
-				grid[writeRow][x] = grid[y][x];
-				if (writeRow != y) {
-					grid[y][x] = EMPTY_BLOCK;
+	for (int x = 0; x < GRID_COLS; x++) {
+		for (int y = GRID_ROWS - 2; y >= 0; y--) {
+			if (grid[y][x].type != EMPTY_BLOCK) {
+				int drop = 0;
+				/*how many empty spaces are below until */
+				/*we hit a non-empty block or the bottom. */
+				while (y + drop + 1 < GRID_ROWS &&
+					grid[y + drop + 1][x].type ==
+						EMPTY_BLOCK) {
+					drop++;
 				}
-				writeRow--;
+				if (drop > 0) {
+					grid[y + drop][x] = grid[y][x];
+					grid[y][x].type = EMPTY_BLOCK;
+					collapsed = true;
+				}
 			}
 		}
-
-		/* fill remaining cells in column with EMPTY_BLOCK */
-		for (int y = writeRow; y >= 0; y--) {
-			grid[y][x] = EMPTY_BLOCK;
-		}
 	}
+
+	return collapsed;
 }
 
+static void check_matches_and_collapse(void)
+{
+	collapse_grid();
+	check_matches();
+	register_blocks_for_removal();
+}
+
+#if 0
 static bool is_top_row_populated(void)
 {
 	for (int x = 0; x < GRID_COLS; x++) {
-		if (grid[0][x] != EMPTY_BLOCK) {
+		if (grid[0][x].type != EMPTY_BLOCK) {
 			return true;
 		}
 	}
 	return false;
 }
+#endif
+
+static bool is_part_of_match(int x, int y)
+{
+	if (grid[y][x].type == EMPTY_BLOCK) {
+		return false;
+	}
+
+	enum BLOCK_TYPE current_block = grid[y][x].type;
+
+	/* check horizontal match */
+	if (x > 0 && x < GRID_COLS - 1) {
+		if (grid[y][x - 1].type == current_block &&
+			grid[y][x + 1].type == current_block) {
+			return true;
+		}
+	}
+	if (x > 1) {
+		if (grid[y][x - 1].type == current_block &&
+			grid[y][x - 2].type == current_block) {
+			return true;
+		}
+	}
+	if (x < GRID_COLS - 2) {
+		if (grid[y][x + 1].type == current_block &&
+			grid[y][x + 2].type == current_block) {
+			return true;
+		}
+	}
+
+	/*check vertical match*/
+	if (y > 0 && y < GRID_ROWS - 1) {
+		if (grid[y - 1][x].type == current_block &&
+			grid[y + 1][x].type == current_block) {
+			return true;
+		}
+	}
+	if (y > 1) {
+		if (grid[y - 1][x].type == current_block &&
+			grid[y - 2][x].type == current_block) {
+			return true;
+		}
+	}
+	if (y < GRID_ROWS - 2) {
+		if (grid[y + 1][x].type == current_block &&
+			grid[y + 2][x].type == current_block) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 #define TICK_INTERVAL_MS 1000
 
+static void update_remove_animations(void);
 static void puzzle_attack_update(void)
 {
 	int now = rtc_get_ms_since_boot();
@@ -365,25 +436,26 @@ static void puzzle_attack_update(void)
 	}
 
 	if (swap_requested) {
-		enum BLOCK_TYPE temp = grid[cursor_y][cursor_x];
-		grid[cursor_y][cursor_x] = grid[cursor_y][cursor_x + 1];
-		grid[cursor_y][cursor_x + 1] = temp;
+		enum BLOCK_TYPE temp = grid[cursor_y][cursor_x].type;
+		grid[cursor_y][cursor_x].type =
+			grid[cursor_y][cursor_x + 1].type;
+		grid[cursor_y][cursor_x + 1].type = temp;
 		swap_requested = false;
-		collapse_grid();
 	}
 
-	bool hasMatches;
-	do {
-		hasMatches = check_matches();
-		if (hasMatches) {
-			collapse_grid();
-			score++;
-		}
-	} while (hasMatches);
-	if (is_top_row_populated()) {
-		puzzle_attack_state = PUZZLE_ATTACK_LOSE_SCREEN;
+	if (tick % hang_time == 0) {
+		check_matches_and_collapse();
 	}
+
+	update_remove_animations();
+
+#if 0
+    if (is_top_row_populated()) {
+        puzzle_attack_state = PUZZLE_ATTACK_LOSE_SCREEN;
+    }
+#endif
 }
+
 static void puzzle_attack_init(void)
 {
 	if (xorshift_state == 0) {
@@ -410,9 +482,37 @@ static void draw_bitmap(
 	}
 }
 
-static void draw_block(enum BLOCK_TYPE t, int x, int y, int size)
+static void update_remove_animations(void)
 {
-	if (t == EMPTY_BLOCK) {
+	for (int y = 0; y < GRID_ROWS; y++) {
+		for (int x = 0; x < GRID_COLS; x++) {
+			if (grid[y][x].remove_animation_active) {
+				grid[y][x].remove_animation_progress++;
+				if (grid[y][x].remove_animation_progress > 5) {
+					grid[y][x].type = EMPTY_BLOCK;
+					grid[y][x].remove_animation_active =
+						false;
+					grid[y][x].remove_animation_progress =
+						0;
+				}
+			}
+		}
+	}
+}
+
+static void block_update_remove_animation_state(
+	struct ui_button *block, struct block blk)
+{
+	if (blk.remove_animation_active) {
+		block->fill_color = palette_color_from_index(
+			default_palette, 2 + blk.remove_animation_progress);
+	}
+}
+
+static void draw_block(
+	struct block blk, int x, int y, int size, bool is_floating)
+{
+	if (blk.type == EMPTY_BLOCK) {
 		return;
 	}
 
@@ -426,15 +526,30 @@ static void draw_block(enum BLOCK_TYPE t, int x, int y, int size)
 		.fill_color = palette_color_from_index(default_palette, 2),
 	};
 
+	int offset_x =
+		LCD_XSIZE / 2 - GRID_COLS * BLOCK_SIZE + (BLOCK_SIZE + 4);
+	int grid_x = (x - offset_x) / (BLOCK_SIZE + 4);
+	int grid_y = (y - 1) / (BLOCK_SIZE + 4);
+
+	if (is_part_of_match(grid_x, grid_y)) {
+		block.outline_color =
+			palette_color_from_index(default_palette, 13);
+	}
+	if (is_floating) {
+		block.outline_color =
+			palette_color_from_index(default_palette, 9);
+	}
+
+	block_update_remove_animation_state(&block, blk);
+
 	ui_button_dither_fill(block, block.fill_color, 0, 1);
 	ui_button_draw_outline(block, block.outline_color);
-
-	FbColor(palette_color_from_index(default_palette, t + 8));
+	FbColor(palette_color_from_index(default_palette, blk.type + 8));
 
 	int bitmap_offset_x = (block.width - 7) / 2;
 	int bitmap_offset_y = (block.height - 7) / 2;
 
-	switch (t) {
+	switch (blk.type) {
 	case CIRCLE_BLOCK:
 		draw_bitmap(x + bitmap_offset_x, y + bitmap_offset_y,
 			circle_bitmap, 7, 7);
@@ -462,21 +577,24 @@ static void draw_block(enum BLOCK_TYPE t, int x, int y, int size)
 
 static void draw_cursor(int spacing)
 {
-	int start_y = 1;
-	int start_x = LCD_XSIZE / 2 - GRID_COLS * BLOCK_SIZE + spacing;
+	int start_y = 3;
+	int start_x =
+		LCD_XSIZE / 2 - GRID_COLS * (BLOCK_SIZE + BLOCK_SPACING) / 2;
 
-	FbColor(PACKRGB888(255, 255, 255));
+	FbColor(CURSOR_COLOR);
 	int cx = start_x + cursor_x * spacing;
 	int cy = start_y + cursor_y * spacing;
 	FbMove(cx, cy);
-	FbRoundedRect(((BLOCK_SIZE + 3) * 2) + 1, BLOCK_SIZE + 3, 1);
+	FbRoundedRect(((BLOCK_SIZE + 3) * 2) + 1, BLOCK_SIZE + 3,
+		CURSOR_OUTLINE_SIZE);
 }
 
 static void draw_play_area(void)
 {
-	int spacing = BLOCK_SIZE + 4;
-	int start_y = 1;
-	int start_x = LCD_XSIZE / 2 - GRID_COLS * BLOCK_SIZE + spacing;
+	int spacing = BLOCK_SIZE + BLOCK_SPACING;
+	int start_y = 4;
+	int start_x =
+		LCD_XSIZE / 2 - GRID_COLS * (BLOCK_SIZE + BLOCK_SPACING) / 2;
 
 	int area_width = GRID_COLS * spacing - (spacing - (BLOCK_SIZE + 3));
 	int area_height = GRID_ROWS * spacing - (spacing - (BLOCK_SIZE + 3));
@@ -484,14 +602,15 @@ static void draw_play_area(void)
 	struct ui_button area = {
 		.x = start_x - 2,
 		.y = start_y - 2,
-		.width = area_width + 4,
-		.height = area_height + 4,
-		.outline_size = 1,
-		.outline_color = palette_color_from_index(default_palette, 6),
-		.fill_color = palette_color_from_index(default_palette, 1),
+		.width = area_width + 3,
+		.height = area_height + 3,
+		.outline_size = AREA_OUTLINE_SIZE,
+		.outline_color = palette_color_from_index(
+			default_palette, AREA_OUTLINE_COLOR_INDEX),
+		.fill_color = palette_color_from_index(
+			default_palette, AREA_FILL_COLOR_INDEX),
 	};
 
-	/*ui_button_dither_fill(area, area.fill_color, 0, 1);*/
 	ui_button_fill(area, area.fill_color);
 	ui_button_draw_outline(area, area.outline_color);
 }
@@ -501,13 +620,14 @@ static void draw_score(void)
 	char msg[10];
 	snprintf(msg, sizeof(msg), "%3d\n", score);
 	FbMove(10, 10);
-	FbColor(palette_color_from_index(default_palette, 12));
+	FbColor(palette_color_from_index(default_palette, SCORE_COLOR_INDEX));
 	FbWriteString(msg);
 }
 
 static void draw_game_over_screen(char *msg)
 {
-	FbColor(palette_color_from_index(default_palette, 13));
+	FbColor(palette_color_from_index(
+		default_palette, GAME_OVER_COLOR_INDEX));
 	char *press_b = "press b";
 	char *to_go_back = "to go back";
 	FbMove(ui_center_text_x(msg, 0, LCD_XSIZE),
@@ -531,21 +651,23 @@ static void draw_menu(void)
 			.width = MENU_ITEM_WIDTH,
 			.height = MENU_ITEM_HEIGHT,
 			.text = menu_items[i],
-			.outline_size = 3,
-			.outline_color =
-				palette_color_from_index(default_palette, 12),
-			.fill_color =
-				palette_color_from_index(default_palette, 2),
-			.text_color =
-				palette_color_from_index(default_palette, 7),
+			.outline_size = MENU_OUTLINE_SIZE,
+			.outline_color = palette_color_from_index(
+				default_palette, MENU_OUTLINE_COLOR_INDEX),
+			.fill_color = palette_color_from_index(
+				default_palette, MENU_FILL_COLOR_INDEX),
+			.text_color = palette_color_from_index(
+				default_palette, MENU_TEXT_COLOR_INDEX),
 		};
 
 		if (i == current_menu_item) {
 			button.outline_color =
-				palette_color_from_index(default_palette, 6);
+				palette_color_from_index(default_palette,
+					MENU_SELECTED_OUTLINE_COLOR_INDEX);
 			if (current_menu_item_selected)
 				button.fill_color = palette_color_from_index(
-					default_palette, 5);
+					default_palette,
+					MENU_SELECTED_FILL_COLOR_INDEX);
 		}
 
 		ui_button_dither_fill(button, button.fill_color,
@@ -577,16 +699,24 @@ static void draw_help_screen(void)
 
 static void draw_grid(void)
 {
-	int spacing = BLOCK_SIZE + 4;
-	int start_y = 1;
-	int start_x = LCD_XSIZE / 2 - GRID_COLS * BLOCK_SIZE + spacing;
+	int padding_y = 1;
+	int spacing = BLOCK_SIZE + BLOCK_SPACING;
+	int start_y = padding_y + 2;
+	int start_x =
+		LCD_XSIZE / 2 - GRID_COLS * (BLOCK_SIZE + BLOCK_SPACING) / 2;
 
 	draw_play_area();
 	for (int y = 0; y < GRID_ROWS; y++) {
 		for (int x = 0; x < GRID_COLS; x++) {
-			if (grid[y][x] != EMPTY_BLOCK) {
+			if (grid[y][x].type != EMPTY_BLOCK) {
+				bool is_floating = false;
+				if (y < GRID_ROWS - 1 &&
+					grid[y + 1][x].type == EMPTY_BLOCK) {
+					is_floating = true;
+				}
 				draw_block(grid[y][x], start_x + x * spacing,
-					start_y + y * spacing, BLOCK_SIZE);
+					start_y + y * spacing, BLOCK_SIZE,
+					is_floating);
 			}
 		}
 	}
