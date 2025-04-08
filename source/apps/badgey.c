@@ -4389,8 +4389,8 @@ static void enter_combat(int cr)
 	set_badgey_state(BADGEY_COMBAT);
 	screen_changed = 1;
 	play_tune(&combat_fanfare, NULL, NULL);
-	player.cbx = 3;
-	player.cby = 7;
+	player.cbx = screen_cells_centerx;
+	player.cby = screen_cells_tall - 1;
 	player.moving = 0; /* so we don't continue moving after combat finishes */
 
 	int x = 2;
@@ -4401,7 +4401,7 @@ static void enter_combat(int cr)
 		combat_creature[i].type = creature[cr].type;
 		combat_creature[i].hit_points = 100; /* TODO: something more sophisticated */
 		x = x + 2;
-		if (x > 7) {
+		if (x > screen_cells_wide - 1) {
 			x = 3;
 			y += 2;
 		}
@@ -5894,8 +5894,8 @@ static void draw_combat_field(void)
 	if (ch >= '0' && ch <= '9') /* town or cave? change to grass */
 		ch = '.';
 
-	for (int y = 0; y < 9; y++) {
-		for (int x = 0; x < 7; x++) {
+	for (int y = 0; y < screen_cells_tall; y++) {
+		for (int x = 0; x < screen_cells_wide; x++) {
 			draw_cell(16 * x + 8, 16 * y + 8, ch);
 		}
 	}
@@ -5970,7 +5970,7 @@ static void badgey_combat(void)
 	if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 		if (awaiting_direction) {
 			direction = 1;
-		} else if (player.cbx < 6) {
+		} else if (player.cbx < screen_cells_wide - 1) {
 			nx = player.cbx + 1;
 		}
 	}
@@ -5984,7 +5984,7 @@ static void badgey_combat(void)
 	if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		if (awaiting_direction) {
 			direction = 2;
-		} else if (player.cby < 8) {
+		} else if (player.cby < screen_cells_tall - 1) {
 			ny = player.cby + 1;
 		}
 	}
