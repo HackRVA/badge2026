@@ -37,6 +37,11 @@
 #include "rtc.h"
 #include "music.h"
 
+static const int screen_cells_wide = (LCD_XSIZE == 160) ? 9 : 7;
+static const int screen_cells_tall = (LCD_YSIZE == 160) ? 9 : 7;
+static const int screen_cells_centerx = (screen_cells_wide == 9) ? 4 : 3;
+static const int screen_cells_centery = (screen_cells_tall == 9) ? 4 : 3;
+
 struct dynmenu planet_menu;
 struct dynmenu_item planet_menu_item[10];
 struct dynmenu cave_menu;
@@ -4120,9 +4125,9 @@ static int is_onscreen(int x, int y)
 
 	dx = abs(player.x - x);
 	dy = abs(player.y - y);
-	if (dx > 3 && dx < 62)
+	if (dx > screen_cells_centerx && dx < 65 - screen_cells_centerx)
 		return 0;
-	if (dy > 4 && dy < 61)
+	if (dy > screen_cells_centery && dy < 65 - screen_cells_centery)
 		return 0;
 	return 1;
 }
@@ -4197,8 +4202,8 @@ static void draw_creature(int i)
 	/* At this point cx, cy is the position relative to the player */
 
 	/* Adjust, since player is at center of screen */
-	cx += 3;
-	cy += 4;
+	cx += screen_cells_centerx;
+	cy += screen_cells_centery;
 
 	/* Check visibility */
 	if (!(visibility_cache[cy] & (1 << cx)))
@@ -4245,8 +4250,8 @@ static void draw_ship(int i)
 	/* At this point cx, cy is the position relative to the player */
 
 	/* Adjust, since player is at center of screen */
-	cx += 3;
-	cy += 4;
+	cx += screen_cells_centerx;
+	cy += screen_cells_centery;
 
 	/* Check visibility */
 	if (!(visibility_cache[cy] & (1 << cx)))
@@ -4481,11 +4486,11 @@ static void draw_screen(void)
 
 	int x, y, sx, sy, rx, ry;
 
-	x = player.x - 3;
+	x = player.x - screen_cells_centerx;
 	rx = x;
 	if (x < 0)
 		x += 64;
-	y = player.y - 4;
+	y = player.y - screen_cells_centery;
 	ry = y;
 	if (y < 0)
 		y += 64;
@@ -4506,11 +4511,11 @@ static void draw_screen(void)
 		if (x > 63)
 			x -= 64;
 		sx += 16;
-		if ((count % 7) == 0) {
-			if (count == 7 * 9)
+		if ((count % screen_cells_wide) == 0) {
+			if (count == screen_cells_wide * screen_cells_tall)
 				break;
-			x = player.x - 3;
-			rx = player.x - 3;
+			x = player.x - 4;
+			rx = player.x - 4;
 			if (x < 0)
 				x += 64;
 			sx = 8;
@@ -4523,7 +4528,10 @@ static void draw_screen(void)
 		}
 	} while (1);
 
-	draw_cell(8 + 16 * 3, 8 + 16 * 4, '@');
+	int centerx = (LCD_XSIZE == 160) ? 8 + 16 * 4 : 8 + 16 * 3;
+	int centery = (LCD_YSIZE == 160) ? 8 + 16 * 4 : 8 + 16 * 3;
+
+	draw_cell(centerx, centery, '@');
 
 	draw_creatures();
 	draw_ships();
@@ -4531,7 +4539,7 @@ static void draw_screen(void)
 	if (player.carrying[POSITION_FINDER] > 0) {
 		char buf[20];
 		snprintf(buf, sizeof(buf), "(%d, %d)", player.x, player.y);
-		FbMove(0, 152);
+		FbMove(0, LCD_YSIZE - 8);
 		FbWriteString(buf);
 	}
 
