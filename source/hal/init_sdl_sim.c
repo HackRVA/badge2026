@@ -147,7 +147,7 @@ static void draw_analog_sensor_ui(SDL_Window *w, SDL_Renderer *r)
 		slider_input_draw(w, r, analog_sensor_ui.input[i]);
 }
 
-static void draw_sensor_ui(SDL_Window *w, SDL_Renderer *r)
+__attribute__((unused)) static void draw_sensor_ui(SDL_Window *w, SDL_Renderer *r)
 {
 	draw_color_sensor_ui(w, r);
 	draw_analog_sensor_ui(w, r);
@@ -799,7 +799,8 @@ static int draw_window(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Texture
     draw_badge_orientation_indicator(renderer, BADGE_ORIENTATION_X, BADGE_ORIENTATION_Y, 1.0f,
 		&orientation_indicator_position, &badge_orientation);
 
-    draw_sensor_ui(window, renderer);
+    /* 2025, don't have sensors this year */
+    /* draw_sensor_ui(window, renderer); */
 
     maybe_draw_quit_confirmation();
 
