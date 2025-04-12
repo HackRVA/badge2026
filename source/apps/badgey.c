@@ -2632,37 +2632,39 @@ const struct shop_item {
 	int price;
 	unsigned char item_type;
 	unsigned char shop_type;
+	unsigned char usable; /* May be accessed via "USE ITEM" menu */
 } shop_item[] = {
 	/* INN */
-	{ "SAVE GAME", 0, ITEM_TYPE_INTANGIBLE, SHOP_INN },
-	{ "RESTORE GAME", 0, ITEM_TYPE_INTANGIBLE, SHOP_INN },
+	{ "SAVE GAME", 0, ITEM_TYPE_INTANGIBLE, SHOP_INN, 0 },
+	{ "RESTORE GAME", 0, ITEM_TYPE_INTANGIBLE, SHOP_INN, 0 },
 
 	/* PUB */
-	{ "FOOD", 10, ITEM_TYPE_SUSTENANCE, SHOP_PUB },
-	{ "DRINK", 5, ITEM_TYPE_SUSTENANCE, SHOP_PUB },
+	{ "FOOD", 10, ITEM_TYPE_SUSTENANCE, SHOP_PUB, 0 },
+	{ "DRINK", 5, ITEM_TYPE_SUSTENANCE, SHOP_PUB, 0 },
 
 	/* ARMOURY */
-	{ "LIGHT ARMOR", 40, ITEM_TYPE_ARMOR, SHOP_ARMOURY },
-	{ "HEAVY ARMOR", 80, ITEM_TYPE_ARMOR, SHOP_ARMOURY },
+	{ "LIGHT ARMOR", 40, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
+	{ "HEAVY ARMOR", 80, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
 
 	/* WEAPONS */
-	{ "LASER CUTLASS", 10, ITEM_TYPE_MELEE_WEAPON, SHOP_WEAPONS, },
-	{ "BLASTER", 20, ITEM_TYPE_RANGED_WEAPON, SHOP_WEAPONS, },
+	{ "LASER CUTLASS", 10, ITEM_TYPE_MELEE_WEAPON, SHOP_WEAPONS, 0 },
+	{ "BLASTER", 20, ITEM_TYPE_RANGED_WEAPON, SHOP_WEAPONS, 0 },
 
 	/* HACKERSPACE */
-	{ "PLA DOODAD", 1, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, },
-	{ "T-SHIRT", 25, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, },
+	{ "PLA DOODAD", 1, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
+	{ "T-SHIRT", 25, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 
 	/* TEMPLE */
-	{ "SACRAMENT", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, },
-	{ "BLESSING", 200, ITEM_TYPE_USELESS, SHOP_TEMPLE, },
+	{ "SACRAMENT", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
+	{ "BLESSING", 200, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 
 	/* specialty items */
 #define COMPASS_ITEM 12
-	{ "COMPASS", 0, ITEM_TYPE_USELESS, SHOP_HACKERSPACE },
+	{ "COMPASS", 0, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 #define POSITION_FINDER 13
-	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY },
-	{ "blah blah", 0, ITEM_TYPE_RANGED_WEAPON, SHOP_SPECIALTY },
+	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define MAPPING_STONE 14
+	{ "MAPPING STONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
 };
 
 #define MAX_ITEMS_PER_SHOP 8
@@ -2907,6 +2909,7 @@ static struct player {
 	int money;
 	int hp;
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
+	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
 	unsigned char cbx, cby;
 #define EQUIPPED_NONE 255
@@ -2949,6 +2952,8 @@ enum badgey_state_t {
 	BADGEY_COMBAT,
 	BADGEY_COLLECT_TREASURE,
 	BADGEY_DIG,
+	BADGEY_USE_ITEM,
+	BADGEY_DISPLAY_MAP,
 	BADGEY_EXIT,
 };
 
@@ -3356,6 +3361,8 @@ static void badgey_init(void)
 	player.in_shop = 0;
 	player.money = 500;
 	memset(player.carrying, 0, sizeof(player.carrying));
+	player.carrying[MAPPING_STONE] = 1;
+	player.carrying_dirty = 1;
 	spawn_planet_initial_monsters();
 	spawn_planet_initial_ships();
 	setup_planet_initial_treasures();
@@ -3385,8 +3392,10 @@ static void badgey_collect_treasure(int treasure)
 
 		if (gp > 0)
 			player.money += gp;
-		if (si >= 0 && si < (int) ARRAY_SIZE(shop_item))
+		if (si >= 0 && si < (int) ARRAY_SIZE(shop_item)) {
 			player.carrying[si]++;
+			player.carrying_dirty = 1;
+		}
 
 		if (treasure < nchests - 1)
 			chest[treasure] = chest[nchests - 1];
@@ -4557,8 +4566,9 @@ static void badgey_cave_menu(void)
 		dynmenu_set_title(&cave_menu, "", "", "");
 		if (player.x == 32 && player.y == 62)
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
-		dynmenu_add_item(&cave_menu, "NEVERMIND", BADGEY_RUN, 1);
-		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 2);
+		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
+		dynmenu_add_item(&cave_menu, "NEVERMIND", BADGEY_RUN, 2);
+		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 3);
 		menu_setup = 1;
 	}
 
@@ -4584,13 +4594,18 @@ static void badgey_cave_menu(void)
 			menu_setup = 0;
 		}
 		break;
+	case 1: /* use item */
+		menu_setup = 0;
+		set_badgey_state(BADGEY_USE_ITEM);
+		screen_changed = 1;
+		break;
 	case DYNMENU_SELECTION_ABORTED:
-	case 1: /* nevermind */
+	case 2: /* nevermind */
 		menu_setup = 0;
 		set_badgey_state(BADGEY_RUN);
 		screen_changed = 1;
 		break;
-	case 2: /* quit */
+	case 3: /* quit */
 		screen_changed = 1;
 		confirm_exit();
 		menu_setup = 0;
@@ -4662,6 +4677,7 @@ static void badgey_talk_to_shopkeeper(void)
 					shop_item[choice].name);
 			player.money -= shop_item[choice].price;
 			player.carrying[choice]++;
+			player.carrying_dirty = 1;
 		}
 		status_message(message);
 		screen_changed = 1;
@@ -4765,7 +4781,8 @@ static void badgey_town_menu(void)
 
 		dynmenu_add_item(&town_menu, "EQUIP WEAPON", BADGEY_STATS, 5);
 		dynmenu_add_item(&town_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
-		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 7);
+		dynmenu_add_item(&town_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
+		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 8);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
 		dynmenu_add_item(&town_menu, "QUIT", BADGEY_EXIT_CONFIRM, 4);
 		menu_setup = 1;
@@ -4795,7 +4812,9 @@ static void badgey_town_menu(void)
 	case 6: /* equip armor */
 		set_badgey_state(BADGEY_EQUIP_ARMOR);
 		break;
-	case 7: /* dig */
+	case 7: set_badgey_state(BADGEY_USE_ITEM);;
+		break;
+	case 8: /* dig */
 		set_badgey_state(BADGEY_DIG);
 		break;
 	default:
@@ -4822,7 +4841,8 @@ static void badgey_planet_menu(void)
 			dynmenu_add_item(&planet_menu, "ENTER CAVE", BADGEY_RUN, 1);
 		dynmenu_add_item(&planet_menu, "EQUIP WEAPON", BADGEY_STATS, 5);
 		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
-		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 7);
+		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
+		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 8);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 2);
 		dynmenu_add_item(&planet_menu, "NEVERMIND", BADGEY_RUN, 3);
 		dynmenu_add_item(&planet_menu, "QUIT", BADGEY_EXIT_CONFIRM, 4);
@@ -4881,7 +4901,12 @@ static void badgey_planet_menu(void)
 		menu_setup = 0;
 		set_badgey_state(BADGEY_EQUIP_ARMOR);
 		break;
-	case 7: /* dig */
+	case 7: /* use item */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_USE_ITEM);
+		break;
+	case 8: /* dig */
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_DIG);
@@ -5786,8 +5811,10 @@ static void badgey_equip(void)
 		dynmenu_init(&item_menu, item_menu_item, ARRAY_SIZE(item_menu_item));
 		dynmenu_set_title(&item_menu, title, "", "");
 		for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++) {
-			if (player.carrying[i] == 0)
+			if (player.carrying[i] == 0) {
+				player.carrying_dirty = 1;
 				continue;
+			}
 			if (shop_item[i].item_type == t1 ||
 				shop_item[i].item_type == t2) {
 				dynmenu_add_item(&item_menu, shop_item[i].name, badgey_state, i);
@@ -5813,6 +5840,296 @@ static void badgey_equip(void)
 	}
 	menu_setup = 0;
 	set_badgey_state(BADGEY_RUN);
+}
+
+static void badgey_use_item(void)
+{
+	static struct dynmenu item_menu;
+	static struct dynmenu_item item_menu_item[15];
+	static int menu_setup = 0;
+	int count = 0;
+
+	if (!menu_setup || player.carrying_dirty) {
+		dynmenu_clear(&item_menu);
+		dynmenu_init(&item_menu, item_menu_item, ARRAY_SIZE(item_menu_item));
+		dynmenu_set_title(&item_menu, "USE ITEM", "", "");
+		dynmenu_add_item(&item_menu, "NEVERMIND", -1, 1);
+
+		for (unsigned int i = 0; i < ARRAY_SIZE(player.carrying); i++) {
+			if (player.carrying[i] & shop_item[i].usable) {
+				dynmenu_add_item(&item_menu, shop_item[i].name, i, i);
+				count++;
+			}
+		}
+
+		if (count == 0) {
+			set_badgey_state(BADGEY_RUN);
+			status_message("NO USABLE ITEMS");
+			return;
+		}
+		player.carrying_dirty = 0;
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&item_menu))
+		return;
+
+	int choice = dynmenu_get_user_choice(&item_menu);
+	if (choice != DYNMENU_SELECTION_ABORTED &&
+		choice != (unsigned char) DYNMENU_SELECTION_ABORTED) {
+
+		if (choice == MAPPING_STONE) {
+			set_badgey_state(BADGEY_RUN);
+			set_badgey_state(BADGEY_DISPLAY_MAP);
+			return;
+		}
+	}
+	set_badgey_state(BADGEY_RUN);
+}
+
+static void draw_map_single_color_point(int x, int y, int color)
+{
+	x *= 2;
+	y *= 2;
+
+	if (LCD_XSIZE > 128)
+		x += (LCD_XSIZE - 128) / 2;
+	if (LCD_YSIZE > 128)
+		y += (LCD_YSIZE - 128) / 2;
+
+	FbColor(color);
+	FbPoint(x, y);
+	FbPoint(x + 1, y + 1);
+	FbPoint(x + 1, y);
+	FbPoint(x, y + 1);
+}
+
+static void draw_map_dual_color_point(int x, int y, int color1, int color2)
+{
+	x *= 2;
+	y *= 2;
+
+	if (LCD_XSIZE > 128)
+		x += (LCD_XSIZE - 128) / 2;
+	if (LCD_YSIZE > 128)
+		y += (LCD_YSIZE - 128) / 2;
+
+	FbColor(color1);
+	FbPoint(x, y);
+	FbPoint(x + 1, y + 1);
+	FbColor(color2);
+	FbPoint(x + 1, y);
+	FbPoint(x, y + 1);
+}
+
+static void draw_map_grass(int x, int y)
+{
+	draw_map_dual_color_point(x, y, GREEN, BLACK);
+}
+
+static void draw_map_forest(int x, int y)
+{
+	draw_map_single_color_point(x, y, GREEN);
+}
+
+static void draw_map_water(int x, int y)
+{
+	draw_map_single_color_point(x, y, BLUE);
+}
+
+static void draw_map_mountain(int x, int y)
+{
+	draw_map_dual_color_point(x, y, WHITE, BLACK);
+}
+
+static void draw_map_town(int x, int y)
+{
+	draw_map_single_color_point(x, y, YELLOW);
+}
+
+static void draw_map_unknown(int x, int y)
+{
+	draw_map_single_color_point(x, y, BLACK);
+}
+
+static void badgey_display_player_on_map(void)
+{
+	static int blink = 0;
+	blink++;
+	if (blink > 128)
+		blink = 0;
+	if (blink & 0x8)
+		draw_map_single_color_point(player.x, player.y, RED);
+}
+
+static void draw_map_dirt(int x, int y)
+{
+	draw_map_dual_color_point(x, y, x11_orange, x11_gray);
+}
+
+static void draw_map_brick(int x, int y)
+{
+	draw_map_dual_color_point(x, y, RED, x11_brown);
+}
+
+static void draw_map_board(int x, int y)
+{
+	draw_map_single_color_point(x, y, x11_brown);
+}
+
+static void draw_map_wall(int x, int y)
+{
+	draw_map_single_color_point(x, y, x11_gray);
+}
+
+static void draw_map_empty_space(int x, int y)
+{
+	draw_map_single_color_point(x, y, BLACK);
+}
+
+static void draw_map_star(int x, int y)
+{
+	draw_map_single_color_point(x, y, WHITE);
+}
+
+static void draw_map_planet(int x, int y)
+{
+	draw_map_single_color_point(x, y, BLUE);
+}
+
+static void badgey_display_space_map(void)
+{
+	for (int i = 0; i < 64; i++) {
+		for (int j = 0; j < 64; j++) {
+			char x = player.world->wm[windex(j, i)];
+			switch (x) {
+			case ' ':
+				draw_map_empty_space(j, i);
+				break;
+			case '*':
+				draw_map_star(j, i);
+				break;
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				draw_map_planet(j, i);
+				break;
+			default:
+				draw_map_empty_space(j, i);
+				break;
+			}
+		}
+	}
+}
+
+static void badgey_display_surface_map(void)
+{
+	for (int i = 0; i < 64; i++) {
+		for (int j = 0; j < 64; j++) {
+			char x = player.world->wm[windex(j, i)];
+			switch (x) {
+			case '.':
+				draw_map_grass(j, i);
+				break;
+			case 'f':
+				draw_map_forest(j, i);
+				break;
+			case 'w':
+				draw_map_water(j, i);
+				break;
+			case 'm':
+				draw_map_mountain(j, i);
+				break;
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				draw_map_town(j, i);
+				break;
+			case 'd':
+				draw_map_dirt(j, i);
+				break;
+			case 'b':
+				draw_map_brick(j, i);
+				break;
+			default:
+				draw_map_unknown(j, i);
+				break;
+			case '=':
+				draw_map_board(j, i);
+				break;
+			case '#':
+				draw_map_wall(j, i);
+				break;
+			}
+			x++;
+		}
+	}
+}
+
+static void badgey_display_cave_map(void)
+{
+	for (int i = 0; i < 64; i++) {
+		for (int j = 0; j < 64; j++) {
+			char x = player.world->wm[windex(j, i)];
+			switch (x) {
+			case '#':
+				draw_map_wall(j, i);
+				break;
+			case ' ':
+			default:
+				draw_map_empty_space(j, i);
+				break;
+			}
+		}
+	}
+}
+
+static void badgey_display_map(void)
+{
+	static int blinkey = 0;
+	blinkey++;
+	switch (player.world->type) {
+	case WORLD_TYPE_SPACE:
+		badgey_display_space_map();
+		break;
+	case WORLD_TYPE_PLANET:
+		badgey_display_surface_map();
+		break;
+	case WORLD_TYPE_TOWN:
+		badgey_display_surface_map();
+		break;
+	case WORLD_TYPE_CAVE:
+		badgey_display_cave_map();
+		break;
+	}
+	badgey_display_player_on_map();
+	FbSwapBuffers();
+
+	/* wait for keypress */
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		set_badgey_state(BADGEY_RUN);
+	}
 }
 
 static void remove_combat_creature(int i)
@@ -6110,6 +6427,12 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_DIG:
 		badgey_dig();
+		break;
+	case BADGEY_USE_ITEM:
+		badgey_use_item();
+		break;
+	case BADGEY_DISPLAY_MAP:
+		badgey_display_map();
 		break;
 	default:
 		break;
