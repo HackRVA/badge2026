@@ -5600,7 +5600,7 @@ static void enter_town(int town_number)
 	player.in_town = 1;
 }
 
-static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed) 
+static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed, int *total_dug)
 {
 	/* check we're not too close to the edge of the map */ 
 	if (x < 1 || x > 62 || y < 1 || y > 62)
@@ -5618,6 +5618,7 @@ static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed)
 	}
 
 	map[windex(x, y)] = ' '; /* safe to dig out x,y */
+	(*total_dug)++;
 
 	/* Maybe branch left or right */
 	if ((xorshift(seed) % 100) < 30) {
@@ -5631,15 +5632,16 @@ static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed)
 			if (newdir < 0)
 				newdir += 8;
 		}
-		dig_cave(map, x + xo8[newdir], y + yo8[newdir], newdir, seed);
+		dig_cave(map, x + xo8[newdir], y + yo8[newdir], newdir, seed, total_dug);
 	}
-	if ((xorshift(seed) % 100) < 5) /* 5% chance to quit digging */
+	if ((xorshift(seed) % 100) < 5 && *total_dug > 30) /* 5% chance to quit digging */
 		return;
-	dig_cave(map, x + xo8[dir], y + yo8[dir], dir, seed);
+	dig_cave(map, x + xo8[dir], y + yo8[dir], dir, seed, total_dug);
 }
 
 static void print_cave(char *map)
 {
+#if TARGET_SIMULATOR
 	for (int i = 0; i < 64; i++) {
 		for (int j = 0; j < 64; j++) {
 			if (j == 32 && i == 62)
@@ -5649,6 +5651,7 @@ static void print_cave(char *map)
 		}
 		printf("\n");
 	}
+#endif
 }
 
 static void spawn_cave_monster(unsigned int *seed)
@@ -5722,7 +5725,8 @@ static void generate_cave(int cave_number)
 	unsigned int seed = (player.x + 64 * player.y * (caveno + 1)) ^ 0x5a5a5a5a;
 
 	memset(dynmap, '#', sizeof(dynmap)); /* Fill the map with walls. */
-	dig_cave(dynmap, 32, 62, 0, &seed);
+	int total_dug = 0;
+	dig_cave(dynmap, 32, 62, 0, &seed, &total_dug);
 	populate_cave(&seed);
 	print_cave(dynmap);
 }
