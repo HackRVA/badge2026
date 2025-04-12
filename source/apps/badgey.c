@@ -48,6 +48,8 @@ struct dynmenu cave_menu;
 struct dynmenu_item cave_menu_item[10];
 struct dynmenu town_menu;
 struct dynmenu_item town_menu_item[10];
+struct dynmenu space_menu;
+struct dynmenu_item space_menu_item[10];
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
 static const int xo4[] = { 0, 1, 0, -1 };
@@ -2940,6 +2942,7 @@ enum badgey_state_t {
 	BADGEY_PLANET_MENU,
 	BADGEY_CAVE_MENU,
 	BADGEY_TOWN_MENU,
+	BADGEY_SPACE_MENU,
 	BADGEY_RUN,
 	BADGEY_ENTER_TOWN_OR_CAVE,
 	BADGEY_TALK_TO_SHOPKEEPER,
@@ -3703,6 +3706,8 @@ static void check_buttons(int tick)
 			set_badgey_state(BADGEY_PLANET_MENU);
 		else if (player.world->type == WORLD_TYPE_TOWN)
 			set_badgey_state(BADGEY_TOWN_MENU);
+		else if (player.world->type == WORLD_TYPE_SPACE)
+			set_badgey_state(BADGEY_SPACE_MENU);
 		newmoving = 0;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		confirm_exit();
@@ -4606,6 +4611,43 @@ static void badgey_cave_menu(void)
 		screen_changed = 1;
 		break;
 	case 3: /* quit */
+		screen_changed = 1;
+		confirm_exit();
+		menu_setup = 0;
+		break;
+	}
+}
+
+static void badgey_space_menu(void)
+{
+	static int menu_setup = 0;
+
+	if (!menu_setup) {
+		dynmenu_clear(&cave_menu);
+		dynmenu_init(&cave_menu, cave_menu_item, ARRAY_SIZE(cave_menu_item));
+		dynmenu_set_title(&cave_menu, "", "", "");
+		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 0);
+		dynmenu_add_item(&cave_menu, "NEVERMIND", BADGEY_RUN, 1);
+		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 2);
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&cave_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&cave_menu)) {
+	case 0: /* use item */
+		menu_setup = 0;
+		set_badgey_state(BADGEY_USE_ITEM);
+		screen_changed = 1;
+		break;
+	case DYNMENU_SELECTION_ABORTED:
+	case 1: /* nevermind */
+		menu_setup = 0;
+		set_badgey_state(BADGEY_RUN);
+		screen_changed = 1;
+		break;
+	case 2: /* quit */
 		screen_changed = 1;
 		confirm_exit();
 		menu_setup = 0;
@@ -6394,6 +6436,9 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_TOWN_MENU:
 		badgey_town_menu();
+		break;
+	case BADGEY_SPACE_MENU:
+		badgey_space_menu();
 		break;
 	case BADGEY_RUN:
 		badgey_run();
