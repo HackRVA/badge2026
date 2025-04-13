@@ -191,6 +191,14 @@ static void shift_grid_up(void)
 	}
 }
 
+static void shift_cursor_up(void)
+{
+	if (cursor_y <= 0)
+		return;
+
+	cursor_y -= 1;
+}
+
 static void insert_row(void)
 {
 	for (int x = 0; x < GRID_COLS; x++) {
@@ -432,6 +440,7 @@ static void puzzle_attack_update(void)
 		if (tick % 100 == 0) {
 			shift_grid_up();
 			insert_row();
+			shift_cursor_up();
 		}
 	}
 
