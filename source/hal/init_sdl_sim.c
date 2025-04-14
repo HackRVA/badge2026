@@ -277,7 +277,6 @@ static int quit_confirm_width, quit_confirm_height;
 static int led_width, led_height;
 static SDL_Joystick *joystick = NULL;
 
-// static GtkWidget *vbox, *drawing_area;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *pix_buf, *landscape_pix_buf, *badge_image, *rotated_badge_image, *badge_background_image;
