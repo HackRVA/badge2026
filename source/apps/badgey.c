@@ -4515,6 +4515,11 @@ static const struct town_info {
 	{ "ONVAL",
 		town_creek | town_weapons | town_armoury | town_temple,
 	},
+	{ "CAVES OF ZOR", 0 },
+	{ "XANFIR MINES", 0 },
+	{ "KLON CAVERNS", 0 },
+	{ "CAVES OF INSANITY", 0 },
+	{ "CHAX MINE", 0 },
 
 	/* on planet 1 "NW42" */
 	{ "SURSEE",
@@ -4532,6 +4537,11 @@ static const struct town_info {
 	{ "BURNIP",
 		town_ponds | town_armoury | town_temple | town_inn,
 	},
+	{ "UNNAMED CAVE", 0 },
+	{ "CAVE OF SORROW", 0 },
+	{ "VAST CAVERNS", 0 },
+	{ "MINES OF WOE", 0 },
+	{ "KRYTEN CAVE", 0 },
 
 	/* on planet 2 "BORTON" */
 	{ "WASSU",
@@ -4549,6 +4559,11 @@ static const struct town_info {
 	{ "NEPHEST",
 		town_creek | town_armoury | town_weapons,
 	},
+	{ "SCORPIO CAVERN", 0 },
+	{ "SMUGGLERS CAVE", 0 },
+	{ "YOBB CAVE", 0 },
+	{ "KILLU CAVERNS", 0 },
+	{ "TORTILLA CAVE", 0 },
 
 	/* on planet 3 "SKANG" */
 	{ "HOJAX",
@@ -4566,6 +4581,11 @@ static const struct town_info {
 	{ "MERODOX",
 		town_creek | town_weapons | town_armoury | town_temple,
 	},
+	{ "X MINES", 0 },
+	{ "TUNNELS OF DOOM", 0 },
+	{ "ENDLESS CAVERNS", 0 },
+	{ "UNDERWORLD CAVE", 0 },
+	{ "CAVES OF KORIN", 0 },
 
 	/* on planet 3 "GNARG" */
 	{ "JALTA",
@@ -4583,6 +4603,11 @@ static const struct town_info {
 	{ "YARNOW",
 		town_ponds | town_armoury | town_temple | town_inn,
 	},
+	{ "EVO MINES", 0 },
+	{ "CARNOWULF CAVERN", 0 },
+	{ "WIRM CAVE", 0 },
+	{ "SLIN CAVERNS", 0 },
+	{ "SPIDER CAVE", 0 },
 };
 
 static void draw_screen(void)
@@ -4658,7 +4683,7 @@ static void draw_screen(void)
 	}
 
 	char ch = player.world->wm[windex(player.x, player.y)];
-	if (player.world->type == WORLD_TYPE_PLANET && ch >= '0' && ch <= '4') {
+	if (player.world->type == WORLD_TYPE_PLANET && ch >= '0' && ch <= '9') {
 		/* figure which world we're no */
 		int world_no = -1;
 		for (size_t i = 0; i < ARRAY_SIZE(space.subworld); i++)
@@ -4667,10 +4692,10 @@ static void draw_screen(void)
 				break;
 			}
 		if (world_no != -1) {
-			/* Player is standing on a town, so print the town name */
+			/* Player is standing on a town or cave, so print the town/cave name */
 			FbMove(0, 0);
 			FbColor(WHITE);
-			FbWriteString(towninfo[world_no * 5 + (ch - '0')].name);
+			FbWriteString(towninfo[world_no * 10 + (ch - '0')].name);
 		}
 	}
 
@@ -5572,7 +5597,7 @@ static void generate_town(int town_number)
 		raise(SIGTRAP); /* trigger gdb, in case we're running under gdb. */
 	}
 #endif
-	int town = town_number + (world_no * 5);
+	int town = town_number + (world_no * 10);
 
 
 	int has_moat = ((xorshift(&seed) % 100) < 25);
@@ -5780,7 +5805,7 @@ static void generate_cave(int cave_number)
 		raise(SIGTRAP); /* trigger gdb, in case we're running under gdb. */
 	}
 #endif
-	int caveno = cave_number + (world_no * 5) + 5;
+	int caveno = cave_number + (world_no * 10) + 5;
 	unsigned int seed = (player.x + 64 * player.y * (caveno + 1)) ^ 0x5a5a5a5a;
 
 	memset(dynmap, '#', sizeof(dynmap)); /* Fill the map with walls. */
