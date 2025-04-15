@@ -4485,6 +4485,106 @@ static void move_ships(void)
 	}
 }
 
+enum townfeature {
+	town_ponds = 1 << 1,
+	town_creek = 1 << 2,
+	town_armoury = 1 << 4,
+	town_weapons = 1 << 5,
+	town_hackerspace = 1 << 6,
+	town_temple = 1 << 7,
+	town_inn = 1 << 9, /* for saving game progress to flash? */
+};
+
+static const struct town_info {
+	const char *name;
+	uint32_t feature;
+} towninfo[] = {
+	/* on planet 0 "OSSARIA" */
+	{ "ZONNU",
+		town_ponds | town_armoury | town_temple | town_inn,
+	},
+	{ "QUAZON",
+		town_creek | town_armoury | town_weapons,
+	},
+	{ "DORVO",
+		town_armoury | town_temple | town_weapons,
+	},
+	{ "BALF",
+		town_ponds | town_armoury | town_weapons | town_hackerspace,
+	},
+	{ "ONVAL",
+		town_creek | town_weapons | town_armoury | town_temple,
+	},
+
+	/* on planet 1 "NW42" */
+	{ "SURSEE",
+		town_armoury | town_temple | town_weapons,
+	},
+	{ "CALEV",
+		town_creek | town_weapons | town_armoury | town_temple,
+	},
+	{ "NORJIG",
+		town_ponds | town_armoury | town_weapons | town_hackerspace,
+	},
+	{ "KALFO",
+		town_creek | town_armoury | town_weapons,
+	},
+	{ "BURNIP",
+		town_ponds | town_armoury | town_temple | town_inn,
+	},
+
+	/* on planet 2 "BORTON" */
+	{ "WASSU",
+		town_creek | town_weapons | town_armoury | town_temple,
+	},
+	{ "JARLS",
+		town_ponds | town_armoury | town_temple | town_inn,
+	},
+	{ "KORVIN",
+		town_armoury | town_temple | town_weapons,
+	},
+	{ "LAKNIV",
+		town_ponds | town_armoury | town_weapons | town_hackerspace,
+	},
+	{ "NEPHEST",
+		town_creek | town_armoury | town_weapons,
+	},
+
+	/* on planet 3 "SKANG" */
+	{ "HOJAX",
+		town_ponds | town_armoury | town_weapons | town_hackerspace,
+	},
+	{ "SPEVO",
+		town_armoury | town_temple | town_weapons,
+	},
+	{ "TORXUN",
+		town_creek | town_armoury | town_weapons,
+	},
+	{ "TALSU",
+		town_ponds | town_armoury | town_temple | town_inn,
+	},
+	{ "MERODOX",
+		town_creek | town_weapons | town_armoury | town_temple,
+	},
+
+	/* on planet 3 "GNARG" */
+	{ "JALTA",
+		town_creek | town_armoury | town_weapons,
+	},
+	{ "SPINU",
+		town_ponds | town_armoury | town_weapons | town_hackerspace,
+	},
+	{ "ILATI",
+		town_armoury | town_temple | town_weapons,
+	},
+	{ "FRUNTZ",
+		town_creek | town_weapons | town_armoury | town_temple,
+	},
+	{ "YARNOW",
+		town_ponds | town_armoury | town_temple | town_inn,
+	},
+};
+
 static void draw_screen(void)
 {
 	if (!screen_changed)
@@ -4555,6 +4655,23 @@ static void draw_screen(void)
 		snprintf(buf, sizeof(buf), "(%d, %d)", player.x, player.y);
 		FbMove(0, LCD_YSIZE - 8);
 		FbWriteString(buf);
+	}
+
+	char ch = player.world->wm[windex(player.x, player.y)];
+	if (player.world->type == WORLD_TYPE_PLANET && ch >= '0' && ch <= '4') {
+		/* figure which world we're no */
+		int world_no = -1;
+		for (size_t i = 0; i < ARRAY_SIZE(space.subworld); i++)
+			if (player.world == space.subworld[i]) {
+				world_no = i;
+				break;
+			}
+		if (world_no != -1) {
+			/* Player is standing on a town, so print the town name */
+			FbMove(0, 0);
+			FbColor(WHITE);
+			FbWriteString(towninfo[world_no * 5 + (ch - '0')].name);
+		}
 	}
 
 	screen_changed = 0;
@@ -4980,106 +5097,6 @@ static void badgey_run(void)
 	else
 		check_buttons(tick);
 }
-
-enum townfeature {
-	town_ponds = 1 << 1,
-	town_creek = 1 << 2,
-	town_armoury = 1 << 4,
-	town_weapons = 1 << 5,
-	town_hackerspace = 1 << 6,
-	town_temple = 1 << 7,
-	town_inn = 1 << 9, /* for saving game progress to flash? */
-};
-
-static const struct town_info {
-	const char *name;
-	uint32_t feature;
-} towninfo[] = {
-	/* on planet 0 "OSSARIA" */
-	{ "ZONNU",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-	{ "QUAZON",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "DORVO",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "BALF",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "ONVAL",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-
-	/* on planet 1 "NW42" */
-	{ "SURSEE",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "CALEV",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-	{ "NORJIG",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "KALFO",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "BURNIP",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-
-	/* on planet 2 "BORTON" */
-	{ "WASSU",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-	{ "JARLS",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-	{ "KORVIN",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "LAKNIV",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "NEPHEST",
-		town_creek | town_armoury | town_weapons,
-	},
-
-	/* on planet 3 "SKANG" */
-	{ "HOJAX",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "SPEVO",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "TORXUN",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "TALSU",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-	{ "MERODOX",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-
-	/* on planet 3 "GNARG" */
-	{ "JALTA",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "SPINU",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "ILATI",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "FRUNTZ",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-	{ "YARNOW",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-};
 
 const char *hackerspacename[] = {
 	"SEGVAULT",
