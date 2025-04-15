@@ -2715,6 +2715,34 @@ static const char *creature_info[] = {
 	"HI THERE!",
 };
 
+static const char *creature_name[] = {
+	"JIKK",
+	"JALL",
+	"NICKO",
+	"NORBERT",
+	"JULE",
+	"MOXX",
+	"GEPH",
+	"FORX",
+	"TRONT",
+	"WOON",
+	"JEBBO",
+	"LOORI",
+	"SONIX",
+	"BONJO",
+	"QUAXOR",
+	"TIRRI",
+	"JAMMER",
+	"SARDO",
+	"KLABON",
+	"YOBBO",
+	"SESSNON",
+	"JAAN",
+	"FROXX",
+	"CHORB",
+	"KLUMGON",
+};
+
 struct creature;
 static void generic_move(struct creature *self);
 static void generic_monster_move(struct creature *self);
@@ -2872,7 +2900,7 @@ struct creature {
 	uint8_t homex, homey, x, y;
 	uint8_t onscreen_and_visible;
 	uint8_t info;
-	char name[8];
+	int name;
 	struct creature_specific_data csd;
 	uint8_t no_in_party;
 	int hit_points;
@@ -3167,11 +3195,6 @@ static void status_message(char *message)
 	set_badgey_state(BADGEY_STATUS_MESSAGE); 
 }
 
-static void set_creature_name(char *name)
-{
-	strcpy(name, "JACK"); /* TODO: something better */
-}
-
 static void add_shopkeeper(int x, int y, unsigned char shoptype, unsigned int *seed)
 {
 	int n;
@@ -3193,7 +3216,7 @@ static void add_shopkeeper(int x, int y, unsigned char shoptype, unsigned int *s
 	int maxicon = creature_generic_data[CREATURE_TYPE_CITIZEN].citizen.max_icon;
 	creature[n].csd.citizen.icon = minicon + (xorshift(seed) % (maxicon - minicon));
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
-	set_creature_name(creature[n].name);
+	creature[n].name = (n % ARRAY_SIZE(creature_name));
 	(*ncreatures)++;
 }
 
@@ -3225,7 +3248,7 @@ static void add_robot1(unsigned char roadchar, unsigned int *seed)
 	creature[n].x = x;
 	creature[n].y = y;
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
-	set_creature_name(creature[n].name);
+	creature[n].name = (n % ARRAY_SIZE(creature_name));
 	(*ncreatures)++;
 }
 
@@ -3288,7 +3311,7 @@ static void add_guard(unsigned char roadchar, unsigned int *seed)
 	creature[n].x = x;
 	creature[n].y = y;
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
-	set_creature_name(creature[n].name);
+	creature[n].name = (n % ARRAY_SIZE(creature_name));
 	(*ncreatures)++;
 }
 
@@ -3323,7 +3346,7 @@ static void add_citizen(int roadchar, unsigned int *seed)
 	creature[n].csd.citizen.shopkeep = SHOP_NONE;
 	creature[n].csd.citizen.icon = ICON_CITIZEN1 + (xorshift(seed) % 6);
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
-	set_creature_name(creature[n].name);
+	creature[n].name = (n % ARRAY_SIZE(creature_name));
 	(*ncreatures)++;
 }
 
@@ -3563,7 +3586,7 @@ static void spawn_monster_at(int x, int y, unsigned int *seed)
 	creature[n].x = x;
 	creature[n].y = y;
 	creature[n].no_in_party = (unsigned char) ((xorshift(seed) % 4) + 1);
-	set_creature_name(creature[n].name);
+	creature[n].name = (n % ARRAY_SIZE(creature_name));
 	(*ncreatures)++;
 }
 
@@ -4919,7 +4942,8 @@ static void badgey_talk_to_citizen(void)
 		FbClear();
 		FbColor(WHITE);
 		FbBackgroundColor(BLACK);
-		snprintf(buf, sizeof(buf), "\n %s:\n %s\n", creature[c].name, creature_info[i]);
+		snprintf(buf, sizeof(buf), "\n %s:\n %s\n",
+				creature_name[creature[c].name], creature_info[i]);
 		FbMove(0, 0);
 		FbWriteString(buf);
 		FbSwapBuffers();
