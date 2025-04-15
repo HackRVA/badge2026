@@ -3,83 +3,60 @@
 // Implemented by Stephen M. Cameron Sun 07 May 2023 06:06:22 PM EDT
 //
 
-#include <stdio.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #ifdef SIMULATOR_AUDIO
-#include <portaudio.h>
+#include <SDL_audio.h>
+#include <SDL2/SDL.h>
 #endif
-#include <string.h>
 #include <pthread.h>
+#include <string.h>
 
-#include "badge.h"
 #include "audio.h"
+#include "badge.h"
 
 #ifdef SIMULATOR_AUDIO
 #define SAMPLE_RATE (48000)
-/* 48 frames = 1 ms */
-#define FRAMES_PER_BUFFER (48)
-static int sound_device;
-static int sound_working;
-static PaStream *stream = NULL;
-static void (*user_callback_fn)(void) = NULL;
+/*
+ * AUDIO_FRAMES_PER_CALLBACK
+ * Audio buffer size in sample FRAMES
+ * (total samples divided by channel count)
+ * `baseaudiocontext.createScriptProcessor` in js (wasm)
+ * wants a value from this set
+ * [ 256, 512, 1024, 2048, 4096, 8192, 16384 ]
+ * https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createScriptProcessor
+ */
+#define AUDIO_FRAMES_PER_CALLBACK (256)
 
-/* 1 second worth of audio */
 #define AUDIO_BUFFER_SIZE 48000
-static float audio_buffer[AUDIO_BUFFER_SIZE] = { 0 };
+static float audio_buffer[AUDIO_BUFFER_SIZE] = {0};
 static int audio_buffer_index = 0;
 static int samples_left_to_play = 0;
-static pthread_mutex_t audio_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
+static SDL_AudioDeviceID audio_device_id;
+static SDL_mutex *audio_lock = NULL;
+static void (*user_callback_fn)(void) = NULL;
 
-void audio_init_gpio(void)
+static void mixer_loop(
+	__attribute__((unused)) void *userdata, Uint8 *stream, int len)
 {
-    return;
-}
+	float *out = (float *)stream;
+	int framesPerBuffer = len / sizeof(float);
 
-#ifdef SIMULATOR_AUDIO
-static void decode_paerror(PaError rc)
-{
-	if (rc == paNoError)
-		return;
-	fprintf(stderr, "An error occurred while using the portaudio stream\n");
-	fprintf(stderr, "Error number: %d\n", rc);
-	fprintf(stderr, "Error message: %s\n", Pa_GetErrorText(rc));
-}
-
-static void terminate_portaudio(int rc)
-{
-	Pa_Terminate();
-        decode_paerror(rc);
-}
-
-/* This routine will be called by the PortAudio engine when audio is needed.
-** It may called at interrupt level on some machines so don't do anything
-** that could mess up the system like calling malloc() or free().
-*/
-static int mixer_loop(__attribute__ ((unused)) const void *inputBuffer,
-	void *outputBuffer,
-	unsigned long framesPerBuffer,
-	__attribute__ ((unused)) const PaStreamCallbackTimeInfo* timeInfo,
-	__attribute__ ((unused)) PaStreamCallbackFlags statusFlags,
-	__attribute__ ((unused)) void *userData )
-{
-	float *out = outputBuffer;
-
-	pthread_mutex_lock(&audio_lock);
+	SDL_LockMutex(audio_lock);
 	if (samples_left_to_play == 0 && user_callback_fn) {
 		void (*temp_callback_fn)(void) = user_callback_fn;
 		user_callback_fn = NULL;
-		pthread_mutex_unlock(&audio_lock);
+		SDL_UnlockMutex(audio_lock);
 		temp_callback_fn();
-		pthread_mutex_lock(&audio_lock);
+		SDL_LockMutex(audio_lock);
 	}
+
 	if (badge_system_data()->mute) {
-		memset(out, 0, sizeof(*out) * framesPerBuffer);
+		memset(out, 0, len);
 	} else {
-		for (size_t i = 0; i < framesPerBuffer; i++) {
-			out[i] = audio_buffer[audio_buffer_index];
-			audio_buffer_index++;
+		for (int i = 0; i < framesPerBuffer; i++) {
+			out[i] = audio_buffer[audio_buffer_index++];
 			if (audio_buffer_index >= AUDIO_BUFFER_SIZE)
 				audio_buffer_index = 0;
 		}
@@ -89,72 +66,53 @@ static int mixer_loop(__attribute__ ((unused)) const void *inputBuffer,
 		memset(audio_buffer, 0, sizeof(audio_buffer));
 		samples_left_to_play = 0;
 	}
-	pthread_mutex_unlock(&audio_lock);
-	return 0; /* we're never finished */
+	SDL_UnlockMutex(audio_lock);
 }
 #endif
+
+void audio_init_gpio(void)
+{
+	return;
+}
 
 void audio_init(void)
 {
 #ifdef SIMULATOR_AUDIO
-	printf("Initializing portaudio..."); fflush(stdout);
-
-	PaStreamParameters outparams;
-	PaError rc;
-	PaDeviceIndex device_count;
-
-	rc = Pa_Initialize();
-	if (rc != paNoError)
-		goto error;
-
-	device_count = Pa_GetDeviceCount();
-	printf("Portaudio reports %d sound devices.\n", device_count);
-
-	if (device_count == 0) {
-		printf("There will be no audio.\n");
-		goto error;
-		rc = 0;
-	}
-	sound_working = 1;
-
-	outparams.device = Pa_GetDefaultOutputDevice();  /* default output device */
-
-	printf("Portaudio says the default device is: %d\n", outparams.device);
-	printf("Using sound device %d\n", outparams.device);
-	sound_device = outparams.device;
-
-	if (outparams.device < 0 && device_count > 0) {
-		printf("Hmm, that's strange, portaudio says the default device is %d,\n"
-			" but there are %d devices\n",
-			outparams.device, device_count);
-		printf("I think we'll just skip sound for now.\n");
-		sound_working = 0;
+	printf("Initializing SDL audio...\n");
+	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+		fprintf(stderr, "SDL audio init failed: %s\n", SDL_GetError());
 		return;
 	}
 
-	outparams.channelCount = 1;                      /* mono output */
-	outparams.sampleFormat = paFloat32;              /* 32 bit floating point output */
-	outparams.suggestedLatency =
-		Pa_GetDeviceInfo(outparams.device)->defaultLowOutputLatency;
-	outparams.hostApiSpecificStreamInfo = NULL;
+	SDL_AudioSpec desired, obtained;
+	SDL_zero(desired);
+	desired.freq = SAMPLE_RATE;
+	desired.format = AUDIO_F32SYS;
+	desired.channels = 1; /* mono output */
+	desired.samples = AUDIO_FRAMES_PER_CALLBACK;
+	desired.callback = mixer_loop;
 
-	rc = Pa_OpenStream(&stream,
-		NULL,         /* no input */
-		&outparams, SAMPLE_RATE, FRAMES_PER_BUFFER,
-		paNoFlag, /* paClipOff, */   /* we won't output out of range samples so don't bother clipping them */
-		mixer_loop, NULL /* cookie */);
-	if (rc != paNoError)
-		goto error;
-	if ((rc = Pa_StartStream(stream)) != paNoError)
-		goto error;
-	return;
-error:
-	terminate_portaudio(rc);
-	return;
+	audio_lock = SDL_CreateMutex();
+	if (!audio_lock) {
+		fprintf(stderr, "SDL mutex creation failed: %s\n",
+			SDL_GetError());
+		return;
+	}
+
+	/* the NULL arg tells SDL to try to select the device automaticallly */
+	audio_device_id = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
+	if (audio_device_id == 0) {
+		fprintf(stderr, "SDL_OpenAudioDevice failed: %s\n",
+			SDL_GetError());
+		return;
+	}
+
+	SDL_PauseAudioDevice(audio_device_id, 0);
 #endif
 }
 
-int audio_out_beep_with_cb(uint16_t freq,  uint16_t duration, void (*beep_finished)(void))
+int audio_out_beep_with_cb(
+	uint16_t freq, uint16_t duration, void (*beep_finished)(void))
 {
 #ifdef SIMULATOR_AUDIO
 	float value = -0.025;
@@ -166,19 +124,19 @@ int audio_out_beep_with_cb(uint16_t freq,  uint16_t duration, void (*beep_finish
 		if (beep_finished == NULL) /* no callback provided?  Ok... */
 			return 0;
 		/* We're being asked to play a rest? Ok. */
-		pthread_mutex_lock(&audio_lock);
+		SDL_LockMutex(audio_lock);
 		memset(audio_buffer, 0, sizeof(audio_buffer));
 		user_callback_fn = beep_finished;
 		audio_buffer_index = 0;
-		samples_left_to_play = (duration * 48);
+		samples_left_to_play = duration * 48;
 		if (samples_left_to_play > AUDIO_BUFFER_SIZE)
 			samples_left_to_play = AUDIO_BUFFER_SIZE;
-		pthread_mutex_unlock(&audio_lock);
+		SDL_UnlockMutex(audio_lock);
 		return 0;
 	}
 
 	int count = AUDIO_BUFFER_SIZE / freq / 2;
-	pthread_mutex_lock(&audio_lock);
+	SDL_LockMutex(audio_lock);
 	for (int i = 0; i < AUDIO_BUFFER_SIZE; i++) {
 		audio_buffer[i] = value;
 		if ((i % count) == 0)
@@ -186,10 +144,10 @@ int audio_out_beep_with_cb(uint16_t freq,  uint16_t duration, void (*beep_finish
 	}
 	user_callback_fn = beep_finished;
 	audio_buffer_index = 0;
-	samples_left_to_play = (duration * 48);
+	samples_left_to_play = duration * 48;
 	if (samples_left_to_play > AUDIO_BUFFER_SIZE)
 		samples_left_to_play = AUDIO_BUFFER_SIZE;
-	pthread_mutex_unlock(&audio_lock);
+	SDL_UnlockMutex(audio_lock);
 #endif
 	return 0;
 }
@@ -199,7 +157,7 @@ int audio_out_beep(uint16_t freq, uint16_t duration)
 	return audio_out_beep_with_cb(freq, duration, NULL);
 }
 
-void audio_stby_ctl( __attribute__((__unused__)) bool enabled)
+void audio_stby_ctl(__attribute__((__unused__)) bool enabled)
 {
-    return;
+	return;
 }

@@ -31,7 +31,6 @@ if (${TARGET} STREQUAL "WASM")
 	set(CMAKE_EXECUTABLE_SUFFIX ".html")
 	set(PNG_LIBRARY "-sUSE_LIBPNG")
 	set(PNG_PNG_INCLUDE_DIR "${EMSCRIPTEN_ROOT}/system/include")
-	set(SIMULATOR_AUDIO "no")
 endif()
 
 if (${BUILD_IMAGE_TEST_PROGRAM} STREQUAL "yes")
@@ -61,10 +60,10 @@ if (${TARGET} STREQUAL "PICO")
 endif()
 
 if (${TARGET} STREQUAL "SIMULATOR" OR ${TARGET} STREQUAL "SDL_SIMULATOR")
-    # Note: cmake doesn't know about portaudio, so we cram -lportaudio -lasound -lm -lpthread in here
+    # Note: cmake doesn't know about pthreads, so we cram -lm -lpthread in here
     add_compile_options(-fsanitize=address -fsanitize=undefined -Wstrict-prototypes)
     if (${SIMULATOR_AUDIO} STREQUAL "yes")
-	    add_link_options(-fsanitize=address -fsanitize=undefined -lportaudio -lasound -lm -lpthread -rdynamic)
+	    add_link_options(-fsanitize=address -fsanitize=undefined -lm -lpthread -rdynamic)
     else()
 	    add_link_options(-fsanitize=address -fsanitize=undefined)
     endif()
