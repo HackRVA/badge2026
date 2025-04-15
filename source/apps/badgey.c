@@ -2704,7 +2704,10 @@ const char *shopname[] = { /* indexed by shop type */
 };
 
 static const char *creature_info[] = {
+#define GRUNT_RESPONSE 0
 	"GRUNTS", /* 0 - default monster "info" */
+#define HUMAN_MIN_RESPONSE 1
+#define HUMAN_NUM_GENERIC_RESPONSES 5
 	"HOWDY!", /* 1 - 5 - generic human responses */
 	"HELLO!",
 	"NICE DAY!",
@@ -3189,7 +3192,7 @@ static void add_shopkeeper(int x, int y, unsigned char shoptype, unsigned int *s
 	int minicon = creature_generic_data[CREATURE_TYPE_CITIZEN].citizen.min_icon;
 	int maxicon = creature_generic_data[CREATURE_TYPE_CITIZEN].citizen.max_icon;
 	creature[n].csd.citizen.icon = minicon + (xorshift(seed) % (maxicon - minicon));
-	creature[n].info = 0;
+	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	set_creature_name(creature[n].name);
 	(*ncreatures)++;
 }
@@ -3221,7 +3224,7 @@ static void add_robot1(unsigned char roadchar, unsigned int *seed)
 	creature[n].homey = y;
 	creature[n].x = x;
 	creature[n].y = y;
-	creature[n].info = 0;
+	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	set_creature_name(creature[n].name);
 	(*ncreatures)++;
 }
@@ -3253,7 +3256,7 @@ static void add_robot3(unsigned char roadchar, unsigned int *seed)
 	creature[n].homey = y;
 	creature[n].x = x;
 	creature[n].y = y;
-	creature[n].info = 0;
+	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	(*ncreatures)++;
 }
 
@@ -3284,7 +3287,7 @@ static void add_guard(unsigned char roadchar, unsigned int *seed)
 	creature[n].homey = y;
 	creature[n].x = x;
 	creature[n].y = y;
-	creature[n].info = 0;
+	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	set_creature_name(creature[n].name);
 	(*ncreatures)++;
 }
@@ -3319,7 +3322,7 @@ static void add_citizen(int roadchar, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].csd.citizen.shopkeep = SHOP_NONE;
 	creature[n].csd.citizen.icon = ICON_CITIZEN1 + (xorshift(seed) % 6);
-	creature[n].info = 0;
+	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	set_creature_name(creature[n].name);
 	(*ncreatures)++;
 }
