@@ -580,6 +580,8 @@ static void maybe_draw_quit_confirmation(void)
 		SDL_RenderCopy(renderer, quit_confirm_image, NULL, &(SDL_Rect) { x1, y1, quit_confirm_width, quit_confirm_height });
 }
 
+#define HAVE_ACCELEROMETER 0
+#if HAVE_ACCELEROMETER
 static union quat badge_orientation = IDENTITY_QUAT_INITIALIZER;
 static union vec3 gravity_vector = { { 0.0f, 0.0f, 1.0f } };
 
@@ -642,9 +644,12 @@ static union vec3 badge_orientation_points[] = {
 };
 
 static union vec3 orientation_indicator_position = { { 0.0f, 0.0f, 100.0f } };
+#endif
+
 #define BADGE_ORIENTATION_X (100.0f)
 #define BADGE_ORIENTATION_Y (500.0f)
 
+#if HAVE_ACCELEROMETER
 static void draw_badge_orientation_indicator(SDL_Renderer *renderer, float x, float y, float scale, union vec3 *badge_position, union quat *orientation)
 {
 	const int n = ARRAYSIZE(badge_orientation_points);
@@ -714,6 +719,7 @@ static void draw_badge_orientation_indicator(SDL_Renderer *renderer, float x, fl
 		prev = &indicator[i];
 	}
 }
+#endif
 
 static int draw_window(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Texture *landscape_texture)
 {
@@ -795,8 +801,10 @@ static int draw_window(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Texture
 
     draw_flare_led(&slp);
 
+#if HAVE_ACCELEROMETER
     draw_badge_orientation_indicator(renderer, BADGE_ORIENTATION_X, BADGE_ORIENTATION_Y, 1.0f,
 		&orientation_indicator_position, &badge_orientation);
+#endif
 
     /* 2025, don't have sensors this year */
     /* draw_sensor_ui(window, renderer); */
@@ -1059,6 +1067,7 @@ static void process_events(SDL_Window *window)
                 break;
             if (event.motion.y > BADGE_ORIENTATION_Y + 65)
                 break;
+#if HAVE_ACCELEROMETER
             /* We have mouse motion with button held, inside the orientation indicator... */
             float vector_len;
             if (event.motion.state & SDL_BUTTON_RMASK)
@@ -1079,6 +1088,7 @@ static void process_events(SDL_Window *window)
 	    quat_mul(&new_orientation, &q, &badge_orientation);
             quat_normalize_self(&new_orientation);
             badge_orientation = new_orientation;
+#endif
             break;
         case SDL_MOUSEWHEEL:
             slp = get_sim_lcd_params();
