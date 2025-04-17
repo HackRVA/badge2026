@@ -12,7 +12,7 @@ set(BUILD_IMAGE_TEST_PROGRAM "no") # change to "yes" to build image test app
 if (DEFINED ENV{PICO_SDK_VERSION})
     set(PICO_SDK_VERSION $ENV{PICO_SDK_VERSION})
 else()
-    set(PICO_SDK_VERSION "1.5.1")
+    set(PICO_SDK_VERSION "2.1.1")
 endif()
 
 if (${TARGET} STREQUAL "PICO")

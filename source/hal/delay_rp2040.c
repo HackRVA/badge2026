@@ -4,12 +4,13 @@
 
 #include "delay.h"
 
-#include "pico/sleep.h"
 #include "hardware/clocks.h"
 #include "hardware/rosc.h"
 #include "hardware/structs/scb.h"
 
+#include "pico/runtime_init.h"
 #include "pico/time.h"
+#include "pico/sleep.h"
 
 #include "usb.h"
 #include "rtc.h"
