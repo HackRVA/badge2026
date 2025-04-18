@@ -51,7 +51,7 @@
 #include "badgey.h"
 #include "badge-app-template.h"
 #include "aagunner.h"
-#include "rover_adventure.h"
+// #include "rover_adventure.h"
 #include "2048.h"
 #include "puzzle-attack.h"
 
@@ -67,7 +67,7 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
-	{"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },
+	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },
 	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, &badge_monsters_icon, },
 	{"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, &bba_icon, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, &moonpatrol_icon, },
