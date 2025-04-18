@@ -9,6 +9,8 @@
 #include "xorshift.h"
 #include "utils.h"
 
+#define SCREENSAVER_DURATION_FRAMES (9 * 30)
+
 typedef void (*ss_func)(void);
 
 static const ss_func ss[] = {
@@ -59,7 +61,16 @@ static void check_buttons(void)
 
 static void draw_screen(void)
 {
+	static int framecounter = 0;
+
 	ss[current_screen_saver]();
+	framecounter++;
+
+	/* Switch to a different screen saver every once in a while */
+	if (framecounter >= SCREENSAVER_DURATION_FRAMES) {
+		framecounter = 0;
+		screensaver_state = SCREENSAVER_INIT;
+	}
 }
 
 static void screensaver_run(void)
