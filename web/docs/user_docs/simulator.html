@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wasm Simulator</title>
+        <script src="wasm-simulator.js" defer></script>
+        <style>
+            body {
+                margin: 0;
+                background: black;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            wasm-simulator {
+                position: relative;
+            }
+            .translate-vertically {
+                top: 0;
+                transform: translateY(-18%);
+                t  }
+        </style>
+    </head>
+    <body>
+        <wasm-simulator script="badge2025_c.js"></wasm-simulator>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const wasmSimulator = document.querySelector("wasm-simulator");
+                if (window.innerHeight < 600) {
+                    wasmSimulator.classList.add("translate-vertically");
+                }
+            });
+        </script>
+    </body>
+</html>
