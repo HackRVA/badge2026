@@ -6073,8 +6073,18 @@ static void badgey_display_player_on_map(void)
 	blink++;
 	if (blink > 128)
 		blink = 0;
-	if (blink & 0x8)
+	if (blink & 0x8) {
 		draw_map_single_color_point(player.x, player.y, RED);
+		FbColor(WHITE);
+		draw_map_single_color_point(player.x - 1, player.y - 1, WHITE);
+		draw_map_single_color_point(player.x - 1, player.y, WHITE);
+		draw_map_single_color_point(player.x - 1, player.y + 1, WHITE);
+		draw_map_single_color_point(player.x + 1, player.y - 1, WHITE);
+		draw_map_single_color_point(player.x + 1, player.y, WHITE);
+		draw_map_single_color_point(player.x + 1, player.y + 1, WHITE);
+		draw_map_single_color_point(player.x, player.y - 1, WHITE);
+		draw_map_single_color_point(player.x, player.y + 1, WHITE);
+	}
 }
 
 static void draw_map_dirt(int x, int y)
