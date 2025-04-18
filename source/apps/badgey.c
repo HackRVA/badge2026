@@ -5045,18 +5045,18 @@ static void badgey_planet_menu(void)
 		dynmenu_clear(&planet_menu);
 		dynmenu_init(&planet_menu, planet_menu_item, ARRAY_SIZE(planet_menu_item));
 		strcpy(planet_menu.title, "");
-		dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 0);
+		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 0);
+		dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
 		if (underchar >= '0' && underchar <= '4')
-			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 1);
+			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 2);
 		if (underchar >= '5' && underchar <= '9')
-			dynmenu_add_item(&planet_menu, "ENTER CAVE", BADGEY_RUN, 1);
-		dynmenu_add_item(&planet_menu, "EQUIP WEAPON", BADGEY_STATS, 5);
-		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
-		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
-		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 8);
-		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 2);
-		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 3);
-		dynmenu_add_item(&planet_menu, "QUIT", BADGEY_EXIT_CONFIRM, 4);
+			dynmenu_add_item(&planet_menu, "ENTER CAVE", BADGEY_RUN, 2);
+		dynmenu_add_item(&planet_menu, "EQUIP WEAPON", BADGEY_STATS, 3);
+		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 4);
+		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 5);
+		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 6);
+		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
+		dynmenu_add_item(&planet_menu, "QUIT", BADGEY_EXIT_CONFIRM, 8);
 		menu_setup = 1;
 	}
 
@@ -5064,7 +5064,7 @@ static void badgey_planet_menu(void)
 		return;
 
 	switch (dynmenu_get_user_choice(&planet_menu)) {
-	case 0: /* blast off */
+	case 1: /* blast off */
 		if (player.world->type == WORLD_TYPE_PLANET && player.world_level > 0) {
 			struct badgey_world const *old_world = player.old_world[player.world_level];
 			if (old_world) {
@@ -5080,44 +5080,44 @@ static void badgey_planet_menu(void)
 			menu_setup = 0;
 		}
 		break;
-	case 1: /* Enter town or cave */
+	case 2: /* Enter town or cave */
 		menu_setup = 0;
 		if (underchar >= '0' && underchar <= '9')
 			set_badgey_state(BADGEY_ENTER_TOWN_OR_CAVE);
 		else
 			set_badgey_state(BADGEY_RUN);
 		break;
-	case 2:
+	case 7: /* stats */
 		screen_changed = 1;
 		set_badgey_state(BADGEY_STATS);
 		break;
 	case DYNMENU_SELECTION_ABORTED:
-	case 3: /* nevermind */
+	case 0: /* exit this menu */
 		menu_setup = 0;
 		set_badgey_state(BADGEY_RUN);
 		screen_changed = 1;
 		break;
-	case 4: /* quit */
+	case 8: /* quit */
 		screen_changed = 1;
 		confirm_exit();
 		menu_setup = 0;
 		break;
-	case 5: /* equip weapon */
+	case 3: /* equip weapon */
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_EQUIP_WEAPON);
 		break;
-	case 6: /* equip armor */
+	case 4: /* equip armor */
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_EQUIP_ARMOR);
 		break;
-	case 7: /* use item */
+	case 5: /* use item */
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_USE_ITEM);
 		break;
-	case 8: /* dig */
+	case 6: /* dig */
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_DIG);
