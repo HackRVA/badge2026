@@ -157,7 +157,8 @@ static void dynmenu_cb(__attribute__((unused)) struct badge_app *app)
         } else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
                 dynmenu_change_current_selection(current_menu, 1);
                 local_screen_changed = 1;
-        } else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+        } else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+			BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 		current_menu->selection_made = current_menu->chosen_cookie;
 		pop_app();
 		local_screen_changed = 1;
