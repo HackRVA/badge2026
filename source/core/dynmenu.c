@@ -162,7 +162,8 @@ static void dynmenu_cb(__attribute__((unused)) struct badge_app *app)
 		current_menu->selection_made = current_menu->chosen_cookie;
 		pop_app();
 		local_screen_changed = 1;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches) ||
+			BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
 		current_menu->selection_made = DYNMENU_SELECTION_ABORTED;
 		pop_app();
 		local_screen_changed = 1;
