@@ -71,10 +71,10 @@ void dynmenu_draw(struct dynmenu *dm)
 	int i, y, first_item, last_item;
 
     /* choose a starting point that leaves the current item in the center */
-	first_item = dm->current_item - 3;
+	first_item = dm->current_item - 5;
 	if (first_item < 0)
 		first_item = 0;
-	last_item = dm->current_item + 3;
+	last_item = dm->current_item + 5;
 	if (last_item > dm->nitems - 1)
 		last_item = dm->nitems - 1;
 
