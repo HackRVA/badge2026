@@ -4740,7 +4740,7 @@ static void badgey_cave_menu(void)
 		if (player.x == 32 && player.y == 62)
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
-		dynmenu_add_item(&cave_menu, "NEVERMIND", BADGEY_RUN, 2);
+		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
 		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 3);
 		menu_setup = 1;
 	}
@@ -4795,7 +4795,7 @@ static void badgey_space_menu(void)
 		dynmenu_init(&cave_menu, cave_menu_item, ARRAY_SIZE(cave_menu_item));
 		dynmenu_set_title(&cave_menu, "", "", "");
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 0);
-		dynmenu_add_item(&cave_menu, "NEVERMIND", BADGEY_RUN, 1);
+		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 1);
 		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 2);
 		menu_setup = 1;
 	}
@@ -4841,7 +4841,7 @@ static void badgey_talk_to_shopkeeper(void)
 		dynmenu_clear(&town_menu);
 		dynmenu_init(&town_menu, town_menu_item, ARRAY_SIZE(town_menu_item));
 		dynmenu_set_title(&town_menu, shopname[st], "", "");
-		dynmenu_add_item(&town_menu, "NEVERMIND", BADGEY_RUN, 254);
+		dynmenu_add_item(&town_menu, "EXIT THIS MENU", BADGEY_RUN, 254);
 		n = 1;
 		for (size_t i = 0; i < ARRAY_SIZE(shop_item); i++) {
 			if (shop_item[i].shop_type == st) {
@@ -4973,7 +4973,7 @@ static void badgey_town_menu(void)
 		dynmenu_init(&town_menu, town_menu_item, ARRAY_SIZE(town_menu_item));
 		dynmenu_set_title(&town_menu, "", "", "");
 		st = player.in_shop;
-		dynmenu_add_item(&town_menu, "NEVERMIND", BADGEY_RUN, 0);
+		dynmenu_add_item(&town_menu, "EXIT THIS MENU", BADGEY_RUN, 0);
 		if (st >= 0 && st < (int) ARRAY_SIZE(proprietor)) {
 			dynmenu_add_item(&town_menu, "TALK TO", BADGEY_RUN, 1);
 			dynmenu_add_item(&town_menu, proprietor[st], BADGEY_RUN, 1);
@@ -5055,7 +5055,7 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
 		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 8);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 2);
-		dynmenu_add_item(&planet_menu, "NEVERMIND", BADGEY_RUN, 3);
+		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 3);
 		dynmenu_add_item(&planet_menu, "QUIT", BADGEY_EXIT_CONFIRM, 4);
 		menu_setup = 1;
 	}
@@ -5938,7 +5938,7 @@ static void badgey_equip(void)
 					break;
 			}
 		}
-		dynmenu_add_item(&item_menu, "NEVERMIND", BADGEY_RUN, DYNMENU_SELECTION_ABORTED);
+		dynmenu_add_item(&item_menu, "EXIT THIS MENU", BADGEY_RUN, DYNMENU_SELECTION_ABORTED);
 		menu_setup = 1;
 	}
 
@@ -5968,7 +5968,7 @@ static void badgey_use_item(void)
 		dynmenu_clear(&item_menu);
 		dynmenu_init(&item_menu, item_menu_item, ARRAY_SIZE(item_menu_item));
 		dynmenu_set_title(&item_menu, "USE ITEM", "", "");
-		dynmenu_add_item(&item_menu, "NEVERMIND", -1, 1);
+		dynmenu_add_item(&item_menu, "EXIT THIS MENU", -1, 1);
 
 		for (unsigned int i = 0; i < ARRAY_SIZE(player.carrying); i++) {
 			if (player.carrying[i] & shop_item[i].usable) {
