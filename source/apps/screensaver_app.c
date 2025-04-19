@@ -9,7 +9,7 @@
 #include "xorshift.h"
 #include "utils.h"
 
-#define SCREENSAVER_DURATION_FRAMES (9 * 30)
+#define SCREENSAVER_DURATION_FRAMES (9 * BADGE_FRAME_RATE_FPS)
 
 typedef void (*ss_func)(void);
 

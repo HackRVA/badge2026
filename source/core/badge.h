@@ -6,6 +6,8 @@
 
 #define MAX_APP_STACK_DEPTH 10
 
+#define BADGE_FRAME_RATE_FPS (30) /**< Target frame rate for the badge. */
+
 struct menu_t;
 
 struct badge_app {
