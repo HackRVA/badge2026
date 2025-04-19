@@ -2666,7 +2666,7 @@ const struct shop_item {
 #define POSITION_FINDER 13
 	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define MAPPING_STONE 14
-	{ "MAPPING STONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
+	{ "MAP GEMSTONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
 };
 
 #define MAX_ITEMS_PER_SHOP 8
@@ -2694,6 +2694,25 @@ static struct treasure_chest {
 	int status;
 } chest[MAX_CHESTS];
 static int nchests = 0;
+
+enum clue_type {
+	clue_type_engraving, clue_type_rando, clue_type_hacker, clue_type_pub,
+};
+
+static struct treasure_clue {
+	char *clue_text;
+	const struct badgey_world *world;
+	int town_or_cave;
+	int x, y;
+	enum clue_type type;
+} clue[] = {
+	/* clues in BALF (ossaria, town 3) */
+	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, 3, -1, -1, clue_type_rando },
+	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, 3, -1, -1, clue_type_hacker },
+	{ "\nBE SURE TO\nGET A COMPASS\nBEFORE ENTERING\nTHE CAVES", &ossaria, 3, -1, -1, clue_type_pub },
+};
+#define NCLUES (ARRAY_SIZE(clue))
+#define NO_CLUE (-1)
 
 const char *proprietor[] = { /* indexed by shop type */
 	"  INNKEEP",
@@ -2914,12 +2933,17 @@ struct creature {
 	struct creature_specific_data csd;
 	uint8_t no_in_party;
 	int hit_points;
+	int16_t clue;
 };
 
 #define MAX_CREATURES 25
 #define NUM_MONSTERS 20
 #define NUM_CAVE_MONSTERS 20
 #define MAX_COMBAT_CREATURES 5
+#define GUARDS_PER_TOWN 8
+#define CITIZENS_PER_TOWN 8
+#define ROBOT1_PER_TOWN 2
+#define ROBOT3_PER_TOWN 2
 static struct creature planet_creature[MAX_CREATURES];
 static struct creature town_creature[MAX_CREATURES];
 static struct creature space_creature[MAX_CREATURES];
@@ -3228,6 +3252,7 @@ static void add_shopkeeper(int x, int y, unsigned char shoptype, unsigned int *s
 	creature[n].csd.citizen.icon = minicon + (xorshift(seed) % (maxicon - minicon));
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3260,6 +3285,7 @@ static void add_robot1(unsigned char roadchar, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3323,6 +3349,7 @@ static void add_guard(unsigned char roadchar, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3358,6 +3385,7 @@ static void add_citizen(int roadchar, unsigned int *seed)
 	creature[n].csd.citizen.icon = ICON_CITIZEN1 + (xorshift(seed) % 6);
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3659,6 +3687,7 @@ static void spawn_monster_at(int x, int y, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].no_in_party = (unsigned char) ((xorshift(seed) % 4) + 1);
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -4911,6 +4940,18 @@ static void badgey_space_menu(void)
 	}
 }
 
+static int find_shopkeeper(int shop_type)
+{
+	for (int i = 0; i < *ncreatures; i++) {
+		if (creature[i].type != CREATURE_TYPE_CITIZEN)
+			continue;
+		if (creature[i].csd.citizen.shopkeep != shop_type)
+			continue;
+		return i;
+	}
+	return -1;
+}
+
 static void badgey_talk_to_shopkeeper(void)
 {
 	static int menu_setup = 0;
@@ -4965,14 +5006,20 @@ static void badgey_talk_to_shopkeeper(void)
 		set_badgey_state(BADGEY_STATS);
 	} else if (choice > 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
+		char *clue_text = "";
+		int shopkeeper = find_shopkeeper(st);
+		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE)
+			clue_text = clue[creature[shopkeeper].clue].clue_text;
+
 		if (player.money < shop_item[choice].price) {
 			snprintf(message, sizeof(message), "\n\n"
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
 					" MONEY FOR\n THAT\n");
 		} else {
-			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n",
+			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
 					shop_item[choice].price,
-					shop_item[choice].name);
+					shop_item[choice].name,
+					clue_text);
 			player.money -= shop_item[choice].price;
 			player.carrying[choice]++;
 			player.carrying_dirty = 1;
@@ -5034,6 +5081,8 @@ static void badgey_talk_to_citizen(void)
 				creature_name[creature[c].name], creature_info[i]);
 		FbMove(0, 0);
 		FbWriteString(buf);
+		if (creature[c].clue != NO_CLUE)
+			FbWriteString(clue[creature[c].clue].clue_text);
 		FbSwapBuffers();
 		screen_changed = 0;
 	}
@@ -5646,6 +5695,81 @@ static void setup_town_treasures(int town)
 	chest[NUM_STATIC_CHESTS].status = CHEST_STATUS_BURIED;
 }
 
+static void assign_clue_to_rando(unsigned int *seed, int16_t clue_number)
+{
+	int ncandidates = GUARDS_PER_TOWN + CITIZENS_PER_TOWN +
+				ROBOT1_PER_TOWN + ROBOT3_PER_TOWN;
+	int count = 0;
+	do {
+		int c = (xorshift(seed) % ncandidates);
+		if (creature[c].clue != NO_CLUE)
+			continue;
+		if (creature[c].type == CREATURE_TYPE_CITIZEN &&
+			creature[c].csd.citizen.shopkeep != SHOP_NONE)
+			continue; /* shop keeper is not "rando" */
+		if (creature[c].type == CREATURE_TYPE_CITIZEN ||
+				creature[c].type == CREATURE_TYPE_GUARD ||
+				creature[c].type == CREATURE_TYPE_ROBOT1 ||
+				creature[c].type == CREATURE_TYPE_ROBOT3) {
+			creature[c].clue = clue_number;
+			break;
+		}
+		count++;
+		if (count > 30) {
+#if TARGET_SIMULATOR
+			fprintf(stderr, "Failed to assign clue %d\n", clue_number);
+#endif
+			break;
+		}
+	} while (1);
+}
+
+static void assign_clue_to_shopkeeper(int16_t clue_number, int shop_type)
+{
+	for (int i = 0; i < *ncreatures; i++) {
+		if (creature[i].type != CREATURE_TYPE_CITIZEN)
+			continue;
+		if (creature[i].csd.citizen.shopkeep != shop_type)
+			continue;
+		if (creature[i].clue != NO_CLUE)
+			continue;
+		creature[i].clue = clue_number;
+		return;
+	}
+#if TARGET_SIMULATOR
+	fprintf(stderr, "Failed to assign clue %d\n", clue_number);
+#endif
+}
+
+static void distribute_town_clues(int town_number, unsigned int *seed)
+{
+	/* this is called before player enters town, so overworld is player's current world */
+	const struct badgey_world *overworld = player.world;
+
+	for (unsigned int i = 0; i < NCLUES; i++) {
+		if (clue[i].world != overworld)
+			continue;
+		if (clue[i].town_or_cave != town_number)
+			continue;
+		switch (clue[i].type) {
+		case clue_type_rando:
+			assign_clue_to_rando(seed, i);
+			break;
+		case clue_type_hacker:
+			assign_clue_to_shopkeeper(i, SHOP_HACKERSPACE);
+			break;
+		case clue_type_pub:
+			assign_clue_to_shopkeeper(i, SHOP_PUB);
+			break;
+		case clue_type_engraving:
+			/* TO DO */
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 static void generate_town(int town_number)
 {
 	int x, y;
@@ -5764,19 +5888,20 @@ static void generate_town(int town_number)
 
 	arrange_shop_contents(town);
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < GUARDS_PER_TOWN; i++)
 		add_guard(roadchar, &seed);
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < CITIZENS_PER_TOWN; i++)
 		add_citizen(roadchar, &seed);
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < ROBOT1_PER_TOWN; i++)
 		add_robot1(roadchar, &seed);
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < ROBOT3_PER_TOWN; i++)
 		add_robot3(roadchar, &seed);
 
 	setup_town_treasures(town);
+	distribute_town_clues(town, &seed);
 }
 
 static void enter_dynmap(int x, int y)
