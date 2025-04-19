@@ -2675,13 +2675,23 @@ struct shop {
 	int nitems;
 } shop[NUMSHOPS];
 
-#define MAX_CHESTS 20
-#define NUM_CHESTS_PER_CAVE 15
+/* There are a number of "static" chests that are manually placed in the game, plus
+ * some randomly placed chests.  chest[0] .. chest[NUM_STATIC_CHESTS - 1] are the static
+ * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
+ */
+#define MAX_CHESTS 100
+#define NUM_STATIC_CHESTS 1
+#define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
+	struct badgey_world *world;
+	int town_or_cave;
 	int x, y;
 	int gp;
 	int specialty_item; /* index into shop_item[], or -1 for none */
-	int buried;
+#define CHEST_STATUS_BURIED 1
+#define CHEST_STATUS_UNCONCEALED 0
+#define CHEST_STATUS_HARVESTED -1
+	int status;
 } chest[MAX_CHESTS];
 static int nchests = 0;
 
@@ -2936,6 +2946,7 @@ static struct player {
 	int wx[5], wy[5]; /* coords at each level */
 	int in_town;
 	int in_cave;
+	int town_or_cave_num;
 	int dir;
 	int moving;
 	unsigned char in_shop;
@@ -3371,6 +3382,37 @@ static void spawn_planet_initial_monsters(void);
 static void spawn_planet_initial_ships(void);
 static void setup_planet_initial_treasures(void);
 
+static void add_static_treasure(const struct badgey_world *world, int town_or_cave, int x, int y,
+			int gp, int specialty_item, int status)
+{
+	if (nchests >= NUM_STATIC_CHESTS) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "%s:%d: add_static_treasure(): "
+				"too many static treasures, increase NUM_STATIC_CHESTS\n",
+				__FILE__, __LINE__);
+		exit(1);
+#else
+		return;
+#endif
+	}
+
+	chest[nchests].world = (struct badgey_world *) world;
+	chest[nchests].town_or_cave = town_or_cave;
+	chest[nchests].x = x;
+	chest[nchests].y = y;
+	chest[nchests].gp = gp;
+	chest[nchests].specialty_item = specialty_item;
+	chest[nchests].status = status;
+	nchests++;
+}
+
+static void setup_static_treasures(void)
+{
+	nchests = 0;
+	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
+	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
+}
+
 static void badgey_init(void)
 {
 	FbInit();
@@ -3390,8 +3432,10 @@ static void badgey_init(void)
 	player.in_shop = 0;
 	player.money = 500;
 	memset(player.carrying, 0, sizeof(player.carrying));
+	player.carrying[POSITION_FINDER] = 1;
 	player.carrying[MAPPING_STONE] = 1;
 	player.carrying_dirty = 1;
+	setup_static_treasures();
 	spawn_planet_initial_monsters();
 	spawn_planet_initial_ships();
 	setup_planet_initial_treasures();
@@ -3426,9 +3470,13 @@ static void badgey_collect_treasure(int treasure)
 			player.carrying_dirty = 1;
 		}
 
-		if (treasure < nchests - 1)
-			chest[treasure] = chest[nchests - 1];
-		nchests--;
+		if (treasure < NUM_STATIC_CHESTS) {
+			chest[treasure].status = CHEST_STATUS_HARVESTED;
+		} else {
+			if (treasure < nchests - 1)
+				chest[treasure] = chest[nchests - 1];
+			nchests--;
+		}
 
 		FbClear();
 		FbColor(WHITE);
@@ -3456,6 +3504,17 @@ static void badgey_collect_treasure(int treasure)
 	}
 }
 
+static int chest_in_players_world(int chest_num)
+{
+	if (player.world == chest[chest_num].world)
+		return 1;
+	if (player.old_world[player.world_level] == chest[chest_num].world &&
+		(player.in_town || player.in_cave) &&
+		player.town_or_cave_num == chest[chest_num].town_or_cave)
+		return 1;
+	return 0;
+}
+
 static void badgey_dig(void)
 {
 	static int screen_changed = 1;
@@ -3463,7 +3522,10 @@ static void badgey_dig(void)
 	static enum badgey_state_t prev;
 
 	for (int i = 0; i < nchests; i++) {
-		if (player.x == chest[i].x && player.y == chest[i].y && chest[i].buried) {
+		if (player.x == chest[i].x && player.y == chest[i].y &&
+			chest[i].status == CHEST_STATUS_BURIED) {
+			if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
+				continue; /* chest is in another world, not the current world */
 			prev = previous_badgey_state; /* this is a little hacky... oh well. */
 			badgey_collect_treasure(i);
 			got_treasure = 1;
@@ -3502,11 +3564,21 @@ static void badgey_dig(void)
 
 static void check_for_treasure(void)
 {
-	for (int i = 0; i < nchests; i++)
-		if (player.x == chest[i].x && player.y == chest[i].y && !chest[i].buried) {
-			badgey_collect_treasure(i);
-			break;
+	for (int i = 0; i < nchests; i++) {
+		if (chest[i].status != CHEST_STATUS_UNCONCEALED)
+			continue;
+		if (player.x == chest[i].x && player.y == chest[i].y) {
+			if (i < NUM_STATIC_CHESTS) {
+				if (chest_in_players_world(i)) {
+					badgey_collect_treasure(i);
+					break;
+				}
+			} else {
+				badgey_collect_treasure(i);
+				break;
+			}
 		}
+	}
 }
 
 static void cave_check_buttons(void)
@@ -3668,12 +3740,14 @@ static void spawn_planet_initial_monsters(void)
 static void setup_planet_initial_treasures(void)
 {
 	/* Temporary test treasure */
-	nchests = 1;
-	chest[0].x = 32;
-	chest[0].y = 32;
-	chest[0].gp = 100;
-	chest[0].specialty_item = -1;
-	chest[0].buried = 1;
+	nchests = NUM_STATIC_CHESTS + 1;
+	chest[NUM_STATIC_CHESTS].world = NULL;
+	chest[NUM_STATIC_CHESTS].town_or_cave = -1; /* non-static chests are always in current world */
+	chest[NUM_STATIC_CHESTS].x = 32;
+	chest[NUM_STATIC_CHESTS].y = 32;
+	chest[NUM_STATIC_CHESTS].gp = 100;
+	chest[NUM_STATIC_CHESTS].specialty_item = -1;
+	chest[NUM_STATIC_CHESTS].status = CHEST_STATUS_BURIED;
 }
 
 static void spawn_planet_initial_ships(void)
@@ -3796,13 +3870,23 @@ static void check_buttons(int tick)
 			}
 		}
 
-		if (!time_for_combat || player.in_town)
-			for (int i = 0; i < nchests; i++)
-				if (chest[i].x == player.x && chest[i].y == player.y && !chest[i].buried) {
-					treasure = i;
-					printf("treasure = %d\n", treasure);
-					break;
+		if (!time_for_combat || player.in_town) {
+			for (int i = 0; i < nchests; i++) {
+				if (chest[i].status != CHEST_STATUS_UNCONCEALED)
+					continue;
+				if (chest[i].x == player.x && chest[i].y == player.y) {
+					if (i < NUM_STATIC_CHESTS) {
+						if (chest_in_players_world(i)) {
+							treasure = i;
+							break;
+						}
+					} else {
+						treasure = i;
+						break;
+					}
 				}
+			}
+		}
 
 		if (player.in_town) {
 			time_for_combat = 0; /* for now, can't fight in towns */
@@ -4105,7 +4189,11 @@ static void draw_cave_creature(int x, int y, int depth, int scale)
 static void draw_treasure_chest(int x, int y, int depth, int scale)
 {
 	for (int i = 0; i < nchests; i++) {
+		if (chest[i].status != CHEST_STATUS_UNCONCEALED)
+			continue;
 		if (x != chest[i].x || y != chest[i].y)
+			continue;
+		if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
 			continue;
 		int sx = LCD_XSIZE / 2;
 		int sy = cave_y[depth];
@@ -5548,12 +5636,14 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 static void setup_town_treasures(int town)
 {
 	/* temporary test treasure */
-	nchests = 1;
-	chest[0].x = 32;
-	chest[0].y = 32;
-	chest[0].gp = 100;
-	chest[0].specialty_item = -1;
-	chest[0].buried = 1;
+	nchests = NUM_STATIC_CHESTS + 1;
+	chest[NUM_STATIC_CHESTS].world = NULL;
+	chest[NUM_STATIC_CHESTS].town_or_cave = -1; /* non-static chests are always in the current world. */
+	chest[NUM_STATIC_CHESTS].x = 32;
+	chest[NUM_STATIC_CHESTS].y = 32;
+	chest[NUM_STATIC_CHESTS].gp = 100;
+	chest[NUM_STATIC_CHESTS].specialty_item = -1;
+	chest[NUM_STATIC_CHESTS].status = CHEST_STATUS_BURIED;
 }
 
 static void generate_town(int town_number)
@@ -5709,6 +5799,7 @@ static void enter_town(int town_number)
 	dynworld.type = WORLD_TYPE_TOWN;
 	enter_dynmap(6, 32);
 	player.in_town = 1;
+	player.town_or_cave_num = town_number;
 }
 
 static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed, int *total_dug)
@@ -5782,11 +5873,13 @@ static void spawn_treasure_chest_at(int x, int y, unsigned int *seed)
 {
 	if (nchests >= MAX_CHESTS)
 		return;
+	chest[nchests].world = NULL; /* dynamically created chests are always in the current world */
+	chest[nchests].town_or_cave = -1;
 	chest[nchests].x = x;
 	chest[nchests].y = y;
 	chest[nchests].gp = (xorshift(seed) % 50) + 20;
 	chest[nchests].specialty_item = -1;
-	chest[nchests].buried = 0;
+	chest[nchests].status = CHEST_STATUS_UNCONCEALED;
 	nchests++;
 }
 
@@ -5808,12 +5901,12 @@ static void populate_cave(unsigned int *seed)
 	creature = &town_creature[0];
 	ncreatures = &ntown_creatures;
 	*ncreatures = 0;
-	nchests = 0;
+	nchests = NUM_STATIC_CHESTS;
 
 	for (int i = 0; i < NUM_CAVE_MONSTERS; i++)
 		spawn_cave_monster(seed);
 
-	for (int i = 0; i < NUM_CHESTS_PER_CAVE; i++)
+	for (int i = 0; i < NUM_RAND_CHESTS_PER_CAVE; i++)
 		spawn_treasure_chest(seed);
 }
 
@@ -5849,6 +5942,7 @@ static void enter_cave(int cave_number)
 	enter_dynmap(32, 62);
 	player.dir = 0;
 	player.in_cave = 1;
+	player.town_or_cave_num = cave_number;
 	screen_changed = 1;
 }
 
