@@ -5805,7 +5805,8 @@ static void enter_town(int town_number)
 static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed, int *total_dug)
 {
 	/* check we're not too close to the edge of the map */ 
-	if (x < 1 || x > 62 || y < 1 || y > 62)
+	/* limit y from going below 32 just to shrink the maze size down to something tolerable */
+	if (x < 1 || x > 62 || y < 32 || y > 62)
 		return; /* quit digging */
 
 	/* Check we're not about to connect to another existing tunnel */
