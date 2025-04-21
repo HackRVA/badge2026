@@ -2784,7 +2784,7 @@ static const struct cave_aux_entrance {
 	int wx, wy, cx, cy; /* world and cave coords */
 	int dwx, dwy; /* default cave entrance world coords */
 } cave_aux_entrance[] = {
-	{ &ossaria, 9, 41, 54, 39, 39, 40, 56 },
+	{ &ossaria, 9, 41, 54, 37, 35, 40, 56 },
 };
 #define NCAVE_AUX_ENTRANCES ARRAY_SIZE(cave_aux_entrance)
 
@@ -6230,7 +6230,7 @@ static void engrave_cave(int cave_number)
 	}
 }
 
-static void generate_cave(int cave_number)
+static void generate_cave(int cave_number, int seedx, int seedy)
 {
 	int world_no = -1;
 	for (size_t i = 0; i < ARRAY_SIZE(space.subworld); i++)
@@ -6246,7 +6246,7 @@ static void generate_cave(int cave_number)
 	}
 #endif
 	int caveno = cave_number + (world_no * 10) + 5;
-	unsigned int seed = (player.x + 64 * player.y * (caveno + 1)) ^ 0x5a5a5a5a;
+	unsigned int seed = (seedx + 64 * seedy * (caveno + 1)) ^ 0x5a5a5a5a;
 
 	memset(dynmap, '#', sizeof(dynmap)); /* Fill the map with walls. */
 	int total_dug = 0;
@@ -6259,11 +6259,14 @@ static void generate_cave(int cave_number)
 static void enter_cave(int cave_number)
 {
 	int cx, cy, owx, owy;
+	int seedx, seedy;
 
 	cx = 32; /* Default cave entrance coords */
 	cy = 62;
 	owx = player.x;
 	owy = player.y; 
+	seedx = player.x; /* Assume using primary entrance until proven otherwise */
+	seedy = player.y;
 
 	if (cave_number == 'c' - '0') { /* auxiliary cave entrance? */
 		int found = 0;
@@ -6277,6 +6280,8 @@ static void enter_cave(int cave_number)
 			cy = cave_aux_entrance[i].cy;
 			owx = cave_aux_entrance[i].dwx;
 			owy = cave_aux_entrance[i].dwy;
+			seedx = owx; /* Must use x,y of primary cave entrance for seed purposes */
+			seedy = owy;
 			found = 1;
 			break;
 		}
@@ -6289,7 +6294,7 @@ static void enter_cave(int cave_number)
 #endif
 		}
 	}
-	generate_cave(cave_number);
+	generate_cave(cave_number, seedx, seedy);
 	dynworld.type = WORLD_TYPE_CAVE;
 	enter_dynmap(cx, cy, owx, owy);
 	player.dir = 0;
