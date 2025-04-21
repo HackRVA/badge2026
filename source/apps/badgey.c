@@ -198,10 +198,10 @@ static const char ossaria_map[4096] = {
 	"wwwwwwww...ww.......ffff....wwwwww..mm..f.f.......w.w..wwwwwwwww"
 	"wwwwwwww..........ffff........wwwwwmmmmmmcf.....w.www...wwwwwwww"
 	"wwwww...........ffffffff........www.....mmf.....www......wwwwwww"
-	"wwwww.........fffffffffffffff..wwww.....9mmm......w......wwwwwww"
+	"wwwww.........fffffffffffffff..wwww.4...9mmm......w......wwwwwww"
 	"wwwwww....w..fffff..........wwwwwwwwww.....m.....wwwwwwwwwwwwwww"
 	"wwwwwww..ww..........wwww...wwwwwwwwwwwwwwwww............wwwwwww"
-	"wwwwwww.wwww..4..wwwwwwwwww.wwwwwwwwwwwwwwwwwwwww.........wwwwww"
+	"wwwwwww.wwww.....wwwwwwwwww.wwwwwwwwwwwwwwwwwwwww.........wwwwww"
 	"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.........www"
 	"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.....wwwwwwwwwwwwww......www"
 	"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.....w"
@@ -4775,7 +4775,7 @@ static const struct town_info {
 		town_ponds | town_armoury | town_weapons | town_hackerspace,
 	},
 	{ "ONVAL",
-		town_creek | town_weapons | town_armoury | town_temple,
+		town_creek | town_weapons | town_armoury | town_temple | town_hackerspace,
 	},
 	{ "CAVES OF ZOR", 0 },
 	{ "XANFIR MINES", 0 },
