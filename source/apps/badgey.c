@@ -41,6 +41,8 @@ static const int screen_cells_wide = (LCD_XSIZE == 160) ? 9 : 7;
 static const int screen_cells_tall = (LCD_YSIZE == 160) ? 9 : 7;
 static const int screen_cells_centerx = (screen_cells_wide == 9) ? 4 : 3;
 static const int screen_cells_centery = (screen_cells_tall == 9) ? 4 : 3;
+static const int xoff[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+static const int yoff[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 
 struct dynmenu planet_menu;
 struct dynmenu_item planet_menu_item[10];
@@ -50,6 +52,8 @@ struct dynmenu town_menu;
 struct dynmenu_item town_menu_item[10];
 struct dynmenu space_menu;
 struct dynmenu_item space_menu_item[10];
+struct dynmenu board_ship_menu;
+struct dynmenu_item board_ship_menu_item[2];
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
 static const int xo4[] = { 0, 1, 0, -1 };
@@ -3029,10 +3033,11 @@ static int nspace_creatures = 0;
 static int ncombat_creatures = 0;
 static struct creature *creature = space_creature; /* points to one of planet_, town_ or space_ creature[] */
 static int *ncreatures = &nspace_creatures; /* points to one of nplanet_, ntown_ or nspace_ creatures */
-#define NUM_SHIPS 2
+#define NUM_SHIPS 30
 static struct ship {
 	int x, y;
 	int dir; 
+	int player_aboard;
 } ship[NUM_SHIPS];
 static int nships = 0;
 
@@ -3054,6 +3059,8 @@ static struct player {
 	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
 	unsigned char cbx, cby;
+	int aboard_ship;
+	int candidate_ship;
 #define EQUIPPED_NONE 255
 } player = {
 	.world = &space,
@@ -3097,6 +3104,7 @@ enum badgey_state_t {
 	BADGEY_DIG,
 	BADGEY_USE_ITEM,
 	BADGEY_DISPLAY_MAP,
+	BADGEY_MAYBE_BOARD_SHIP,
 	BADGEY_EXIT,
 };
 
@@ -3538,6 +3546,8 @@ static void badgey_init(void)
 	player.carrying[MAPPING_STONE] = 1;
 	player.carrying[COMPASS_ITEM] = 1;
 	player.carrying_dirty = 1;
+	player.aboard_ship = -1;
+	player.candidate_ship = -1;
 	setup_static_treasures();
 	spawn_planet_initial_monsters();
 	spawn_planet_initial_ships();
@@ -3825,6 +3835,7 @@ static void spawn_ship(unsigned int *seed)
 	ship[nships].x = x;
 	ship[nships].y = y;
 	ship[nships].dir = 1;
+	ship[nships].player_aboard = 0;
 #if TARGET_SIMULATOR
 	printf("Ship spawned at %d, %d\n", x, y);
 #endif
@@ -3863,6 +3874,44 @@ static void spawn_planet_initial_ships(void)
 }
 
 static void enter_combat(int cr);
+
+static void maybe_board_ship(void)
+{
+	static int menu_setup = 0;
+
+	if (player.candidate_ship == -1 || player.aboard_ship != -1) {
+		set_badgey_state(BADGEY_RUN);
+		return;
+	}
+
+	if (!menu_setup) {
+		dynmenu_clear(&board_ship_menu);
+		dynmenu_init(&board_ship_menu, board_ship_menu_item, ARRAY_SIZE(board_ship_menu_item));
+		dynmenu_set_title(&board_ship_menu, "BOARD SHIP?", "", "");
+		dynmenu_add_item(&board_ship_menu, "NO", 0, 0);
+		dynmenu_add_item(&board_ship_menu, "YES", 1, 1);
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&board_ship_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&board_ship_menu)) {
+	default:
+	case 0:
+		set_badgey_state(BADGEY_RUN);
+		break;
+	case 1:
+		player.aboard_ship = player.candidate_ship;
+		player.x = ship[player.candidate_ship].x;
+		player.y = ship[player.candidate_ship].y;
+		ship[player.candidate_ship].player_aboard = 1;
+		player.candidate_ship = -1;
+		set_badgey_state(BADGEY_RUN);
+		screen_changed = 1;
+		break;
+	}
+}
 
 static void check_buttons(int tick)
 {
@@ -3954,14 +4003,35 @@ static void check_buttons(int tick)
 	} else {
 		char x = player.world->wm[windex(newx, newy)];
 		/* Prevent player from traversing water or mountains or signage or walls */
-		if (x == 'w' || x == 'm' || x == '_' || (x >= 'A' && x <= 'Z') || x == '#') {
-			player.moving = 0;
-			return;
+		if (x == 'w' && player.aboard_ship == -1) {
+			/* check for a ship */
+			for (int i = 0 ; i < nships; i++) {
+				if (ship[i].x == newx && ship[i].y == newy) {
+					player.candidate_ship = i;
+					set_badgey_state(BADGEY_MAYBE_BOARD_SHIP);
+				}
+			}
+		}
+		if (player.aboard_ship != -1) {
+			/* If player is aboard ship, we can only move where there's water */
+			if (x != 'w') {
+				player.moving = 0;
+				return;
+			}
+		} else {
+			if (x == 'w' || x == 'm' || x == '_' || (x >= 'A' && x <= 'Z') || x == '#') {
+				player.moving = 0;
+				return;
+			}
 		}
 	}
 	if (newx != player.x || newy != player.y) {
 		player.x = newx;
 		player.y = newy;
+		if (player.aboard_ship != -1) {
+			ship[player.aboard_ship].x = newx;
+			ship[player.aboard_ship].y = newy;
+		}
 		player.wx[player.world_level] = newx;
 		player.wy[player.world_level] = newy;
 		screen_changed = 1;
@@ -4743,7 +4813,8 @@ static void move_ships(void)
 	if (player.world->type != WORLD_TYPE_PLANET)
 		return;
 	for (int i = 0; i < nships; i++) {
-		move_ship(i);
+		if (!ship[i].player_aboard)
+			move_ship(i);
 	}
 }
 
@@ -4932,7 +5003,8 @@ static void draw_screen(void)
 	int centerx = (LCD_XSIZE == 160) ? 8 + 16 * 4 : 8 + 16 * 3;
 	int centery = (LCD_YSIZE == 160) ? 8 + 16 * 4 : 8 + 16 * 3;
 
-	draw_cell(centerx, centery, '@');
+	if (player.aboard_ship == -1)
+		draw_cell(centerx, centery, '@');
 
 	draw_creatures();
 	draw_ships();
@@ -5347,6 +5419,35 @@ static void badgey_town_menu(void)
 	menu_setup = 0;
 }
 
+static void maybe_disembark_ship(void)
+{
+	if (player.aboard_ship == -1)
+		return; /* shouldn't happen */
+
+	for (int i = 0; i < 8; i++) {
+		int tx = wrap(player.x + xoff[i]);
+		int ty = wrap(player.y + yoff[i]);
+		char ch = player.world->wm[windex(tx, ty)];
+		switch (ch) {
+		case '.': /* grass */
+		case '0' ... '9': /* town or cave */
+		case 'f': /* forest */
+		case 'd': /* dirt */
+		case 'b': /* brick */
+		case '=': /* boards */
+			ship[player.aboard_ship].player_aboard = 0;
+			player.x = tx;
+			player.y = ty;
+			player.aboard_ship = -1;
+			player.candidate_ship = -1;
+			return;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 static void badgey_planet_menu(void)
 {
 	int underchar = player.world->wm[windex(player.x, player.y)];
@@ -5357,6 +5458,8 @@ static void badgey_planet_menu(void)
 		dynmenu_init(&planet_menu, planet_menu_item, ARRAY_SIZE(planet_menu_item));
 		strcpy(planet_menu.title, "");
 		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 0);
+		if (player.aboard_ship != -1)
+			dynmenu_add_item(&planet_menu, "DISEMBARK SHIP", BADGEY_RUN, 9);
 		dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
 		if (underchar >= '0' && underchar <= '4')
 			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 2);
@@ -5432,6 +5535,12 @@ static void badgey_planet_menu(void)
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_DIG);
+		break;
+	case 9: /* disembark from ship */
+		maybe_disembark_ship();
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_RUN);
 		break;
 	}
 }
@@ -7013,6 +7122,9 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_DISPLAY_MAP:
 		badgey_display_map();
+		break;
+	case BADGEY_MAYBE_BOARD_SHIP:
+		maybe_board_ship();
 		break;
 	default:
 		break;
