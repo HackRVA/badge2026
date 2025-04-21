@@ -130,16 +130,16 @@ static void screensaver_show(struct ss_app_ctx *ctx)
 {
 	check_buttons(ctx);
 
-	/* Run screensaver. */
-	SS[ctx->idx]();
-	ctx->cnt_frames++;
-
 	/* Go to sleep between screensavers. */
 	if (ctx->cnt_frames >= SCREENSAVER_DURATION_FRAMES) {
 		go_dark();
 		ctx->cnt_frames = 0;
 		ctx->state = SCREENSAVER_DARK;
 	}
+
+	/* Run screensaver. */
+	SS[ctx->idx]();
+	ctx->cnt_frames++;
 }
 
 static void screensaver_dark(struct ss_app_ctx *ctx)
@@ -160,10 +160,9 @@ static void screensaver_exit(struct ss_app_ctx *ctx)
 	ctx->cnt_frames = 0;
 	ctx->start_us = 0;
 
-	/* TODO: try removing this again and see what breaks. -PMW */
-	display_reset(); /* In case the display got messed up (for unknown reasons it happens). */
-
+	/* Always restart display. */
 	go_bright();
+
 	pop_app();
 }
 
