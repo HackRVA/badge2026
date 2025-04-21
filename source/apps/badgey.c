@@ -3033,7 +3033,7 @@ static int nspace_creatures = 0;
 static int ncombat_creatures = 0;
 static struct creature *creature = space_creature; /* points to one of planet_, town_ or space_ creature[] */
 static int *ncreatures = &nspace_creatures; /* points to one of nplanet_, ntown_ or nspace_ creatures */
-#define NUM_SHIPS 30
+#define NUM_SHIPS 2
 static struct ship {
 	int x, y;
 	int dir; 
