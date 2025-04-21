@@ -195,10 +195,10 @@ static const char ossaria_map[4096] = {
 	"wwwwww..wwwwwww.............................................wwww"
 	"wwwww......w................mmm..........f.............w.....www"
 	"wwwwwww....w.............wwwwwmm.........f.f......w....www...www"
-	"wwwwwwww...ww.......ffff....wwwwww......f.f.......w.w..wwwwwwwww"
-	"wwwwwwww..........ffff........wwwww.....m9f.....w.www...wwwwwwww"
+	"wwwwwwww...ww.......ffff....wwwwww..mm..f.f.......w.w..wwwwwwwww"
+	"wwwwwwww..........ffff........wwwwwmmmmmmcf.....w.www...wwwwwwww"
 	"wwwww...........ffffffff........www.....mmf.....www......wwwwwww"
-	"wwwww.........fffffffffffffff..wwww......mmm......w......wwwwwww"
+	"wwwww.........fffffffffffffff..wwww.....9mmm......w......wwwwwww"
 	"wwwwww....w..fffff..........wwwwwwwwww.....m.....wwwwwwwwwwwwwww"
 	"wwwwwww..ww..........wwww...wwwwwwwwwwwwwwwww............wwwwwww"
 	"wwwwwww.wwww..4..wwwwwwwwww.wwwwwwwwwwwwwwwwwwwww.........wwwwww"
@@ -2772,6 +2772,22 @@ static struct stela {
 } stela[MAX_STELA_PER_CAVE];
 static int nstela = 0;
 
+/* There are the "normal" cave entrances, and then there are auxiliary entrances.
+ * The normal cave entrances are just numerals 5-9 on the overworld map, leading
+ * into the corresponding caves at a fixed location in the cave.
+ * cave_aux_entrance[] is for secondary entrances to caves, marked by a 'c' on the map,
+ * and supplemented by this data to tell where in the cave they are.
+ */
+static const struct cave_aux_entrance {
+	const struct badgey_world *world;
+	int cave_num;
+	int wx, wy, cx, cy; /* world and cave coords */
+	int dwx, dwy; /* default cave entrance world coords */
+} cave_aux_entrance[] = {
+	{ &ossaria, 9, 41, 54, 39, 39, 40, 56 },
+};
+#define NCAVE_AUX_ENTRANCES ARRAY_SIZE(cave_aux_entrance)
+
 const char *proprietor[] = { /* indexed by shop type */
 	"  INNKEEP",
 	"  BARKEEP",
@@ -3520,6 +3536,7 @@ static void badgey_init(void)
 	memset(player.carrying, 0, sizeof(player.carrying));
 	player.carrying[POSITION_FINDER] = 1;
 	player.carrying[MAPPING_STONE] = 1;
+	player.carrying[COMPASS_ITEM] = 1;
 	player.carrying_dirty = 1;
 	setup_static_treasures();
 	spawn_planet_initial_monsters();
@@ -4021,12 +4038,13 @@ static void draw_cell(int x, int y, unsigned char c)
 		if (c != '_')
 			FbCharacter(c);
 		break;
+	case 'c': /* extra cave entrance */
 	case '0' ... '9':
 		if (player.world->type == WORLD_TYPE_SPACE) { /* player is in space?  it's a planet */
 			FbImage2(&planet, 0);
 		} else {
 			/* Not in space, so ... */
-			if ((c - '0') < 5)
+			if (c != 'c' && (c - '0') < 5)
 				FbImage2(&town, 0);
 			else
 				FbImage2(&cave, 0);
@@ -4095,7 +4113,7 @@ static int visibility_evaluator(int x, int y, void *cookie)
 	if (y < 0)
 		y += 64;
 	char c = player.world->wm[windex(x, y)];
-	if (c == 'm' || c == 'f' || c == '#' || (c >= '0' && c <= '9')) { /* mountains, forest, towns/caves block visibility */
+	if (c == 'm' || c == 'f' || c == '#' || (c >= '0' && c <= '9') || (c == 'c')) { /* mountains, forest, towns/caves block visibility */
 		d->answer = 0;
 		return 1; /* stop bline algorithm */
 	}
@@ -4306,6 +4324,25 @@ static void draw_treasure_chest(int x, int y, int depth, int scale)
 	}
 }
 
+static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, int scale)
+{
+	if (x == 32 && y == 62) /* default up ladder */
+		draw_up_ladder(ladder_start, start_inc, scale);
+
+	/* draw auxiliary cave exits */
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].cx != x)
+			continue;
+		if (cave_aux_entrance[i].cy != y)
+			continue;
+		if (cave_aux_entrance[i].cave_num != player.town_or_cave_num)
+			continue;
+		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
+			continue;
+		draw_up_ladder(ladder_start, start_inc, scale);
+	}
+}
+
 static void draw_cave_screen(void)
 {
 	int x = player.x;
@@ -4328,8 +4365,7 @@ static void draw_cave_screen(void)
 		ladder_start += start_inc;
 		start_inc = (start_inc * 205) / 256; /* means: * 0.8 */
 		scale = (scale * 205) / 256;
-		if (x == 32 && y == 62)
-			draw_up_ladder(ladder_start, start_inc, scale);
+		maybe_draw_up_ladder(x, y, ladder_start, start_inc, scale);
 		draw_cave_creature(x, y, i, scale);
 		draw_cave_stela(x, y, i, scale, &clue_no);
 		draw_treasure_chest(x, y, i, scale);
@@ -4909,7 +4945,7 @@ static void draw_screen(void)
 	}
 
 	char ch = player.world->wm[windex(player.x, player.y)];
-	if (player.world->type == WORLD_TYPE_PLANET && ch >= '0' && ch <= '9') {
+	if (player.world->type == WORLD_TYPE_PLANET && ((ch >= '0' && ch <= '9') || ch == 'c')) {
 		/* figure which world we're no */
 		int world_no = -1;
 		for (size_t i = 0; i < ARRAY_SIZE(space.subworld); i++)
@@ -4918,15 +4954,68 @@ static void draw_screen(void)
 				break;
 			}
 		if (world_no != -1) {
-			/* Player is standing on a town or cave, so print the town/cave name */
-			FbMove(0, 0);
-			FbColor(WHITE);
-			FbWriteString(towninfo[world_no * 10 + (ch - '0')].name);
+			/* Player is standing on a town or cave, so print the town/cave name, unless secondary cave entrance */
+			if (ch != 'c') {
+				FbMove(0, 0);
+				FbColor(WHITE);
+				FbWriteString(towninfo[world_no * 10 + (ch - '0')].name);
+			}
 		}
 	}
 
 	screen_changed = 0;
 	FbPushBuffer();
+}
+
+static int ladder_is_here(int x, int y)
+{
+	if (x == 32 && y == 62) /* default ladder */
+		return 1;
+
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].cx != x)
+			continue;
+		if (cave_aux_entrance[i].cy != y)
+			continue;
+		if (cave_aux_entrance[i].cave_num != player.town_or_cave_num)
+			continue;
+		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
+			continue;
+		return 1;
+	}
+	return 0;
+}
+
+static void find_player_cave_exit_coords(int *x, int *y)
+{
+	if (player.x == 32 && player.y == 62) { /* default cave exit */
+		*x = player.wx[player.world_level];
+		*y = player.wy[player.world_level];
+		return;
+	}
+	/* Must be an auxiliary exit */
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].cx != player.x)
+			continue;
+		if (cave_aux_entrance[i].cy != player.y)
+			continue;
+		if (cave_aux_entrance[i].cave_num != player.town_or_cave_num)
+			continue;
+		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
+			continue;
+		*x = cave_aux_entrance[i].wx;
+		*y = cave_aux_entrance[i].wy;
+		return;
+	}
+	/* Shouldn't get here. */
+	*x = player.wx[player.world_level];
+	*y = player.wy[player.world_level];
+#if TARGET_SIMULATOR
+	fprintf(stderr, "%s:%d: BUG: could not find aux cave exit: %s: cave %d, cave coords %d,%d\n",
+		__FILE__, __LINE__, player.old_world[player.world_level]->name,
+		player.town_or_cave_num, player.x, player.y);
+	exit(1);
+#endif
 }
 
 static void badgey_cave_menu(void)
@@ -4937,7 +5026,7 @@ static void badgey_cave_menu(void)
 		dynmenu_clear(&cave_menu);
 		dynmenu_init(&cave_menu, cave_menu_item, ARRAY_SIZE(cave_menu_item));
 		dynmenu_set_title(&cave_menu, "", "", "");
-		if (player.x == 32 && player.y == 62)
+		if (ladder_is_here(player.x, player.y))
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
@@ -4953,10 +5042,12 @@ static void badgey_cave_menu(void)
 		if (player.world->type == WORLD_TYPE_CAVE && player.world_level > 0) {
 			struct badgey_world const *old_world = player.old_world[player.world_level];
 			if (old_world) {
+				int nwx, nwy;
+				find_player_cave_exit_coords(&nwx, &nwy);
 				player.world = old_world;
 				player.world_level--;
-				player.x = player.wx[player.world_level];
-				player.y = player.wy[player.world_level];
+				player.x = nwx;
+				player.y = nwy;
 				set_badgey_state(BADGEY_RUN);
 				screen_changed = 1;
 				player.in_cave = 0;
@@ -5269,7 +5360,7 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
 		if (underchar >= '0' && underchar <= '4')
 			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 2);
-		if (underchar >= '5' && underchar <= '9')
+		if ((underchar >= '5' && underchar <= '9') || underchar == 'c')
 			dynmenu_add_item(&planet_menu, "ENTER CAVE", BADGEY_RUN, 2);
 		dynmenu_add_item(&planet_menu, "EQUIP WEAPON", BADGEY_STATS, 3);
 		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 4);
@@ -5302,7 +5393,7 @@ static void badgey_planet_menu(void)
 		break;
 	case 2: /* Enter town or cave */
 		menu_setup = 0;
-		if (underchar >= '0' && underchar <= '9')
+		if ((underchar >= '0' && underchar <= '9') || underchar == 'c')
 			set_badgey_state(BADGEY_ENTER_TOWN_OR_CAVE);
 		else
 			set_badgey_state(BADGEY_RUN);
@@ -5987,11 +6078,11 @@ static void generate_town(int town_number)
 	distribute_town_clues(town, &seed);
 }
 
-static void enter_dynmap(int x, int y)
+static void enter_dynmap(int x, int y, int origx, int origy)
 {
 	player.world_level++;
-	player.wx[player.world_level] = player.x;
-	player.wy[player.world_level] = player.y;
+	player.wx[player.world_level] = origx;
+	player.wy[player.world_level] = origy;
 	player.old_world[player.world_level] = player.world;
 	player.x = x;
 	player.y = y;
@@ -6005,7 +6096,7 @@ static void enter_town(int town_number)
 	*ncreatures = 0;
 	generate_town(town_number);
 	dynworld.type = WORLD_TYPE_TOWN;
-	enter_dynmap(6, 32);
+	enter_dynmap(6, 32, player.x, player.y);
 	player.in_town = 1;
 	player.town_or_cave_num = town_number;
 }
@@ -6167,9 +6258,40 @@ static void generate_cave(int cave_number)
 
 static void enter_cave(int cave_number)
 {
+	int cx, cy, owx, owy;
+
+	cx = 32; /* Default cave entrance coords */
+	cy = 62;
+	owx = player.x;
+	owy = player.y; 
+
+	if (cave_number == 'c' - '0') { /* auxiliary cave entrance? */
+		int found = 0;
+		for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+			if (cave_aux_entrance[i].world != player.world)
+				continue;
+			if (cave_aux_entrance[i].wx != player.x || cave_aux_entrance[i].wy != player.y)
+				continue;
+			cave_number = cave_aux_entrance[i].cave_num;
+			cx = cave_aux_entrance[i].cx;
+			cy = cave_aux_entrance[i].cy;
+			owx = cave_aux_entrance[i].dwx;
+			owy = cave_aux_entrance[i].dwy;
+			found = 1;
+			break;
+		}
+		if (!found) {
+			cave_number = 5;
+#if TARGET_SIMULATOR
+			fprintf(stderr, "BUG: %s:%d: Bad auxiliary cave entrance %s:(%d,%d)\n",
+					__FILE__, __LINE__, player.world->name, player.x, player.y);
+			exit(1);
+#endif
+		}
+	}
 	generate_cave(cave_number);
 	dynworld.type = WORLD_TYPE_CAVE;
-	enter_dynmap(32, 62);
+	enter_dynmap(cx, cy, owx, owy);
 	player.dir = 0;
 	player.in_cave = 1;
 	player.town_or_cave_num = cave_number;
@@ -6181,7 +6303,7 @@ static void badgey_enter_town_or_cave(void)
 	int underchar = player.world->wm[windex(player.x, player.y)];
 	if (underchar >= '0' && underchar <= '4') {
 		enter_town(underchar - '0');
-	} else if (underchar >= '5' && underchar <= '9') {
+	} else if ((underchar >= '5' && underchar <= '9') || underchar == 'c') {
 		enter_cave(underchar - '0');
 	}
 	set_badgey_state(BADGEY_RUN);
@@ -6506,6 +6628,7 @@ static void badgey_display_surface_map(void)
 			case '7':
 			case '8':
 			case '9':
+			case 'c':
 				draw_map_town(j, i);
 				break;
 			case 'd':
@@ -6657,7 +6780,7 @@ static void draw_combat_field(void)
 	ch = player.world->wm[windex(player.x, player.y)];
 	if (ch == 'f') /* change forest to grass */
 		ch = '.';
-	if (ch >= '0' && ch <= '9') /* town or cave? change to grass */
+	if ((ch >= '0' && ch <= '9') || ch == 'c') /* town or cave? change to grass */
 		ch = '.';
 
 	for (int y = 0; y < screen_cells_tall; y++) {
