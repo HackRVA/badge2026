@@ -28,6 +28,7 @@ void lcd_delay(unsigned long int milliseconds) {
 }
 
 void lcd_digitalWrite(unsigned short int pin, unsigned char value) {
+    wait_until_ready();
     gpio_put(pin, value);
 }
 
