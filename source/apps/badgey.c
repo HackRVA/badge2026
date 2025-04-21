@@ -3061,6 +3061,7 @@ static struct player {
 	unsigned char cbx, cby;
 	int aboard_ship;
 	int candidate_ship;
+	int last_boarded_ship; /* to keep your ship from sailing off without you */
 #define EQUIPPED_NONE 255
 } player = {
 	.world = &space,
@@ -3548,10 +3549,11 @@ static void badgey_init(void)
 	player.carrying_dirty = 1;
 	player.aboard_ship = -1;
 	player.candidate_ship = -1;
+	player.last_boarded_ship = -1;
 	setup_static_treasures();
 	spawn_planet_initial_monsters();
-	spawn_planet_initial_ships();
 	setup_planet_initial_treasures();
+	spawn_planet_initial_ships();
 	set_badgey_state(BADGEY_CONTINUE);
 	screen_changed = 1;
 }
@@ -3994,8 +3996,8 @@ static void check_buttons(int tick)
 				player.world = new_world;
 				screen_changed = 1;
 				spawn_planet_initial_monsters();
-				spawn_planet_initial_ships();
 				setup_planet_initial_treasures();
+				spawn_planet_initial_ships();
 				player.moving = 0;
 				return;
 			}
@@ -4079,8 +4081,9 @@ static void check_buttons(int tick)
 					creature = &planet_creature[0];
 					ncreatures = &nplanet_creatures;
 					spawn_planet_initial_monsters();
-					spawn_planet_initial_ships();
 					setup_planet_initial_treasures();
+					/* Don't respawn ships when emerging from town */
+					// spawn_planet_initial_ships();
 					player.moving = 0;
 				}
 			}
@@ -4813,7 +4816,12 @@ static void move_ships(void)
 	if (player.world->type != WORLD_TYPE_PLANET)
 		return;
 	for (int i = 0; i < nships; i++) {
-		if (!ship[i].player_aboard)
+		/* If the player is controlling the ship, don't move it autonomously.
+		 * If the player was last aboard this ship, then they "own" it, and it
+		 * should not sail off without the player (but they can only "own"
+		 * one ship at a time.)
+		 */
+		if (!ship[i].player_aboard && i != player.last_boarded_ship)
 			move_ship(i);
 	}
 }
@@ -5124,8 +5132,9 @@ static void badgey_cave_menu(void)
 				screen_changed = 1;
 				player.in_cave = 0;
 				spawn_planet_initial_monsters();
-				spawn_planet_initial_ships();
 				setup_planet_initial_treasures();
+				/* Don't respawn ships when emerging from caves */
+				// spawn_planet_initial_ships();
 			}
 			menu_setup = 0;
 		}
@@ -5435,6 +5444,7 @@ static void maybe_disembark_ship(void)
 		case 'd': /* dirt */
 		case 'b': /* brick */
 		case '=': /* boards */
+			player.last_boarded_ship = player.aboard_ship;
 			ship[player.aboard_ship].player_aboard = 0;
 			player.x = tx;
 			player.y = ty;
