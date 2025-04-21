@@ -5856,7 +5856,7 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 	/* Here is where we will add specialty items to shops based on town */
 }
 
-static void setup_town_treasures(int town)
+static void setup_town_treasures(__attribute__((unused)) int town)
 {
 	/* temporary test treasure */
 	nchests = NUM_STATIC_CHESTS + 1;
