@@ -2922,6 +2922,34 @@ static const struct shop_item {
 	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define MAPPING_STONE 14
 	{ "MAP GEMSTONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
+#define BADGE_BOM 15
+	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define LED_SCREEN 16
+	{ "LED SCREEN", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define GOLDEN_DPAD 17
+	{ "GOLDEN DPAD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define A_BUTTON 18
+	{ "A-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define B_BUTTON 19
+	{ "B-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define RP2040CHIP 20
+	{ "RP2040 CHIP", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define CIRCUIT_BOARD 21
+	{ "CIRCUIT BOARD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define SMALL_SPEAKER 22
+	{ "SMALL SPEAKER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define AMP_CHIP 23
+	{ "AMPLIFIER CHIP", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define RESET_BUTTON 24
+	{ "RESET BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define USB_CONNECTOR 25
+	{ "USB CONNECTOR", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define BATTERY 26
+	{ "BATTERY", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define SOLDER 27
+	{ "ROLL OF SOLDER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define RVASEC_BADGE 28
+	{ "RVASEC BADGE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 };
 
 #define MAX_ITEMS_PER_SHOP 8
@@ -2935,7 +2963,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 1
+#define NUM_STATIC_CHESTS 2
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -2965,6 +2993,10 @@ static struct treasure_clue {
 	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, 3, -1, -1, clue_type_rando },
 	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, 3, -1, -1, clue_type_hacker },
 	{ "\nBE SURE TO\nGET A COMPASS\nBEFORE ENTERING\nTHE CAVES", &ossaria, 3, -1, -1, clue_type_pub },
+	/* clues in ONVAL (ossaria, town 4) */
+	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_pub },
+	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_hacker },
+	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_rando },
 	/* clues in the CAVES OF INSANITY (ossaria, cave 8) */
 	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
 			&ossaria, 8, 34, 60, clue_type_engraving, },
@@ -3716,6 +3748,7 @@ static void setup_static_treasures(void)
 	nchests = 0;
 	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
+	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED);
 }
 
 static void badgey_init(void)
@@ -6201,6 +6234,10 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 	}
 
 	/* Here is where we will add specialty items to shops based on town */
+	if (town == 3 && player.world == &ossaria) { /* BALF on OSSARIA */
+		add_shop_item(SHOP_HACKERSPACE, BADGE_BOM);
+		printf("Added badge bom to hackerspace shop\n");
+	}
 }
 
 static void setup_town_treasures(__attribute__((unused)) int town)
