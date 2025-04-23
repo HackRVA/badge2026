@@ -3104,7 +3104,7 @@ enum badgey_state_t {
 	BADGEY_STATS,
 	BADGEY_EQUIP_WEAPON,
 	BADGEY_EQUIP_ARMOR,
-	BADGEY_EXIT_CONFIRM,
+	BADGEY_ABANDON_CONFIRM,
 	BADGEY_COMBAT,
 	BADGEY_COLLECT_TREASURE,
 	BADGEY_DIG,
@@ -3116,7 +3116,6 @@ enum badgey_state_t {
 
 static enum badgey_state_t badgey_state = BADGEY_INITIAL_MENU;
 static enum badgey_state_t previous_badgey_state = BADGEY_RUN;
-static enum badgey_state_t badgey_unconfirm_state = BADGEY_RUN;
 
 static int screen_changed = 0;
 
@@ -3232,17 +3231,6 @@ static void set_badgey_state(enum badgey_state_t new_state)
 static char message_to_display[255];
 static char message_displayed = 0;
 static int water_scroll = 0;
-
-static void confirm_exit(void)
-{
-	badgey_unconfirm_state = badgey_state;
-	set_badgey_state(BADGEY_EXIT_CONFIRM);
-}
-
-static void unconfirm_exit(void)
-{
-	set_badgey_state(badgey_unconfirm_state);
-}
 
 /* hack used for scrolling textures in badgey RPG game */
 #define BUFFER( ADDR ) G_Fb.buffer[(ADDR)]
@@ -7039,31 +7027,31 @@ static void badgey_combat(void)
 	}
 }
 
-static void badgey_exit_confirm(void)
+static void badgey_abandon_confirm(void)
 {
 	static int menu_ready = 0;
-	static struct dynmenu ecm;
-	static struct dynmenu_item ecm_item[2];
+	static struct dynmenu menu;
+	static struct dynmenu_item menu_item[2];
 
 	if (!menu_ready) {
-		dynmenu_clear(&ecm);
-		dynmenu_init(&ecm, ecm_item, ARRAY_SIZE(ecm_item));
-		dynmenu_set_title(&ecm, "REALLY QUIT?", "", "");
-		dynmenu_add_item(&ecm, "NO, DON'T QUIT", BADGEY_RUN, 1);
-		dynmenu_add_item(&ecm, "YES, QUIT", BADGEY_EXIT_CONFIRM, 2);
+		dynmenu_clear(&menu);
+		dynmenu_init(&menu, menu_item, ARRAY_SIZE(menu_item));
+		dynmenu_set_title(&menu, "GAME IN", "PROGRESS.", "ABANDON IT?");
+		dynmenu_add_item(&menu, "NO", BADGEY_INITIAL_MENU, 1);
+		dynmenu_add_item(&menu, "ABANDON IT", BADGEY_ABANDON_CONFIRM, 2);
 		menu_ready = 1;
 	}
 
-	if (!dynmenu_let_user_choose(&ecm))
+	if (!dynmenu_let_user_choose(&menu))
 		return;
 
-	switch (dynmenu_get_user_choice(&ecm)) {
+	switch (dynmenu_get_user_choice(&menu)) {
 	case 2:
-		set_badgey_state(BADGEY_EXIT);
+		set_badgey_state(BADGEY_INIT);
 		break;
 	case 1:
 	default:
-		unconfirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		break;
 	}
 }
@@ -7106,7 +7094,10 @@ static void badgey_initial_menu(void)
 		break;
 	case 3:
 		menu_setup = 0; /* to ensure the pause/resume items get added to menu */
-		set_badgey_state(BADGEY_INIT);
+		if (!game_in_progress)
+			set_badgey_state(BADGEY_INIT);
+		else
+			set_badgey_state(BADGEY_ABANDON_CONFIRM);
 		break;
 	}
 }
@@ -7147,8 +7138,8 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 	case BADGEY_RUN:
 		badgey_run();
 		break;
-	case BADGEY_EXIT_CONFIRM:
-		badgey_exit_confirm();
+	case BADGEY_ABANDON_CONFIRM:
+		badgey_abandon_confirm();
 		break;
 	case BADGEY_EXIT:
 		badgey_exit();
