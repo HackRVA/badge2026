@@ -54,6 +54,9 @@ struct dynmenu space_menu;
 struct dynmenu_item space_menu_item[10];
 struct dynmenu board_ship_menu;
 struct dynmenu_item board_ship_menu_item[2];
+struct dynmenu initial_menu;
+struct dynmenu_item initial_menu_item[10];
+static int game_in_progress = 0;
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
 static const int xo4[] = { 0, 1, 0, -1 };
@@ -3085,8 +3088,10 @@ static struct player {
 
 /* Program states.  Initial state is BADGEY_INIT */
 enum badgey_state_t {
+	BADGEY_INITIAL_MENU,
 	BADGEY_INIT,
 	BADGEY_CONTINUE,
+	BADGEY_INTRO,
 	BADGEY_PLANET_MENU,
 	BADGEY_CAVE_MENU,
 	BADGEY_TOWN_MENU,
@@ -3109,7 +3114,7 @@ enum badgey_state_t {
 	BADGEY_EXIT,
 };
 
-static enum badgey_state_t badgey_state = BADGEY_INIT;
+static enum badgey_state_t badgey_state = BADGEY_INITIAL_MENU;
 static enum badgey_state_t previous_badgey_state = BADGEY_RUN;
 static enum badgey_state_t badgey_unconfirm_state = BADGEY_RUN;
 
@@ -3556,6 +3561,7 @@ static void badgey_init(void)
 	spawn_planet_initial_ships();
 	set_badgey_state(BADGEY_CONTINUE);
 	screen_changed = 1;
+	game_in_progress = 1;
 }
 
 static void badgey_continue(void)
@@ -5110,7 +5116,7 @@ static void badgey_cave_menu(void)
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
-		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 3);
+		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
 		menu_setup = 1;
 	}
 
@@ -5152,7 +5158,7 @@ static void badgey_cave_menu(void)
 		break;
 	case 3: /* quit */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
 	}
@@ -5168,7 +5174,7 @@ static void badgey_space_menu(void)
 		dynmenu_set_title(&cave_menu, "", "", "");
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 0);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 1);
-		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 2);
+		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 2);
 		menu_setup = 1;
 	}
 
@@ -5189,7 +5195,7 @@ static void badgey_space_menu(void)
 		break;
 	case 2: /* quit */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
 	}
@@ -5237,7 +5243,7 @@ static void badgey_talk_to_shopkeeper(void)
 			}
 		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
-		dynmenu_add_item(&town_menu, "QUIT", BADGEY_EXIT_CONFIRM, 255);
+		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
 		menu_setup = 1;
 	}
 
@@ -5251,9 +5257,9 @@ static void badgey_talk_to_shopkeeper(void)
 		menu_setup = 0;
 		set_badgey_state(BADGEY_TOWN_MENU);
 		return;
-	} else if (choice == 255) { /* exit */
+	} else if (choice == 255) { /* main menu */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		return;
 	} else if (choice == 253) { /* stats */
@@ -5387,7 +5393,7 @@ static void badgey_town_menu(void)
 		dynmenu_add_item(&town_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
 		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 8);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
-		dynmenu_add_item(&town_menu, "QUIT", BADGEY_EXIT_CONFIRM, 4);
+		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 4);
 		menu_setup = 1;
 	}
 
@@ -5406,8 +5412,8 @@ static void badgey_town_menu(void)
 	case 3: /* stats */
 		set_badgey_state(BADGEY_STATS);
 		break;
-	case 4: /* exit */
-		confirm_exit();
+	case 4: /* main menu */
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		break;
 	case 5: /* equip weapon */
 		set_badgey_state(BADGEY_EQUIP_WEAPON);
@@ -5480,7 +5486,7 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 5);
 		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 6);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
-		dynmenu_add_item(&planet_menu, "QUIT", BADGEY_EXIT_CONFIRM, 8);
+		dynmenu_add_item(&planet_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 8);
 		menu_setup = 1;
 	}
 
@@ -5521,9 +5527,9 @@ static void badgey_planet_menu(void)
 		set_badgey_state(BADGEY_RUN);
 		screen_changed = 1;
 		break;
-	case 8: /* quit */
+	case 8: /* main menu */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
 	case 3: /* equip weapon */
@@ -7064,19 +7070,67 @@ static void badgey_exit_confirm(void)
 
 static void badgey_exit(void)
 {
-	set_badgey_state(BADGEY_CONTINUE); /* So that when we start again, we do not immediately exit */
+	set_badgey_state(BADGEY_INITIAL_MENU); /* So that when we start again, we do not immediately exit */
 	pop_app();
+}
+
+static void badgey_initial_menu(void)
+{
+	static int menu_setup = 0;
+
+	if (!menu_setup) {
+		dynmenu_clear(&initial_menu);
+		dynmenu_init(&initial_menu, initial_menu_item, ARRAY_SIZE(initial_menu_item));
+		dynmenu_set_title(&initial_menu, "BADGEYS BIG", "ADVENTURE", "");
+		dynmenu_add_item(&initial_menu, "INTRO", 0, 0);
+		if (game_in_progress) {
+			dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
+			dynmenu_add_item(&initial_menu, "RESUME GAME", 1, 2);
+		}
+		dynmenu_add_item(&initial_menu, "START NEW GAME", 1, 3);
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&initial_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&initial_menu)) {
+	case 0:
+		set_badgey_state(BADGEY_INTRO);
+		break;
+	case 1:
+		pop_app();
+		break;
+	case 2:
+		set_badgey_state(BADGEY_CONTINUE);
+		break;
+	case 3:
+		menu_setup = 0; /* to ensure the pause/resume items get added to menu */
+		set_badgey_state(BADGEY_INIT);
+		break;
+	}
+}
+
+static void badgey_intro(void)
+{
+	set_badgey_state(BADGEY_CONTINUE);
 }
 
 /* You will need to rename badgey_cb() something else. */
 void badgey_cb(__attribute__((unused)) struct badge_app *app)
 {
 	switch (badgey_state) {
+	case BADGEY_INITIAL_MENU:
+		badgey_initial_menu();
+		break;
 	case BADGEY_INIT:
 		badgey_init();
 		break;
 	case BADGEY_CONTINUE:
 		badgey_continue();
+		break;
+	case BADGEY_INTRO:
+		badgey_intro();
 		break;
 	case BADGEY_PLANET_MENU:
 		badgey_planet_menu();
