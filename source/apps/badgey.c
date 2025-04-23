@@ -3748,7 +3748,7 @@ static void cave_check_buttons(void)
 		if (player.world->type == WORLD_TYPE_CAVE)
 			set_badgey_state(BADGEY_CAVE_MENU);
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		confirm_exit();
+		/* Maybe B-button can do something in the caves ... */
 	}
 	if (dynmap[windex(newx, newy)] == '#')
 		return;
@@ -3971,7 +3971,7 @@ static void check_buttons(int tick)
 			set_badgey_state(BADGEY_SPACE_MENU);
 		newmoving = 0;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		confirm_exit();
+		/* maybe B button can do something? */
 		newmoving = 0;
 	}
 
