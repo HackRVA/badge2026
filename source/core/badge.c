@@ -14,7 +14,6 @@
 #include "settings.h"
 #include "uid.h"
 #include "xorshift.h"
-#include "mic_pdm.h"
 #include "default_menu_app.h"
 #include "carousel_menu_app.h"
 #include "screensaver_app.h"
@@ -68,9 +67,6 @@ void UserInit(void)
 // dormant returns 1 if touch/buttons and IR messages are dormant for 60 seconds, otherwise returns 0
 unsigned char dormant(void)
 {
-	if (mic_running())
-		return 0; // Going dormant with the mic running seems to cause problems -PMW
-
 	uint32_t timestamp = (uint32_t)rtc_get_ms_since_boot();
 	if (timestamp < (button_last_input_timestamp() + 1000 * 60))
 		return 0;

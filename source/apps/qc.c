@@ -13,8 +13,6 @@
 #include "delay.h"
 #include "music.h"
 #include "analog.h"
-#include "color_sensor.h"
-#include "mic_pdm.h"
 #include "rtc.h"
 
 #include <utils.h>
@@ -111,6 +109,8 @@ static bool check_buttons(const struct qc_button *a, size_t n)
     return any;
 }
 
+#warning "qc needs maintenance for new buttons"
+
 static const struct qc_button QC_BTN[] = {
     {BADGE_BUTTON_A, "A", 999, check_button, 0, 255, 0},
     {BADGE_BUTTON_B, "B", 698, check_button, 0, 0, 255},
@@ -133,23 +133,8 @@ bool qc_analog(void)
     int len;
     char msg[16];
 
-    float ohms = analog_calc_resistance_ohms(analog_get_chan_mV(ANALOG_CHAN_CONDUCTIVITY));
-    len = snprintf(msg, sizeof(msg), "R:%1.1e\n", ohms);
-    FbWriteString(msg);
-    printf("%.*s\t", len - 1, msg);
-
-    int8_t therm_C = analog_calc_thermistor_temp_C(analog_get_chan_mV(ANALOG_CHAN_THERMISTOR));
-    len = snprintf(msg, sizeof(msg), "ThermC:%3d\n", therm_C);
-    FbWriteString(msg);
-    printf("%.*s\t", len - 1, msg);
-    
-    int32_t hall_effect_mT = analog_calc_hall_effect_mT(analog_get_chan_mV(ANALOG_CHAN_HALL_EFFECT));
-    len = snprintf(msg, sizeof(msg), "HallmT:%3d\n", hall_effect_mT);
-    FbWriteString(msg);
-    printf("%.*s\t", len - 1, msg);
-
-    uint32_t batt_mV = analog_get_batt_mV();
-    len = snprintf(msg, sizeof(msg), "BattV:%1d.%02d\n", batt_mV / 1000, batt_mV % 1000 / 10);
+    uint8_t volume_perc = analog_get_volume_perc();
+    len = snprintf(msg, sizeof(msg), "Vol:%u\n", volume_perc);
     FbWriteString(msg);
     printf("%.*s\t", len - 1, msg);
 
@@ -161,35 +146,7 @@ bool qc_analog(void)
     return true;
 }
 
-bool qc_color_sensor(void) {
-    int len;
-    char msg[15];
-    struct color_sample sample;
-    int rc = color_sensor_get_sample(&sample);
-    if (rc < 0) {
-        len = snprintf(msg, sizeof(msg), "cls err:%04x\n", 
-                 color_sensor_get_error_code());
-        FbWriteString(msg);
-        printf("%.*s\t", len - 1, msg);
-        return true;
-    }
-    
-    const char color[COLOR_SAMPLE_INDEX_COUNT] = {'r', 'g', 'b', 'w', 'i'};
-    const unsigned short text_color[COLOR_SAMPLE_INDEX_COUNT] = {
-	    RED, GREEN, BLUE, WHITE, PACKRGB(16,0,8)
-    };
-    for (int i = 0; i < COLOR_SAMPLE_INDEX_COUNT; i++) {
-        FbColor(text_color[i]);
-        len = snprintf(msg, sizeof(msg), "%c:%d\n", color[i],
-                       sample.error_flags & (1U << i) ? -1 : sample.rgbwi[i]);
-        FbWriteString(msg);
-        printf("%.*s\t", len - 1, msg);
-    }
-    FbColor(GREEN);
-    
-    return true;
-}
-
+#if 0 /* Keep this for later... */
 static int8_t qc_dB;
 static uint8_t long_average_idx;
 static audio_sample_t long_average[16];
@@ -213,6 +170,7 @@ bool qc_mic(void)
 
     return true;
 }
+#endif
 
 void QC_cb(__attribute__((unused)) struct badge_app *app)
 {
@@ -230,10 +188,7 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
     switch(QC_state)
     {
         case INIT:
-            analog_set_sensor_power(ANALOG_SENSOR_POWER_ENABLED);
-            //color_sensor_power_ctl(COLOR_SENSOR_POWER_CMD_UP);
             ir_add_callback(ir_callback, IR_APP0);
-            mic_add_cb(qc_mic_cb);
             FbTransparentIndex(0);
             FbColor(GREEN);
             FbClear();
@@ -264,10 +219,7 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
 
             if(button_hold_count > 20){
 		/* Exit */
-                analog_set_sensor_power(ANALOG_SENSOR_POWER_DISABLED);
-                //color_sensor_power_ctl(COLOR_SENSOR_POWER_CMD_DOWN);
                 ir_remove_callback(ir_callback, IR_APP0);
-                mic_remove_cb(qc_mic_cb);
 		led_pwm_disable(BADGE_LED_RGB_RED);
 		led_pwm_disable(BADGE_LED_RGB_GREEN);
 		led_pwm_disable(BADGE_LED_RGB_BLUE);
@@ -281,14 +233,6 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
 
             if (qc_analog())
             {
-                redraw = 1;
-            }
-
-            if (qc_color_sensor()) {
-                redraw = 1;
-            }
-
-            if (qc_mic()) {
                 redraw = 1;
             }
 

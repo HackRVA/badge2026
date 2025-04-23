@@ -9,21 +9,18 @@ if (${TARGET} STREQUAL "PICO")
             ${CMAKE_CURRENT_LIST_DIR}/button_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/ir_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/audio_common.c
-            ${CMAKE_CURRENT_LIST_DIR}/audio_rp2040.c
+            ${CMAKE_CURRENT_LIST_DIR}/audio_nau88c10yg_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/rtc_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/random_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/uid_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/display_st7735s_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/driver-ST7735S/source/st7735s.c
             ${CMAKE_CURRENT_LIST_DIR}/analog_rp2040.c
-            ${CMAKE_CURRENT_LIST_DIR}/color_sensor_cls16d2444_rp2040.c
-            ${CMAKE_CURRENT_LIST_DIR}/mic_pdm_rp2040.c
             )
 
     target_include_directories(${PRODUCT} PUBLIC ./driver-ST7735S/source)
 
     add_subdirectory(ir_library)
-    add_subdirectory(mic_library)
 endif()
 
 if (${TARGET} STREQUAL "SIMULATOR")
@@ -42,8 +39,6 @@ if (${TARGET} STREQUAL "SIMULATOR")
             ${CMAKE_CURRENT_LIST_DIR}/random_sim.c
             ${CMAKE_CURRENT_LIST_DIR}/uid_sim.c
             ${CMAKE_CURRENT_LIST_DIR}/analog_sim.c
-            ${CMAKE_CURRENT_LIST_DIR}/color_sensor_sim.c
-            ${CMAKE_CURRENT_LIST_DIR}/mic_pdm_sim.c
             )
 
     cmake_policy(SET CMP0079 NEW)
@@ -79,8 +74,6 @@ if (${TARGET} STREQUAL "SDL_SIMULATOR" OR ${TARGET} STREQUAL "WASM")
             ${CMAKE_CURRENT_LIST_DIR}/vec3.c
             ${CMAKE_CURRENT_LIST_DIR}/quat.c
             ${CMAKE_CURRENT_LIST_DIR}/analog_sim.c
-            ${CMAKE_CURRENT_LIST_DIR}/color_sensor_sim.c
-            ${CMAKE_CURRENT_LIST_DIR}/mic_pdm_sim.c
             ${CMAKE_CURRENT_LIST_DIR}/sim_slider_input.c
             )
 

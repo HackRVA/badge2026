@@ -30,7 +30,6 @@
 #include "xorshift.h"
 #include "sim_slider_input.h"
 #include "utils.h"
-#include "color_sensor.h"
 #include "analog.h"
 
 #define UNUSED __attribute__((unused))
@@ -53,14 +52,7 @@ static struct analog_sensor_ui {
 static void color_sensor_ui_callback(__attribute__((unused)) struct sim_slider_input *s,
 				__attribute__((unused))  float v)
 {
-	struct color_sample sample;
-
-	sample.error_flags = 0;
-
-	/* Not quite sure about the range of these, we'll assume 0-255 */
-	for (int i = 0; i < (int) ARRAY_SIZE(sample.rgbwi); i++)
-		sample.rgbwi[i] = (uint16_t) (color_sensor_ui.color_value[i] * 255);
-	color_sensor_set_sample(sample);
+	// FIXME remove this
 	button_reset_last_input_timestamp(); /* inhibit screensaver */
 }
 
@@ -106,10 +98,10 @@ static void analog_sensor_ui_callback(__attribute__((unused)) struct sim_slider_
 	struct analog_sim_values values;
 
 	/* 3250 mV = High-Z -- basically, the battery voltage, I think */
-	values.value[ANALOG_CHAN_CONDUCTIVITY] = (int) (3250 * analog_sensor_ui.value[0]);
-	values.value[ANALOG_CHAN_THERMISTOR] = (int) (3250 * analog_sensor_ui.value[1]);
-	values.value[ANALOG_CHAN_HALL_EFFECT] = (int) (2000 * analog_sensor_ui.value[2]);
-	values.value[ANALOG_CHAN_BATT_V] = (int) (3250 * analog_sensor_ui.value[3]);
+	values.value[ANALOG_CHAN_0] = (int) (3250 * analog_sensor_ui.value[0]);
+	values.value[ANALOG_CHAN_0] = (int) (3250 * analog_sensor_ui.value[1]);
+	values.value[ANALOG_CHAN_0] = (int) (2000 * analog_sensor_ui.value[2]);
+	values.value[ANALOG_CHAN_VOLUME] = (int) (3250 * analog_sensor_ui.value[3]);
 	/* not sure about this one... */
 	values.value[ANALOG_CHAN_MCU_TEMP] = (int) (706 * analog_sensor_ui.value[4]);
 	analog_sensors_set_values(values);
