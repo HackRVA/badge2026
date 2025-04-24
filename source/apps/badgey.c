@@ -3092,6 +3092,7 @@ enum badgey_state_t {
 	BADGEY_INIT,
 	BADGEY_CONTINUE,
 	BADGEY_INTRO,
+	BADGEY_INTRO_WAIT,
 	BADGEY_PLANET_MENU,
 	BADGEY_CAVE_MENU,
 	BADGEY_TOWN_MENU,
@@ -7114,7 +7115,34 @@ static void badgey_initial_menu(void)
 
 static void badgey_intro(void)
 {
-	set_badgey_state(BADGEY_CONTINUE);
+	FbClear();
+	FbColor(WHITE);
+	FbMove(0, 0);
+	FbWriteString("Welcome to BADGEY'S\n");
+	FbWriteString("Big Adventure!\n\n");
+	FbWriteString("You must attend\n");
+	FbWriteString("RVASEC in RICHMOND\n");
+	FbWriteString("You will need to\n");
+	FbWriteString("assemble a BADGE.\n");
+	FbWriteString("But the DIABOLICAL\n");
+	FbWriteString("JAKE has scattered\n");
+	FbWriteString("the components of\n");
+	FbWriteString("the BADGE all over\n");
+	FbWriteString("the place. You will\n");
+	FbWriteString("need to search them\n");
+	FbWriteString("out, then make\n");
+	FbWriteString("your way to RICHMOND\n");
+	FbWriteString("Good luck!");
+	FbSwapBuffers();
+	set_badgey_state(BADGEY_INTRO_WAIT);
+}
+
+static void badgey_intro_wait(void)
+{
+	int down_latches = button_down_latches();
+
+	if (down_latches != 0)
+		set_badgey_state(BADGEY_INITIAL_MENU);
 }
 
 /* You will need to rename badgey_cb() something else. */
@@ -7132,6 +7160,9 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_INTRO:
 		badgey_intro();
+		break;
+	case BADGEY_INTRO_WAIT:
+		badgey_intro_wait();
 		break;
 	case BADGEY_PLANET_MENU:
 		badgey_planet_menu();
