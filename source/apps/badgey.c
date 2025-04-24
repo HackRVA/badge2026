@@ -4433,8 +4433,8 @@ static void draw_cave_screen(void)
 	int drawing_start_inc = 18 * 256;
 	int clue_no = -1;
 
-	FbColor(WHITE);
 	for (int i = 0; i < 4; i++) {
+		FbColor(WHITE);
 		draw_left_cave(x, y, start, start_inc);
 		draw_right_cave(x, y, start, start_inc);
 		hit_back_wall = draw_back_cave(x, y, start, start_inc);
