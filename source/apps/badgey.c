@@ -3867,6 +3867,16 @@ static void spawn_planet_initial_ships(void)
 	nships = 0;
 	for (int i = 0; i < NUM_SHIPS; i++)
 		spawn_ship(&seed);
+
+	if (player.world == &ossaria) {
+		/* Park a ship on the southern coast of Ossaria near the town of Onval
+		 * so player doesn't have to just wait around for a ship to randomly
+		 * sail by.
+		 */
+		player.last_boarded_ship = 0;
+		ship[0].x = 39;
+		ship[0].y = 58;
+	}
 }
 
 static void enter_combat(int cr);
