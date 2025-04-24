@@ -44,18 +44,16 @@ static const int screen_cells_centery = (screen_cells_tall == 9) ? 4 : 3;
 static const int xoff[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 static const int yoff[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 
-struct dynmenu planet_menu;
-struct dynmenu_item planet_menu_item[10];
-struct dynmenu cave_menu;
-struct dynmenu_item cave_menu_item[10];
-struct dynmenu town_menu;
-struct dynmenu_item town_menu_item[10];
-struct dynmenu space_menu;
-struct dynmenu_item space_menu_item[10];
-struct dynmenu board_ship_menu;
-struct dynmenu_item board_ship_menu_item[2];
-struct dynmenu initial_menu;
-struct dynmenu_item initial_menu_item[10];
+static struct dynmenu planet_menu;
+static struct dynmenu_item planet_menu_item[10];
+static struct dynmenu cave_menu;
+static struct dynmenu_item cave_menu_item[10];
+static struct dynmenu town_menu;
+static struct dynmenu_item town_menu_item[10];
+static struct dynmenu board_ship_menu;
+static struct dynmenu_item board_ship_menu_item[2];
+static struct dynmenu initial_menu;
+static struct dynmenu_item initial_menu_item[10];
 static int game_in_progress = 0;
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
@@ -548,7 +546,7 @@ static const struct badgey_world space = {
 static char dynmap[4096]; /* for dynamically generated locations like towns and caves */
 static char dynworld_name[255];
 
-struct badgey_world dynworld = {
+static struct badgey_world dynworld = {
 	.name = dynworld_name,
 	.type = WORLD_TYPE_TOWN, /* for now */
 	.wm = dynmap,
@@ -2684,7 +2682,7 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define ITEM_TYPE_SOFTWARE 5
 #define ITEM_TYPE_USELESS 6
 
-const struct shop_item {
+static const struct shop_item {
 	char *name;
 	int price;
 	unsigned char item_type;
@@ -2725,7 +2723,7 @@ const struct shop_item {
 };
 
 #define MAX_ITEMS_PER_SHOP 8
-struct shop {
+static struct shop {
 	int item[MAX_ITEMS_PER_SHOP];
 	int nitems;
 } shop[NUMSHOPS];
