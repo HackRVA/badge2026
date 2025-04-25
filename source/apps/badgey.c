@@ -3692,6 +3692,10 @@ static void check_for_treasure(void)
 static void cave_check_buttons(void)
 {
 	int newx, newy, newdir;
+#define NO_MOVE 5
+	static int last_move_dir = NO_MOVE;
+	static uint64_t last_move_time = (uint64_t) -1;
+	uint64_t now = rtc_get_ms_since_boot();
 
 	newx = player.x;
 	newy = player.y;
@@ -3702,10 +3706,12 @@ static void cave_check_buttons(void)
 		newdir--;
 		if (newdir < 0)
 			newdir += 4;
+		last_move_dir = NO_MOVE;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 		newdir++;
 		if (newdir > 3)
 			newdir -= 4;
+		last_move_dir = NO_MOVE;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		newx += xo4[player.dir];
 		newy += yo4[player.dir];
@@ -3717,6 +3723,7 @@ static void cave_check_buttons(void)
 			newy += 64;
 		if (newy > 63)
 			newy -= 64;
+		last_move_dir = player.dir;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		int backdir = newdir + 2;
 		if (backdir > 3)
@@ -3731,11 +3738,27 @@ static void cave_check_buttons(void)
 			newy += 64;
 		if (newy > 63)
 			newy -= 64;
+		last_move_dir = NO_MOVE;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		if (player.world->type == WORLD_TYPE_CAVE)
 			set_badgey_state(BADGEY_CAVE_MENU);
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		/* Maybe B-button can do something in the caves ... */
+	} else {
+		if (last_move_dir != NO_MOVE) {
+			if ((now - last_move_time) > 300) {
+				newx += xo4[last_move_dir];
+				newy += yo4[last_move_dir];
+				if (newx < 0)
+					newx += 64;
+				if (newx > 63)
+					newx -= 64;
+				if (newy < 0)
+					newy += 64;
+				if (newy > 63)
+					newy -= 64;
+			}
+		}
 	}
 	if (dynmap[windex(newx, newy)] == '#')
 		return;
@@ -3744,6 +3767,7 @@ static void cave_check_buttons(void)
 	player.x = newx;
 	player.y = newy;
 	player.dir = newdir;
+	last_move_time = now;
 	check_for_treasure();
 	screen_changed = 1;
 }
