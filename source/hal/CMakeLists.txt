@@ -8,8 +8,10 @@ if (${TARGET} STREQUAL "PICO")
             ${CMAKE_CURRENT_LIST_DIR}/led_pwm_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/button_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/ir_rp2040.c
+            ${CMAKE_CURRENT_LIST_DIR}/i2c_rp2040.c
+            ${CMAKE_CURRENT_LIST_DIR}/nau88c10_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/audio_common.c
-            ${CMAKE_CURRENT_LIST_DIR}/audio_nau88c10yg_rp2040.c
+            ${CMAKE_CURRENT_LIST_DIR}/audio_nau88c10_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/rtc_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/random_rp2040.c
             ${CMAKE_CURRENT_LIST_DIR}/uid_rp2040.c

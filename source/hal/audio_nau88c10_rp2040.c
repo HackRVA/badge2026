@@ -24,6 +24,7 @@
 #include <hardware/pio.h>
 
 #include "pinout_rp2040.h"
+#include "nau88c10_rp2040.h"
 #include "badge.h"
 
 #include "audio.h"
@@ -37,50 +38,25 @@ static volatile enum audio_out_mode_ {
     AUDIO_OUT_MODE_BEEP,
 } audio_out_mode;
 
+static struct nau88c10_ctx m_nau88c10_ctx;
+static const struct nau88c10_cfg NAU88C10_CFG = {
+    .i2c_inst = BADGE_I2C_AUDIO_CODEC,
+    .i2c_scl_pin = BADGE_GPIO_AUDIO_CODEC_SCL,
+    .i2c_sda_pin = BADGE_GPIO_AUDIO_CODEC_SDA,
+    .i2c_baud = BADGE_I2C_AUDIO_CODEC_BAUD,
+    .i2s_mclk_pin = BADGE_GPIO_AUDIO_CODEC_MCLK,
+    .i2s_bclk_pin = BADGE_GPIO_AUDIO_CODEC_BCLK,
+    .i2s_fs_pin = BADGE_GPIO_AUDIO_CODEC_FS,
+    .i2s_dacin_pin = BADGE_GPIO_AUDIO_CODEC_DACIN,
+    .i2s_adcout_pin = BADGE_GPIO_AUDIO_CODEC_ADCOUT,
+    .i2s_pio = BADGE_PIO_AUDIO_CODEC,
+};
+
 /*- Initialization -----------------------------------------------------------*/
 void audio_init_gpio(void)
 {
-    /* Configure I2C controller. */
-    i2c_init(BADGE_I2C_AUDIO_CODEC, BADGE_I2C_AUDIO_CODEC_BAUD);
-    gpio_set_function(BADGE_GPIO_AUDIO_CODEC_SCL, GPIO_FUNC_I2C);
-    gpio_set_function(BADGE_GPIO_AUDIO_CODEC_SDA, GPIO_FUNC_I2C);
-    gpio_pull_up(BADGE_GPIO_AUDIO_CODEC_SCL); /* Whoops I forgot I2C pull-ups! -PMW */
-    gpio_pull_up(BADGE_GPIO_AUDIO_CODEC_SDA);
-
-    /* Configure I2S pins. */
-    gpio_init(BADGE_GPIO_AUDIO_CODEC_MCLK);
-    gpio_set_input_enabled(BADGE_GPIO_AUDIO_CODEC_MCLK, false);
-    gpio_set_slew_rate(BADGE_GPIO_AUDIO_CODEC_MCLK, GPIO_SLEW_RATE_FAST);
-    gpio_set_drive_strength(BADGE_GPIO_AUDIO_CODEC_MCLK, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_dir(BADGE_GPIO_AUDIO_CODEC_MCLK, true);
-    pio_gpio_init(BADGE_PIO_AUDIO_CODEC, BADGE_GPIO_AUDIO_CODEC_MCLK);
-    gpio_disable_pulls(BADGE_GPIO_AUDIO_CODEC_MCLK);
-
-    gpio_init(BADGE_GPIO_AUDIO_CODEC_BCLK);
-    gpio_set_input_enabled(BADGE_GPIO_AUDIO_CODEC_BCLK, true);
-    gpio_set_dir(BADGE_GPIO_AUDIO_CODEC_BCLK, false);
-    pio_gpio_init(BADGE_PIO_AUDIO_CODEC, BADGE_GPIO_AUDIO_CODEC_BCLK);
-    gpio_disable_pulls(BADGE_GPIO_AUDIO_CODEC_BCLK);
-
-    gpio_init(BADGE_GPIO_AUDIO_CODEC_FS);
-    gpio_set_input_enabled(BADGE_GPIO_AUDIO_CODEC_FS, true);
-    gpio_set_dir(BADGE_GPIO_AUDIO_CODEC_FS, false);
-    pio_gpio_init(BADGE_PIO_AUDIO_CODEC, BADGE_GPIO_AUDIO_CODEC_FS);
-    gpio_disable_pulls(BADGE_GPIO_AUDIO_CODEC_FS);
-
-    gpio_init(BADGE_GPIO_AUDIO_CODEC_DACIN);
-    gpio_set_input_enabled(BADGE_GPIO_AUDIO_CODEC_DACIN, false);
-    gpio_set_slew_rate(BADGE_GPIO_AUDIO_CODEC_DACIN, GPIO_SLEW_RATE_FAST);
-    gpio_set_drive_strength(BADGE_GPIO_AUDIO_CODEC_DACIN, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_dir(BADGE_GPIO_AUDIO_CODEC_DACIN, true);
-    pio_gpio_init(BADGE_PIO_AUDIO_CODEC, BADGE_GPIO_AUDIO_CODEC_DACIN);
-    gpio_disable_pulls(BADGE_GPIO_AUDIO_CODEC_DACIN);
-
-    gpio_init(BADGE_GPIO_AUDIO_CODEC_ADCOUT);
-    gpio_set_input_enabled(BADGE_GPIO_AUDIO_CODEC_ADCOUT, true);
-    gpio_set_dir(BADGE_GPIO_AUDIO_CODEC_ADCOUT, false);
-    pio_gpio_init(BADGE_PIO_AUDIO_CODEC, BADGE_GPIO_AUDIO_CODEC_ADCOUT);
-    gpio_disable_pulls(BADGE_GPIO_AUDIO_CODEC_ADCOUT);
+    nau88c10_set_cfg(&m_nau88c10_ctx, &NAU88C10_CFG);
+    nau88c10_init(&m_nau88c10_ctx);
 }
 
 static void audio_out_init(void)
