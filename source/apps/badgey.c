@@ -2963,7 +2963,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 3
+#define NUM_STATIC_CHESTS 4
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -3004,6 +3004,9 @@ static struct treasure_clue {
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_rando },
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_pub },
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_temple },
+	/* clues in KALFO, (NW42, town 13) */
+	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_pub },
+	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_rando },
 };
 #define NCLUES (ARRAY_SIZE(clue))
 #define NO_CLUE (-1)
@@ -3754,17 +3757,18 @@ static void setup_static_treasures(void)
 	nchests = 0;
 	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
-	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED);
-	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED);
+	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
+	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
+	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
 }
 
 static void badgey_init(void)
 {
 	FbInit();
 	FbClear();
-	player.x = 37;
-	player.y = 32;
-	player.world = &ossaria;
+	player.x = 32;
+	player.y = 10;
+	player.world = &NW42;
 	player.world_level = 1;
 	player.old_world[1] = &space;
 	player.old_world[0] = NULL;
