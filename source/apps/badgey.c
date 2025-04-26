@@ -219,17 +219,17 @@ static const char NW42_map[4096] = {
 	"wwwwwwwww.wwwww..wwwwwwwwwwwwwwwwwwwwwwwwwwwwww..wwwwwwwwwwwwwww"
 	"wwwwwww...........wwwwwwwwwwwwwwwwwwwwwwwwwww....wwwwwwwwwwwwwww"
 	"wwwwww..mmm.......wwwwwwwwwwww..w.wwwwwwwwwww..wwwwwwwwwwwwwwwww"
-	"wwwwww..m.........wwwwwww..w.......wwwwwwwwwwwwwwwwwwwwwwww..www"
-	"wwwwww............wwwww...............wwwwwwwwwwwwwwwww......www"
-	"wwwwwww.0........wwwwww.................wwwwwwwwwwwwwww......www"
-	"wwwwwww........ffwwwwwww................wwww...wwwwwww......wwww"
-	"wwwwww........ff.wwwwwww...............www.....wwwwww.....w.wwww"
-	"wwwww..mmm....ff....wwww..............www......wwwww..ww..wwwwww"
-	"wwwwww....m...ff.....w................ww.......wwwwwwww...wwwwww"
-	"wwwwwwwww.....fff....www.......f.........ff...wwwwwwwwwwwwwwwwww"
+	"wwwwww..m.........wwwwwww..w......wwwwwwwwwwwwwwwwwwwwwwwww..www"
+	"wwwwww............wwwww..........ww...wwwwwwwwwwwwwwwww......www"
+	"wwwwwww.0........wwwwww..........w......wwwwwwwwwwwwwww......www"
+	"wwwwwww........ffwwwwwww.....wwwww......wwww...wwwwwww......wwww"
+	"wwwwww........ff.wwwwwww.....w.1.ww....www.....wwwwww.....w.wwww"
+	"wwwww..mmm....ff....wwww.....w....ww..www......wwwww..ww..wwwwww"
+	"wwwwww....m...ff.....w.......mmc..ww..ww.......wwwwwwww...wwwwww"
+	"wwwwwwwww.....fff....www......mmmmm......ff...wwwwwwwwwwwwwwwwww"
 	"wwwwwwwww.....f..f...w.w......fff.......fff...wwwwww.wwwwwwwwwww"
 	"wwwwwwww........f....w.........ff......ffff..wwwww....wwwwwwwwww"
-	"wwwwwww........................fff.....fff.....1......wwwwwwwwww"
+	"wwwwwww........................fff.....fff.....w......wwwwwwwwww"
 	"wwwww............f..............ffff....f.............wwwwwwwwww"
 	"www..............................f5ff...f............wwwwwwwwwww"
 	"www..............................ffff.............wwwwwwwwwwwwww"
@@ -2926,8 +2926,8 @@ static const struct shop_item {
 	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define LED_SCREEN 16
 	{ "LED SCREEN", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define GOLDEN_DPAD 17
-	{ "GOLDEN DPAD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define PLASTIC_DPAD 17
+	{ "DPAD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define A_BUTTON 18
 	{ "A-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define B_BUTTON 19
@@ -2963,7 +2963,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 2
+#define NUM_STATIC_CHESTS 3
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -2979,7 +2979,7 @@ static struct treasure_chest {
 static int nchests = 0;
 
 enum clue_type {
-	clue_type_engraving, clue_type_rando, clue_type_hacker, clue_type_pub,
+	clue_type_engraving, clue_type_rando, clue_type_hacker, clue_type_pub, clue_type_temple,
 };
 
 static struct treasure_clue {
@@ -3000,6 +3000,10 @@ static struct treasure_clue {
 	/* clues in the CAVES OF INSANITY (ossaria, cave 8) */
 	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
 			&ossaria, 8, 34, 60, clue_type_engraving, },
+	/* clues in SURSEE (NW42, town 10) */
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_rando },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_pub },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_temple },
 };
 #define NCLUES (ARRAY_SIZE(clue))
 #define NO_CLUE (-1)
@@ -3020,10 +3024,11 @@ static int nstela = 0;
 static const struct cave_aux_entrance {
 	const struct badgey_world *world;
 	int cave_num;
-	int wx, wy, cx, cy; /* world and cave coords */
+	int wx, wy, cx, cy; /* world coord of aux entrance (wx, wy), and coords inside cave (cx, cy) */
 	int dwx, dwy; /* default cave entrance world coords */
 } cave_aux_entrance[] = {
 	{ &ossaria, 9, 41, 54, 37, 35, 40, 56 },
+	{ &NW42, 5, 31, 11, 32, 34, 37, 35, },
 };
 #define NCAVE_AUX_ENTRANCES ARRAY_SIZE(cave_aux_entrance)
 
@@ -3749,6 +3754,7 @@ static void setup_static_treasures(void)
 	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
 	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED);
+	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED);
 }
 
 static void badgey_init(void)
@@ -6318,6 +6324,9 @@ static void distribute_town_clues(int town_number, unsigned int *seed)
 			break;
 		case clue_type_pub:
 			assign_clue_to_shopkeeper(i, SHOP_PUB);
+			break;
+		case clue_type_temple:
+			assign_clue_to_shopkeeper(i, SHOP_TEMPLE);
 			break;
 		case clue_type_engraving:
 			/* TO DO */
