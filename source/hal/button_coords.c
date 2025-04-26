@@ -16,6 +16,11 @@ static const struct button_coord_list rotated_button_coords = {
 	.dpad_left = PORTRAITXY(152, 30),
 	.dpad_right = PORTRAITXY(152, 224),
 	.led = PORTRAITXY(438, 942),
+	.record = PORTRAITXY(586, 403),
+	.play = PORTRAITXY(586, 468),
+	.fastforward = PORTRAITXY(586, 540),
+	.stop_eject = PORTRAITXY(586, 633),
+	.rewind = PORTRAITXY(586, 709),
 };
 
 static const struct button_coord_list unrotated_button_coords = {
@@ -30,6 +35,11 @@ static const struct button_coord_list unrotated_button_coords = {
 	.dpad_up = LANDSCAPEXY(121, 402),
 	.dpad_down = LANDSCAPEXY(118, 603),
 	.led = LANDSCAPEXY(937, 207),
+	.record = LANDSCAPEXY(401, 59),
+	.play = LANDSCAPEXY(468, 59),
+	.fastforward = LANDSCAPEXY(535, 59),
+	.stop_eject = LANDSCAPEXY(624, 59),
+	.rewind = LANDSCAPEXY(707, 59),
 };
 
 static struct button_coord_list current_button_coords;
@@ -77,6 +87,11 @@ struct button_coord_list get_button_coords(struct sim_lcd_params *slp, int badge
 	adjust_button_coords(&current_button_coords.dpad_left, bx1, by1, f, badge_image_width, badge_image_height);
 	adjust_button_coords(&current_button_coords.dpad_right, bx1, by1, f, badge_image_width, badge_image_height);
 	adjust_button_coords(&current_button_coords.led, bx1, by1, f, badge_image_width, badge_image_height);
+	adjust_button_coords(&current_button_coords.record, bx1, by1, f, badge_image_width, badge_image_height);
+	adjust_button_coords(&current_button_coords.play, bx1, by1, f, badge_image_width, badge_image_height);
+	adjust_button_coords(&current_button_coords.fastforward, bx1, by1, f, badge_image_width, badge_image_height);
+	adjust_button_coords(&current_button_coords.stop_eject, bx1, by1, f, badge_image_width, badge_image_height);
+	adjust_button_coords(&current_button_coords.rewind, bx1, by1, f, badge_image_width, badge_image_height);
 	return current_button_coords;
 }
 

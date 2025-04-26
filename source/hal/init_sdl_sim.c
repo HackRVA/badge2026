@@ -490,6 +490,16 @@ static void draw_button_inputs(struct sim_lcd_params *slp)
 	draw_rotary_button_position(&bcl.right_rotary, 0);
 	draw_rotary_button_position(&bcl.left_rotary, 1);
 #endif
+	if (button_status.record)
+		draw_button_press(&bcl.record);
+	if (button_status.play)
+		draw_button_press(&bcl.play);
+	if (button_status.fastforward)
+		draw_button_press(&bcl.fastforward);
+	if (button_status.stop_eject)
+		draw_button_press(&bcl.stop_eject);
+	if (button_status.rewind)
+		draw_button_press(&bcl.rewind);
 	sim_button_status_countdown();
 }
 
