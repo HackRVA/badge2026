@@ -5439,7 +5439,7 @@ static int find_shopkeeper(int shop_type)
 static void badgey_talk_to_shopkeeper(void)
 {
 	static int menu_setup = 0;
-	int st, n;
+	int st;
 
 	st = player.in_shop;
 	if (st < 0 || st >= (int) ARRAY_SIZE(proprietor)) {
@@ -5455,15 +5455,12 @@ static void badgey_talk_to_shopkeeper(void)
 		dynmenu_init(&town_menu, town_menu_item, ARRAY_SIZE(town_menu_item));
 		dynmenu_set_title(&town_menu, shopname[st], "", "");
 		dynmenu_add_item(&town_menu, "EXIT THIS MENU", BADGEY_RUN, 254);
-		n = 1;
-		for (size_t i = 0; i < ARRAY_SIZE(shop_item); i++) {
-			if (shop_item[i].shop_type == st) {
-				char menu_item[15];
-				snprintf(menu_item, 15, "%2d %s",
-					shop_item[i].price, shop_item[i].name);
-				dynmenu_add_item(&town_menu, menu_item, BADGEY_RUN, i);
-				n++;
-			}
+		for (int i = 0; i < shop[st].nitems; i++) {
+			char menu_item[15];
+			int item = shop[st].item[i];
+			snprintf(menu_item, 15, "%2d %s",
+				shop_item[item].price, shop_item[item].name);
+			dynmenu_add_item(&town_menu, menu_item, BADGEY_RUN, i);
 		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
@@ -5500,12 +5497,14 @@ static void badgey_talk_to_shopkeeper(void)
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
 					" MONEY FOR\n THAT\n");
 		} else {
+			int item = shop[st].item[choice];
+
 			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
-					shop_item[choice].price,
-					shop_item[choice].name,
+					shop_item[item].price,
+					shop_item[item].name,
 					clue_text);
-			player.money -= shop_item[choice].price;
-			player.carrying[choice]++;
+			player.money -= shop_item[item].price;
+			player.carrying[item]++;
 			player.carrying_dirty = 1;
 		}
 		status_message(message);
