@@ -3349,6 +3349,7 @@ enum badgey_state_t {
 	BADGEY_USE_ITEM,
 	BADGEY_DISPLAY_MAP,
 	BADGEY_MAYBE_BOARD_SHIP,
+	BADGEY_INVENTORY,
 	BADGEY_EXIT,
 };
 
@@ -4180,6 +4181,66 @@ static void maybe_board_ship(void)
 		set_badgey_state(BADGEY_RUN);
 		screen_changed = 1;
 		break;
+	}
+}
+
+static void badgey_inventory(void)
+{
+	static int first_item = 0;
+	static int screen_changed = 1;
+
+
+	if (screen_changed) {
+		FbClear();
+		FbColor(YELLOW);
+		FbMove(0, 0);
+		FbWriteString("INVENTORY:\n");
+		FbColor(WHITE);
+
+		int count = 0;
+		for (int i = 0; i < (int) ARRAY_SIZE(player.carrying); i++) {
+			if (i < first_item)
+				continue;
+			if (player.carrying[i]) {
+				FbWriteString(shop_item[i].name);
+				FbWriteString("\n");
+				FbMoveX(0);
+				count++;
+			}
+			if (count > 10)
+				break;
+		}
+		FbSwapBuffers();
+		screen_changed = 0;
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+		/* Advance first_item to the next item the player is carrying */
+		for (int i = first_item + 1; i < (int) ARRAY_SIZE(player.carrying); i++) {
+			if (player.carrying[i]) {
+				first_item = i;
+				screen_changed = 1;
+				break;
+			}
+		}
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+		/* move first_item backe the previous item the player is carrying */
+		for (int i = first_item - 1; i >= 0; i--) {
+			if (player.carrying[i]) {
+				first_item = i;
+				screen_changed = 1;
+				break;
+			}
+		}
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		first_item = 0;
+		screen_changed = 1;
+		set_badgey_state(BADGEY_RUN);
 	}
 }
 
@@ -5653,6 +5714,7 @@ static void badgey_town_menu(void)
 		dynmenu_add_item(&town_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
 		dynmenu_add_item(&town_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
 		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 8);
+		dynmenu_add_item(&town_menu, "INVENTORY", BADGEY_INVENTORY, 9);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 4);
 		menu_setup = 1;
@@ -5686,6 +5748,9 @@ static void badgey_town_menu(void)
 		break;
 	case 8: /* dig */
 		set_badgey_state(BADGEY_DIG);
+		break;
+	case 9: /* inventory */
+		set_badgey_state(BADGEY_INVENTORY);
 		break;
 	default:
 		set_badgey_state(BADGEY_RUN);
@@ -5746,6 +5811,7 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 4);
 		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 5);
 		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 6);
+		dynmenu_add_item(&planet_menu, "INVENTORY", BADGEY_INVENTORY, 10);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
 		dynmenu_add_item(&planet_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 8);
 		menu_setup = 1;
@@ -5818,6 +5884,9 @@ static void badgey_planet_menu(void)
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_RUN);
+		break;
+	case 10: /* inventory */
+		set_badgey_state(BADGEY_INVENTORY);
 		break;
 	}
 }
@@ -7490,6 +7559,9 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_MAYBE_BOARD_SHIP:
 		maybe_board_ship();
+		break;
+	case BADGEY_INVENTORY:
+		badgey_inventory();
 		break;
 	default:
 		break;
