@@ -3860,7 +3860,7 @@ static int chest_in_players_world(int chest_num)
 		return 1;
 	if (player.old_world[player.world_level] == chest[chest_num].world &&
 		(player.in_town || player.in_cave) &&
-		player.town_or_cave_num == chest[chest_num].town_or_cave)
+		player.town_or_cave_num == (chest[chest_num].town_or_cave % 10))
 		return 1;
 	return 0;
 }
