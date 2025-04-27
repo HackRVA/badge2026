@@ -1174,5 +1174,5 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
     printf("If you see leak sanitizer complaining about memory and _XlcDefaultMapModifiers\n");
     printf("it's because SDL is programmed by monkeys.\n");
     printf("\n\n\n");
-    exit(0);
+    return;
 }
