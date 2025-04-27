@@ -989,14 +989,14 @@ static int buttonfuzzer(SDL_Event *event)
 		}
 	};
 
-	int n = (xorshift(&seed) % 12); /* six buttons, press or release = 12 combos */
+	int n = (xorshift(&seed) % 22); /* eleven buttons, press or release = 22 combos */
 
-	if (n < 6)
+	if (n < 11)
 		*event = keyrelease_template;
 	else
 		*event = keypress_template;
 
-	switch (n % 6) {
+	switch (n % 11) {
 	case 0:
 		event->key.keysym.sym = SDLK_SPACE; /* A button */
 		break;
@@ -1014,6 +1014,16 @@ static int buttonfuzzer(SDL_Event *event)
 		break;
 	case 5:
 		event->key.keysym.sym = SDLK_DOWN; /* down d-pad */
+		break;
+	case 6: event->key.keysym.sym = SDLK_1; /* record */
+		break;
+	case 7: event->key.keysym.sym = SDLK_2; /* play */
+		break;
+	case 8: event->key.keysym.sym = SDLK_3; /* fastforward */
+		break;
+	case 9: event->key.keysym.sym = SDLK_4; /* stop_eject */
+		break;
+	case 10: event->key.keysym.sym = SDLK_5; /* rewind */
 		break;
 	}
 	return 1;
