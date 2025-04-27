@@ -3,6 +3,7 @@
 #include <string.h>
 #ifdef __linux__
 #include <signal.h> /* so we can raise(SIGTRAP) if we detect a bug. */
+#include <errno.h>
 #endif
 
 /*
@@ -36,6 +37,7 @@
 #include "xorshift.h"
 #include "rtc.h"
 #include "music.h"
+#include "key_value_storage.h"
 
 static const int screen_cells_wide = (LCD_XSIZE == 160) ? 9 : 7;
 static const int screen_cells_tall = (LCD_YSIZE == 160) ? 9 : 7;
@@ -3293,6 +3295,7 @@ static struct player {
 	int in_town;
 	int in_cave;
 	int town_or_cave_num;
+	int seedx, seedy; /* For cave regeneration after restoring game from flash */
 	int dir;
 	int moving;
 	unsigned char in_shop;
@@ -3301,7 +3304,7 @@ static struct player {
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
-	unsigned char cbx, cby;
+	unsigned char cbx, cby; /* combat arena x,y */
 	int aboard_ship;
 	int candidate_ship;
 	int last_boarded_ship; /* to keep your ship from sailing off without you */
@@ -3353,6 +3356,8 @@ enum badgey_state_t {
 	BADGEY_DISPLAY_MAP,
 	BADGEY_MAYBE_BOARD_SHIP,
 	BADGEY_INVENTORY,
+	BADGEY_SAVE_GAME,
+	BADGEY_RESTORE_GAME,
 	BADGEY_EXIT,
 };
 
@@ -3767,8 +3772,8 @@ static void badgey_init(void)
 	FbInit();
 	FbClear();
 	player.x = 32;
-	player.y = 10;
-	player.world = &NW42;
+	player.y = 32;
+	player.world = &ossaria;
 	player.world_level = 1;
 	player.old_world[1] = &space;
 	player.old_world[0] = NULL;
@@ -3776,6 +3781,9 @@ static void badgey_init(void)
 	player.wy[0] = 4;
 	player.in_town = 0;
 	player.in_cave = 0;
+	player.town_or_cave_num = 0;
+	player.seedx = 0;
+	player.seedy = 0;
 	player.dir = 0;
 	player.moving = 0;
 	player.in_shop = 0;
@@ -6761,6 +6769,8 @@ static void enter_cave(int cave_number)
 		}
 	}
 	generate_cave(cave_number, seedx, seedy);
+	player.seedx = seedx;
+	player.seedy = seedy;
 	dynworld.type = WORLD_TYPE_CAVE;
 	enter_dynmap(cx, cy, owx, owy);
 	player.dir = 0;
@@ -7427,7 +7437,9 @@ static void badgey_initial_menu(void)
 		if (game_in_progress) {
 			dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
 			dynmenu_add_item(&initial_menu, "RESUME GAME", 1, 2);
+			dynmenu_add_item(&initial_menu, "SAVE GAME", 1, 4);
 		}
+		dynmenu_add_item(&initial_menu, "RESTORE GAME", 1, 5);
 		dynmenu_add_item(&initial_menu, "START NEW GAME", 1, 3);
 		menu_setup = 1;
 	}
@@ -7436,21 +7448,28 @@ static void badgey_initial_menu(void)
 		return;
 
 	switch (dynmenu_get_user_choice(&initial_menu)) {
-	case 0:
+	case 0: /* intro */
 		set_badgey_state(BADGEY_INTRO);
 		break;
-	case 1:
+	case 1: /* pause game */
 		pop_app();
 		break;
-	case 2:
+	case 2: /* resume game */
 		set_badgey_state(BADGEY_CONTINUE);
 		break;
-	case 3:
+	case 3: /* new game */
 		menu_setup = 0; /* to ensure the pause/resume items get added to menu */
 		if (!game_in_progress)
 			set_badgey_state(BADGEY_INIT);
 		else
 			set_badgey_state(BADGEY_ABANDON_CONFIRM);
+		break;
+	case 4: /* save game */
+		set_badgey_state(BADGEY_SAVE_GAME);
+		break;
+	case 5: /* restore game */
+		set_badgey_state(BADGEY_RESTORE_GAME);
+		menu_setup = 0;
 		break;
 	}
 }
@@ -7485,6 +7504,210 @@ static void badgey_intro_wait(void)
 
 	if (down_latches != 0)
 		set_badgey_state(BADGEY_INITIAL_MENU);
+}
+
+struct badgey_state {
+	/* player stuff */
+	uint32_t checksum;
+	unsigned char world;
+	unsigned char old_world[5];
+	int world_level;
+	int x, y;
+	int wx[5], wy[5];
+	int in_town;
+	int in_cave;
+	int town_or_cave_num;
+	int seedx, seedy; /* for regeneration of caves after restoring from flash */
+	int dir;
+	int money;
+	int hp;
+	unsigned char carrying[ARRAY_SIZE(shop_item)];
+	unsigned char equipped_weapon, equipped_armor;
+	int aboard_ship;
+	int candidate_ship;
+	int last_boarded_ship;
+
+	/* location of our player's current ship, if any */
+	int last_boarded_ship_x;
+	int last_boarded_ship_y;
+
+	/* TODO: Treasure states */
+};
+
+static const struct badgey_world *world_list[] = {
+	&ossaria,
+	&NW42,
+	&borton,
+	&skang,
+	&gnarg,
+	&space,
+	&dynworld,
+};
+
+static unsigned char badgey_serialize_world_ptr(const struct badgey_world *w)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(world_list); i++)
+		if (w == world_list[i])
+			return i;
+	if (w == &dynworld)
+		return 6;
+	return 255;
+}
+
+static const struct badgey_world *badgey_deserialize_world_index(unsigned char w)
+{
+	if (w < ARRAY_SIZE(world_list))
+		return world_list[w];
+	return NULL;
+}
+
+static void badgey_serialize_state(struct badgey_state *state)
+{
+	memset(state, 0, sizeof(*state));
+	state->world = badgey_serialize_world_ptr(player.world);
+	for (int i = 0; i < 5; i++)
+		state->old_world[i] = badgey_serialize_world_ptr(player.old_world[i]);
+	state->x = player.x;
+	state->y = player.y;
+	for (int i = 0; i < 5; i++) {
+		state->wx[i] = player.wx[i];
+		state->wy[i] = player.wy[i];
+	}
+	state->world_level = player.world_level;
+	state->in_town = player.in_town;
+	state->in_cave = player.in_cave;
+	state->town_or_cave_num = player.town_or_cave_num;
+	state->seedx = player.seedx;
+	state->seedy = player.seedy;
+	state->dir = player.dir;
+	state->money = player.money;
+	state->hp = player.hp;
+	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
+		state->carrying[i] = player.carrying[i];
+	state->equipped_weapon = player.equipped_weapon;
+	state->equipped_armor = player.equipped_armor;
+	state->aboard_ship = player.aboard_ship;
+	if (player.last_boarded_ship >= 0 && player.last_boarded_ship < (int) ARRAY_SIZE(ship)) {
+		state->last_boarded_ship_x = ship[player.last_boarded_ship].x;
+		state->last_boarded_ship_y = ship[player.last_boarded_ship].y;
+	} else {
+		state->last_boarded_ship_x = 0;
+		state->last_boarded_ship_y = 0;
+	}
+
+	unsigned char *x = (unsigned char *) state;
+	uint32_t checksum = 0;
+
+	for (int i = 0; i < (int) sizeof(*state); i++)
+		checksum += (int) x[i];
+	state->checksum = checksum;
+}
+
+static void badgey_deserialize_state(struct badgey_state *state)
+{
+	player.carrying_dirty = 1;
+	player.in_shop = 0; /* will get set correctly later anyway */
+	player.cbx = 0;
+	player.cby = 0;
+	player.candidate_ship = -1; /* will get set elsewhere */
+
+	player.world = badgey_deserialize_world_index(state->world);
+	for (int i = 0; i < 5; i++)
+		player.old_world[i] = badgey_deserialize_world_index(state->old_world[i]);
+	player.x = state->x;
+	player.y = state->y;
+	for (int i = 0; i < 5; i++) {
+		player.wx[i] = state->wx[i];
+		player.wy[i] = state->wy[i];
+	}
+	player.world_level = state->world_level;
+	player.in_town = state->in_town;
+	player.in_cave = state->in_cave;
+	player.town_or_cave_num = state->town_or_cave_num;
+	player.seedx = state->seedx;
+	player.seedy = state->seedy;
+	player.dir = state->dir;
+	player.money = state->money;
+	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
+		player.carrying[i] = state->carrying[i];
+	player.equipped_weapon = state->equipped_weapon;
+	player.equipped_armor = state->equipped_armor;
+	player.aboard_ship = state->aboard_ship;
+	player.candidate_ship = state->candidate_ship;
+
+	/* TODO: restore last boarded ship coords */
+}
+
+static void badgey_save_game(void)
+{
+	struct badgey_state state;
+
+	badgey_serialize_state(&state);
+	bool saved = flash_kv_store_binary("BADGEY_SAVED_GAME", &state, sizeof(state));
+	if (!saved) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "Failed to save game.\n");
+#endif
+		/* TODO: error handling */
+		set_badgey_state(BADGEY_INITIAL_MENU);
+		return;
+	}
+	set_badgey_state(BADGEY_INITIAL_MENU);
+}
+
+static void badgey_restore_game(void)
+{
+	struct badgey_state state;
+
+	memset(&state, 0, sizeof(state));
+
+	bool ok = flash_kv_get_binary("BADGEY_SAVED_GAME", &state, sizeof(state));
+	if (!ok) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "Failed to read BADGEY_SAVED_GAME: %s\n", strerror(errno));
+#endif
+		/* TODO: error handling */
+		set_badgey_state(BADGEY_INITIAL_MENU);
+		return;
+	}
+	uint32_t checksum = 0;
+	unsigned char *c = (unsigned char *) &state;
+	for (int i = 4; i < (int) sizeof(state); i++)
+		checksum += (int) c[i];
+
+	if (checksum != state.checksum) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "BADGEY_SAVE_GAME checksum is wrong.\n");
+#endif
+		/* TODO error handling */
+		set_badgey_state(BADGEY_INITIAL_MENU);
+		return;
+	}
+	badgey_deserialize_state(&state);
+	game_in_progress = 1;
+	if (player.in_town || player.in_cave) {
+		const struct badgey_world *w = player.world;
+		int world_level = player.world_level;
+		int x = player.x;
+		int y = player.y;
+
+		/* Have to do this to make generate_town() work right here. */
+		player.world = player.old_world[world_level];
+		player.world_level = world_level - 1;
+		player.x = player.wx[world_level - 1];
+		player.y = player.wy[world_level - 1];
+
+		if (player.in_town)
+			generate_town(player.town_or_cave_num);
+		else
+			generate_cave(player.town_or_cave_num, player.seedx, player.seedy);
+
+		player.world = w;
+		player.world_level = world_level;
+		player.x = x;
+		player.y = y;
+	}
+	set_badgey_state(BADGEY_RUN);
 }
 
 /* You will need to rename badgey_cb() something else. */
@@ -7566,6 +7789,12 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_INVENTORY:
 		badgey_inventory();
+		break;
+	case BADGEY_SAVE_GAME:
+		badgey_save_game();
+		break;
+	case BADGEY_RESTORE_GAME:
+		badgey_restore_game();
 		break;
 	default:
 		break;
