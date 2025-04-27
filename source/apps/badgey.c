@@ -7648,8 +7648,8 @@ static void badgey_save_game(void)
 #if TARGET_SIMULATOR
 		fprintf(stderr, "Failed to save game.\n");
 #endif
-		/* TODO: error handling */
 		set_badgey_state(BADGEY_INITIAL_MENU);
+		status_message("Failed to save\ngame\n");
 		return;
 	}
 	set_badgey_state(BADGEY_INITIAL_MENU);
@@ -7666,8 +7666,8 @@ static void badgey_restore_game(void)
 #if TARGET_SIMULATOR
 		fprintf(stderr, "Failed to read BADGEY_SAVED_GAME: %s\n", strerror(errno));
 #endif
-		/* TODO: error handling */
 		set_badgey_state(BADGEY_INITIAL_MENU);
+		status_message("Failed to read\nsaved game\n");
 		return;
 	}
 	uint32_t checksum = 0;
@@ -7679,8 +7679,8 @@ static void badgey_restore_game(void)
 #if TARGET_SIMULATOR
 		fprintf(stderr, "BADGEY_SAVE_GAME checksum is wrong.\n");
 #endif
-		/* TODO error handling */
 		set_badgey_state(BADGEY_INITIAL_MENU);
+		status_message("Saved game had\nbad checksum\n");
 		return;
 	}
 	badgey_deserialize_state(&state);
@@ -7708,6 +7708,7 @@ static void badgey_restore_game(void)
 		player.y = y;
 	}
 	set_badgey_state(BADGEY_RUN);
+	status_message("Saved game\nrestored from\nflash memory");
 }
 
 /* You will need to rename badgey_cb() something else. */
