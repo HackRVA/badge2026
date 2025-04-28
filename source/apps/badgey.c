@@ -6424,6 +6424,11 @@ static void generate_town(int town_number)
 	unsigned int seed;
 	int treecount = 0;
 
+	/* Switch to town_creature array */
+	creature = &town_creature[0];
+	ncreatures = &ntown_creatures;
+	*ncreatures = 0;
+
 	x = player.x;
 	y = player.y;
 
@@ -6565,9 +6570,6 @@ static void enter_dynmap(int x, int y, int origx, int origy)
 
 static void enter_town(int town_number)
 {
-	creature = &town_creature[0];
-	ncreatures = &ntown_creatures;
-	*ncreatures = 0;
 	generate_town(town_number);
 	dynworld.type = WORLD_TYPE_TOWN;
 	enter_dynmap(6, 32, player.x, player.y);
