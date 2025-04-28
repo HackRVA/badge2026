@@ -61,6 +61,7 @@ void audio_init_gpio(void)
 
 static void audio_out_init(void)
 {
+    nau88c10_up(&m_nau88c10_ctx);
     // TODO - simple wave table synth for beeps? -PMW
 
     /* Used for beep */

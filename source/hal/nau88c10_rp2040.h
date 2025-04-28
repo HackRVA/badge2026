@@ -38,5 +38,5 @@ struct nau88c10_ctx {
 
 void nau88c10_set_cfg(struct nau88c10_ctx *ctx,
                       const struct nau88c10_cfg *cfg);
-
 void nau88c10_init(struct nau88c10_ctx *ctx);
+void nau88c10_up(struct nau88c10_ctx *ctx);

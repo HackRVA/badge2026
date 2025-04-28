@@ -2,6 +2,8 @@
 // Created by Samuel Jones on 11/9/21.
 //
 
+#include <hardware/i2c.h>
+#include <pico/time.h>
 #include <stdint.h>
 
 #include <sys/cdefs.h>
@@ -112,6 +114,8 @@ void hal_init(void) {
     stdio_init_all();
     _init_gpios();
 
+    sleep_ms(1500);
+
     ir_init();
     display_reset();
     rtc_init_badge(0);
@@ -119,7 +123,6 @@ void hal_init(void) {
     analog_init();
 
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, hard_fault_handler);
-
 }
 
 int hal_run_main(int (*main_func)(int, char**), int argc, char** argv) {
