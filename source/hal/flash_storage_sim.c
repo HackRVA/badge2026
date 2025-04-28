@@ -35,8 +35,6 @@ void save_flash(void) {
             break;
         }
     }
-
-    fwrite(flash_data, 1, sizeof(flash_data), f);
     fclose(f);
     printf("Saved flash data at %s\n", flash_filename);
 }
