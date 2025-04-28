@@ -498,6 +498,33 @@ static void check_matches_and_collapse(void)
 	register_blocks_for_removal();
 }
 
+/*
+ * swaps should be blocked if an removal animation is
+ * playing.
+ */
+static bool is_available_for_swap(int x, int y)
+{
+	return get_removal_progress(x, y) == 0 &&
+		get_removal_progress(x + 1, y) == 0;
+}
+
+static void swap_blocks_at_cursor(void)
+{
+	int y = cursor_y, x = cursor_x;
+	swap_requested = false;
+
+	if (!is_available_for_swap(x, y))
+		return;
+
+	enum BLOCK_TYPE a = block_get_type(x, y);
+	enum BLOCK_TYPE b = block_get_type(x + 1, y);
+
+	set_cell(x, y, b, false, 0);
+	set_cell(x + 1, y, a, false, 0);
+
+	has_grid_changed = 1;
+}
+
 static void puzzle_attack_update(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
@@ -515,15 +542,9 @@ static void puzzle_attack_update(void)
 			shift_cursor_up();
 		}
 	}
-	if (swap_requested) {
-		int y = cursor_y, x = cursor_x;
-		enum BLOCK_TYPE a = block_get_type(x, y),
-				b = block_get_type(x + 1, y);
-		set_cell(x, y, b, false, 0);
-		set_cell(x + 1, y, a, false, 0);
-		swap_requested = false;
-		has_grid_changed = 1;
-	}
+
+	if (swap_requested)
+		swap_blocks_at_cursor();
 
 	/*
 	 * trying to update the animation state in
