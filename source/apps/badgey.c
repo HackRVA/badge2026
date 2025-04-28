@@ -2976,7 +2976,7 @@ static struct treasure_chest {
 #define CHEST_STATUS_BURIED 1
 #define CHEST_STATUS_UNCONCEALED 0
 #define CHEST_STATUS_HARVESTED -1
-	int status;
+	int8_t status;
 } chest[MAX_CHESTS];
 static int nchests = 0;
 
@@ -7532,7 +7532,7 @@ struct badgey_state {
 	int last_boarded_ship_x;
 	int last_boarded_ship_y;
 
-	/* TODO: Treasure states */
+	int8_t chest_status[NUM_STATIC_CHESTS];
 };
 
 static const struct badgey_world *world_list[] = {
@@ -7595,6 +7595,9 @@ static void badgey_serialize_state(struct badgey_state *state)
 		state->last_boarded_ship_x = 0;
 		state->last_boarded_ship_y = 0;
 	}
+
+	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
+		state->chest_status[i] = (int8_t) chest[i].status;
 
 	unsigned char *x = (unsigned char *) state;
 	uint32_t checksum = 0;
@@ -7670,7 +7673,9 @@ static void badgey_deserialize_state(struct badgey_state *state)
 	}
 
 	/* TODO: restore last boarded ship coords */
-	/* TODO: restore treasure status */
+
+	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
+		chest[i].status = state->chest_status[i];
 }
 
 static void badgey_save_game(void)
