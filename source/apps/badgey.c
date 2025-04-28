@@ -3309,6 +3309,7 @@ static struct player {
 	int candidate_ship;
 	int last_boarded_ship; /* to keep your ship from sailing off without you */
 #define EQUIPPED_NONE 255
+	int stop_automatic_motion; /* stops automatic motion in caves */
 } player = {
 	.world = &space,
 	.x = 32,
@@ -3998,6 +3999,8 @@ static void cave_check_buttons(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		/* Maybe B-button can do something in the caves ... */
 	} else {
+		if (player.stop_automatic_motion)
+			last_move_dir = NO_MOVE;
 		if (last_move_dir != NO_MOVE) {
 			if ((now - last_move_time) > 300) {
 				newx += xo4[last_move_dir];
@@ -4704,11 +4707,18 @@ static void draw_cave_creature(int x, int y, int depth, int scale)
 	}
 }
 
+static void stop_automatic_motion_in_cave(int x, int y)
+{
+	if (player.x == x && player.y == y)
+		player.stop_automatic_motion = 1;
+}
+
 static void draw_cave_stela(int x, int y, int depth, int scale, int *clue)
 {
 	for (int i = 0; i < nstela; i++) {
 		if (x != stela[i].x || y != stela[i].y)
 			continue;
+		stop_automatic_motion_in_cave(stela[i].x, stela[i].y);
 		int sx = LCD_XSIZE / 2;
 		int sy = cave_y[depth];
 		FbDrawObject(stela_points, ARRAY_SIZE(stela_points),
@@ -4729,6 +4739,7 @@ static void draw_treasure_chest(int x, int y, int depth, int scale)
 			continue;
 		if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
 			continue;
+		stop_automatic_motion_in_cave(chest[i].x, chest[i].y);
 		int sx = LCD_XSIZE / 2;
 		int sy = cave_y[depth];
 		FbDrawObject(treasure_chest_drawing.points, treasure_chest_drawing.npoints,
@@ -4739,8 +4750,10 @@ static void draw_treasure_chest(int x, int y, int depth, int scale)
 
 static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, int scale)
 {
-	if (x == 32 && y == 62) /* default up ladder */
+	if (x == 32 && y == 62) { /* default up ladder */
 		draw_up_ladder(ladder_start, start_inc, scale);
+		stop_automatic_motion_in_cave(x, y);
+	}
 
 	/* draw auxiliary cave exits */
 	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
@@ -4753,6 +4766,7 @@ static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, 
 		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
 			continue;
 		draw_up_ladder(ladder_start, start_inc, scale);
+		stop_automatic_motion_in_cave(x, y);
 	}
 }
 
@@ -4769,6 +4783,7 @@ static void draw_cave_screen(void)
 	int drawing_start_inc = 18 * 256;
 	int clue_no = -1;
 
+	player.stop_automatic_motion = 0;
 	for (int i = 0; i < 4; i++) {
 		FbColor(WHITE);
 		draw_left_cave(x, y, start, start_inc);
