@@ -7623,6 +7623,14 @@ static void badgey_deserialize_state(struct badgey_state *state)
 	player.world_level = state->world_level;
 	player.in_town = state->in_town;
 	player.in_cave = state->in_cave;
+
+	if (player.world == &dynworld) {
+		if (player.in_town)
+			dynworld.type = WORLD_TYPE_TOWN;
+		else
+			dynworld.type = WORLD_TYPE_CAVE;
+	}
+
 	player.town_or_cave_num = state->town_or_cave_num;
 	player.seedx = state->seedx;
 	player.seedy = state->seedy;
