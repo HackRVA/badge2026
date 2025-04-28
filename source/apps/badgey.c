@@ -3329,7 +3329,7 @@ static struct player {
 	.equipped_armor = EQUIPPED_NONE,
 };
 
-/* Program states.  Initial state is BADGEY_INIT */
+/* Program states.  Initial state is BADGEY_INITIAL MENU */
 enum badgey_state_t {
 	BADGEY_INITIAL_MENU,
 	BADGEY_INIT,
@@ -3800,7 +3800,6 @@ static void badgey_init(void)
 	spawn_planet_initial_monsters();
 	setup_planet_initial_treasures();
 	spawn_planet_initial_ships();
-	set_badgey_state(BADGEY_CONTINUE);
 	screen_changed = 1;
 	game_in_progress = 1;
 }
@@ -7614,14 +7613,13 @@ static void badgey_deserialize_state(struct badgey_state *state)
 	player.candidate_ship = -1; /* will get set elsewhere */
 
 	player.world = badgey_deserialize_world_index(state->world);
-	for (int i = 0; i < 5; i++)
-		player.old_world[i] = badgey_deserialize_world_index(state->old_world[i]);
-	player.x = state->x;
-	player.y = state->y;
 	for (int i = 0; i < 5; i++) {
+		player.old_world[i] = badgey_deserialize_world_index(state->old_world[i]);
 		player.wx[i] = state->wx[i];
 		player.wy[i] = state->wy[i];
 	}
+	player.x = state->x;
+	player.y = state->y;
 	player.world_level = state->world_level;
 	player.in_town = state->in_town;
 	player.in_cave = state->in_cave;
@@ -7637,7 +7635,34 @@ static void badgey_deserialize_state(struct badgey_state *state)
 	player.aboard_ship = state->aboard_ship;
 	player.candidate_ship = state->candidate_ship;
 
+	/* Spawn all the stuff in the overworld */
+	if (player.world->type != WORLD_TYPE_SPACE) {
+		const struct badgey_world *w = player.world;
+		int world_level = player.world_level;
+		int x = player.x;
+		int y = player.y;
+		if (player.in_town || player.in_cave) {
+			/* Have to do this to make generate_town() work right here. */
+			player.world = player.old_world[world_level];
+			player.world_level = world_level - 1;
+			player.x = player.wx[world_level - 1];
+			player.y = player.wy[world_level - 1];
+		}
+
+		spawn_planet_initial_monsters();
+		setup_planet_initial_treasures();
+		spawn_planet_initial_ships();
+
+		if (player.in_town || player.in_cave) {
+			player.world = w;
+			player.world_level = world_level;
+			player.x = x;
+			player.y = y;
+		}
+	}
+
 	/* TODO: restore last boarded ship coords */
+	/* TODO: restore treasure status */
 }
 
 static void badgey_save_game(void)
@@ -7685,7 +7710,10 @@ static void badgey_restore_game(void)
 		status_message("Saved game had\nbad checksum\n");
 		return;
 	}
+	badgey_init(); /* In case user immediately did RESTORE GAME, be sure to initialize some stuff not saved */
+
 	badgey_deserialize_state(&state);
+
 	game_in_progress = 1;
 	if (player.in_town || player.in_cave) {
 		const struct badgey_world *w = player.world;
@@ -7722,6 +7750,7 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_INIT:
 		badgey_init();
+		set_badgey_state(BADGEY_CONTINUE);
 		break;
 	case BADGEY_CONTINUE:
 		badgey_continue();
