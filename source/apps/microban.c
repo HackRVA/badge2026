@@ -39,6 +39,7 @@ typedef struct Point {
     int x, y;
 } Point;
 
+
 typedef struct Camera {
     Point offset;
     Point target;
@@ -205,18 +206,22 @@ static void process_input_WIN(void) {
 
 static void process_input_PAUSE(void) {
     if (input.downPressed) {
-        menu_selection = wrapIndex(menu_selection + 1, 2);
+        menu_selection = wrapIndex(menu_selection + 1, 3);
     } else if (input.upPressed) {
-        menu_selection = wrapIndex(menu_selection - 1, 2);
+        menu_selection = wrapIndex(menu_selection - 1, 3);
     } else if (input.APressed) {
         if (menu_selection == 0) {
             set_level(level_number);
             run_state = GAMEPLAY;
-            menu_selection = 0;
         } else if (menu_selection == 1) {
+            level_number = wrapIndex(level_number + 1, MAX_LEVELS);
+            set_level(level_number);
+            run_state = GAMEPLAY;
+        } else if (menu_selection == 2) {
             microban_state = MICROBAN_EXIT;
-            menu_selection = 0;
         }
+        menu_selection = 0;
+
     } else if (input.BPressed) {
         run_state = GAMEPLAY;
     }
@@ -387,6 +392,34 @@ static void draw_coord(void)
 }
 
 
+static void camera_move(void)
+{   
+    int width = level_width() * TILE_SIZE;
+    int height = level_height() * TILE_SIZE;
+    int x = player.position.x * TILE_SIZE;
+    int y = player.position.y * TILE_SIZE;
+    
+    if (width - TILE_SIZE <= LCD_XSIZE) {
+        camera.target.x = width/2;
+    } else if (x < LCD_XSIZE/2) {
+        camera.target.x = LCD_XSIZE/2;
+    } else if (x >= width - LCD_XSIZE/2) {
+        camera.target.x = width - LCD_XSIZE/2;
+    } else {
+        camera.target.x = x;
+    }
+
+    if (height - TILE_SIZE <= LCD_YSIZE) {
+        camera.target.y = height/2;
+    } else if (y < LCD_YSIZE/2) {
+        camera.target.y = LCD_YSIZE/2;
+    } else if (y >= height - LCD_YSIZE/2) {
+        camera.target.y = height - LCD_YSIZE/2;
+    } else {
+        camera.target.y = y;
+    }
+}
+
 
 static void draw_screen(void)
 {
@@ -394,9 +427,10 @@ static void draw_screen(void)
         return;
 
     // FbImagePlace(&eb_bg, -player.position.x/2, 0, MAGENTA);
-    FbImageRect(&redblocks, 0, 0, player.position.x, player.position.y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+    FbImageRect(&redblocks, 0, 0, camera.target.x / TILE_SIZE, camera.target.y / TILE_SIZE, LCD_XSIZE, LCD_YSIZE, MAGENTA);
     
-    camera.target = (Point){player.position.x * TILE_SIZE, player.position.y * TILE_SIZE};
+    camera_move();
+
     player.current_tile = get_tile(player.position);
 
     draw_level(&current_level, camera);
@@ -428,10 +462,14 @@ static void draw_screen(void)
         draw_coord();
         break;
     case WIN:
+        char buf[20];
+        snprintf(buf, sizeof(buf), "%d of %d complete.", level_number, MAX_LEVELS);
         FbColor(YELLOW);
         FbMove(8, 16);
         FbWriteString("NICE CLEAR!!");
         FbMove(8, 28);
+        FbWriteString(buf);
+        FbMove(8, 40);
         FbWriteString("try next?");
         break;
     case PAUSE:
@@ -440,6 +478,8 @@ static void draw_screen(void)
         FbMove(16, 16);
         FbWriteString("reset");
         FbMove(16, 28);
+        FbWriteString("skip level");
+        FbMove(16, 40);
         FbWriteString("exit");
 
         break;
