@@ -73,10 +73,10 @@ static int screen_changed = 0;
 
 static int tick;
 static int level_number;
-static int level_width() {
+static int level_width(void) {
     return microban_levels_rects[level_number].width;
 }
-static int level_height() {
+static int level_height(void) {
     return microban_levels_rects[level_number].height;
 }
 
@@ -162,7 +162,7 @@ static void set_level(int levelNo) {
     }
 }
 
-static bool check_level() {
+static bool check_level(void) {
     // if (level_number == 0) return false;
     int blocks = 0;
     int targets = 0;
@@ -195,7 +195,7 @@ static void microban_init(void)
     camera.offset.y = LCD_YSIZE / 2 - TILE_SIZE/2;
 }
 
-static void process_input_WIN() {
+static void process_input_WIN(void) {
     if (input.APressed || input.BPressed) {
         level_number = wrapIndex(level_number + 1, MAX_LEVELS);
         set_level(level_number);
@@ -203,7 +203,7 @@ static void process_input_WIN() {
     }
 }
 
-static void process_input_PAUSE() {
+static void process_input_PAUSE(void) {
     if (input.downPressed) {
         menu_selection = wrapIndex(menu_selection + 1, 2);
     } else if (input.upPressed) {
@@ -222,7 +222,7 @@ static void process_input_PAUSE() {
     }
 }
 
-static void process_input_GAMEPLAY() {
+static void process_input_GAMEPLAY(void) {
     bool move_tried = (input.upPressed || input.rightPressed || input.downPressed || input.leftPressed);
     Point new_position = player.position;
 
@@ -312,18 +312,18 @@ static void check_buttons(void)
     int down_latches = button_down_latches();
     int mask = button_mask();
 
-    input.upPressed =   (BUTTON_PRESSED(BADGE_BUTTON_UP,    down_latches));
-    input.downPressed =     (BUTTON_PRESSED(BADGE_BUTTON_DOWN,  down_latches));
-    input.leftPressed =     (BUTTON_PRESSED(BADGE_BUTTON_LEFT,  down_latches));
+    input.upPressed =    (BUTTON_PRESSED(BADGE_BUTTON_UP,    down_latches));
+    input.downPressed =  (BUTTON_PRESSED(BADGE_BUTTON_DOWN,  down_latches));
+    input.leftPressed =  (BUTTON_PRESSED(BADGE_BUTTON_LEFT,  down_latches));
     input.rightPressed = (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches));
-    input.upHeld =      (BUTTON_PRESSED(BADGE_BUTTON_UP,    mask));
-    input.downHeld =    (BUTTON_PRESSED(BADGE_BUTTON_DOWN,  mask));
-    input.leftHeld =    (BUTTON_PRESSED(BADGE_BUTTON_LEFT,  mask));
-    input.rightHeld =   (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, mask));
-    input.APressed =    (BUTTON_PRESSED(BADGE_BUTTON_A,     down_latches));
-    input.BPressed =    (BUTTON_PRESSED(BADGE_BUTTON_B,     down_latches));
-    input.AHeld =       (BUTTON_PRESSED(BADGE_BUTTON_A,     mask));
-    input.BHeld =       (BUTTON_PRESSED(BADGE_BUTTON_B,     mask));
+    input.upHeld =       (BUTTON_PRESSED(BADGE_BUTTON_UP,    mask));
+    input.downHeld =     (BUTTON_PRESSED(BADGE_BUTTON_DOWN,  mask));
+    input.leftHeld =     (BUTTON_PRESSED(BADGE_BUTTON_LEFT,  mask));
+    input.rightHeld =    (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, mask));
+    input.APressed =     (BUTTON_PRESSED(BADGE_BUTTON_A,     down_latches));
+    input.BPressed =     (BUTTON_PRESSED(BADGE_BUTTON_B,     down_latches));
+    input.AHeld =        (BUTTON_PRESSED(BADGE_BUTTON_A,     mask));
+    input.BHeld =        (BUTTON_PRESSED(BADGE_BUTTON_B,     mask));
 }
 
 void draw_level(const struct asset2 *asset, Camera camera) {

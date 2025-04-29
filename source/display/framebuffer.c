@@ -221,13 +221,13 @@ void FbImage16bit2(const struct asset2 *asset, unsigned char seqNum) {
 }
 
 
-void FbImage16bit3(const struct asset2 *asset, int seqNum) {
-    FbImageRect(asset, G_Fb.pos.x, G_Fb.pos.y, seqNum * asset->x, 0, asset->x, asset->y, G_Fb.transIndex);
-}
+// void FbImageSeq(const struct asset2 *asset, int seqNum) {
+//     FbImageRect(asset, G_Fb.pos.x, G_Fb.pos.y, seqNum * asset->x, 0, asset->x, asset->y, G_Fb.transIndex);
+// }
 void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color) {
     FbImageRect(asset, x_pos, y_pos, 0, 0, asset->x, asset->y, key_color);
 }
-//Multiply asset width by asset seqNum
+//todo: Multiply asset width by asset seqNum field of asset
 //optimization: remove modulus ops
 //optimization: bitmasking for powers of two
 void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int _x_source, int _y_source, int width, int height, unsigned short key_color) {

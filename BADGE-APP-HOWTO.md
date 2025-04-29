@@ -257,7 +257,10 @@ The following are also available for displaying images or "sprites".
 	void FbImage8bit2(const struct asset2 *asset, unsigned char seqNum);
 	void FbImage4bit2(const struct asset2 *asset, unsigned char seqNum);
 	void FbImage2bit2(const struct asset2 *asset, unsigned char seqNum);
-	void FbImage1bit2(const struct asset2 *asset, unsigned char seqNum
+	void FbImage1bit2(const struct asset2 *asset, unsigned char seqNum);
+	void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color);
+	void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
+
 ```
 
 The upper left corner of the image will be drawn at the current location of
@@ -283,6 +286,12 @@ information directly, using 1 bit or 16 bits per pixel respectively. For the
 1 bit images, the current foreground and background colors are used (see
 FbColor() and FbBackgroundColor()).  Neither the 1 or 16 bit formats support
 transparency.
+
+Additionally, for 16 bit assets, there is `FbImagePlace()` and `FbImageRect()`. These take ints for positioning, and ignore `G_Fb.pos`. Additionally, `key_color` can be added for transparency (you can pass `G_Fb.transIndex` or a color literal like MAGENTA). Currently, these do not support the seqNum field of asset2.
+
+`FbImagePlace()` safely draws an entire asset to the buffer at the given position. Negative values are allowed. 
+
+`FbImageRect()` safely draws a rectangular portion of an asset to the buffer at the given position. The width and height parameters are the same for the source and destination, because this doesn't do any scaling or stretching. If the width or height is larger than the asset, those pixels will be tiled. `source_x` and `source_y` can be negative or otherwise outside the bounds of the asset. This acts like raylib's DrawTextureRec, or OpenGL with GL_REPEAT.
 
 There is a program, tools/png-to-badge-asset.c which will convert a PNG file
 to C code for any of the 5 image formats. You might need to posterize your

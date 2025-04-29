@@ -113,7 +113,7 @@ void FbImage2bit2(const struct asset2 *asset, unsigned char seqNum);
 void FbImage1bit2(const struct asset2 *asset, unsigned char seqNum);
 
 /* Included to match API. (unsure if this works. Probably unnecessary) */
-void FbImage16bit3(const struct asset2 *asset, int seqNum);
+// void FbImageSeq(const struct asset2 *asset, int seqNum);
 /* Draw an entire 16bit asset. doesn't support G_Fb.pos or seqNum. */
 void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color);
 /* Draw a portion of a 16bit asset, with wrapping. doesn't support G_Fb.pos or seqNum. */
