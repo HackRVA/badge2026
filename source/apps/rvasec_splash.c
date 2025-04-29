@@ -143,7 +143,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         uint8_t load_bar_perc 
             = MIN(load_bar_px * 100 / load_bar_size, 99);
         char str[4];
-        (void) snprintf(str, sizeof(str), "%02u\%", load_bar_perc);
+        (void) snprintf(str, sizeof(str), "%02u%%", load_bar_perc);
         FbMove((LCD_XSIZE - (3 * 8)) / 2, 
                 SPLASH_SHIFT_DOWN + ((SPLASH_LOADBAR_HEIGHT_PX - 8) / 2));
         FbWriteString(str);
