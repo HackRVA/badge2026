@@ -10,6 +10,12 @@
 #include <SDL.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/time.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <signal.h>
 
 #include "framebuffer.h"
 #include "display.h"
@@ -40,6 +46,9 @@ static char** sim_argv;
 static int fullscreen = 0;
 static int fullscreen_flag = 0; /* set by '-f' argument to main */
 static int initial_zoom_count = 0; /* set by '-z' flag */
+static int hot_restart = 0;
+static struct timeval sim_start_time;
+static char **saved_args; /* for hot restarting */
 
 static struct color_sensor_ui {
 	struct sim_slider_input *input[5];
@@ -188,13 +197,14 @@ void *main_in_thread(void* params) {
 static struct option long_options[] = {
 	{ "badge-id", required_argument, NULL, 'i' },
 	{ "fullscreen", no_argument, NULL, 'f' },
+	{ "hotrestart", no_argument, NULL, 'h' },
 	{ "zoom", required_argument, NULL, 'z' },
 	{ NULL, 0, 0, 0 },
 };
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] [ --zoom n ]\n");
+	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] [ --hotrestart ] [ --zoom n ]\n");
 	exit(1);
 }
 
@@ -205,7 +215,7 @@ static void process_options(int argc, char **argv)
 
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "fi:z:", long_options, &option_index);
+		c = getopt_long(argc, argv, "fhi:z:", long_options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -233,6 +243,9 @@ static void process_options(int argc, char **argv)
 				}
 			}
 			break;
+		case 'h':
+			hot_restart = 1;
+			break;
 		default:
 			usage();
 			__builtin_unreachable();
@@ -241,10 +254,31 @@ static void process_options(int argc, char **argv)
 	}
 }
 
-int hal_run_main(int (*main_func)(int, char**), int argc, char** argv) {
+/* Copy program arguments into an something suitable for calling execv() */
+static void save_args(int argc, char *argv[], char ***saved_argv)
+{
+	*saved_argv = calloc(sizeof((*saved_argv)[0]), argc + 1);
+	for (int i = 0; i < argc; i++)
+		(*saved_argv)[i] = strdup(argv[i]);
+	(*saved_argv)[argc] = NULL;
+}
 
+/* Free args allocated by save_args(); */
+static void free_argv(char **argv)
+{
+        for (int i = 0; argv[i]; i++)
+                free(argv[i]);
+        free(argv);
+}
+
+int hal_run_main(int (*main_func)(int, char**), int argc, char** argv)
+{
     sim_argc = argc;
     sim_argv = argv;
+
+    save_args(argc, argv, &saved_args); /* For later hot restart */
+
+    gettimeofday(&sim_start_time, NULL);
 
     pthread_t app_thread;
     pthread_create(&app_thread, NULL, main_in_thread, main_func);
@@ -259,6 +293,7 @@ int hal_run_main(int (*main_func)(int, char**), int argc, char** argv) {
 void hal_deinit(void) {
     flash_deinit();
     printf("stub fn: %s in %s\n", __FUNCTION__, __FILE__);
+    free_argv(saved_args);
 }
 
 void hal_reboot(void) {
@@ -1156,6 +1191,76 @@ static void wait_until_next_frame(void)
     next_frame += 33; /* 30 Hz */
 }
 
+#ifdef __linux__
+static void do_hot_restart(char *path)
+{
+	fprintf(stderr, "New executable detected, hot restarting!\n");
+#if 0
+	fprintf(stderr, "path = '%s'\n", path);
+	for (int i = 0; saved_args[i] != NULL; i++)
+		fprintf(stderr, "  argv[%d] = '%s'\n", i, saved_args[i]);
+#endif
+	(void) execvp(path, saved_args);
+	/* we should not get here, if we're here, bad juju has happened */
+	write(1, "Bad juju: exevp() failed\n", 25);
+	raise(SIGTRAP); /* abort, or invoke debugger */
+}
+#endif
+
+static void maybe_hot_restart(void)
+{
+	/* for now, hot restart only works on linux */
+#ifdef __linux__
+
+	char path[PATH_MAX];
+
+	if (!hot_restart)
+		return;
+
+	static int counter = 0;
+
+	counter++;
+	if (counter > 100)
+		counter = 0;
+
+	if (counter != 0)
+		return;
+
+	/* Find our current executable file */
+	ssize_t len = readlink("/proc/self/exe", path, sizeof(path));
+	if (len < 0) {
+		fprintf(stderr, "readlink(\"/proc/self/exe\"): %s\n", strerror(errno));
+		return;
+	}
+	if (len < (long) sizeof(path))
+		path[len] = '\0';
+
+	/* Interestingly, if you recompile while the program is running, the
+	 * /proc/self/exe symlink will contain the original pathname with
+	 * " (deleted)" appended to it. WTF? Ok.
+	 */
+	if (len > 10) {
+		char *x = &path[len - 10];
+		if (strcmp(x, " (deleted)") == 0)
+			*x = '\0'; /* Cut off the " (deleted)" to get the actual path. */
+	}
+
+	/* stat our executable to get its last modification time */
+	static struct stat statbuf;
+	int rc = stat(path, &statbuf);
+	if (rc < 0) {
+		fprintf(stderr, "stat(\"%s\"): %s\n", path, strerror(errno));
+		return;
+	}
+
+	/* Is our executable newer than what we are currently running?  If so, hot restart */
+	if (statbuf.st_mtim.tv_sec > sim_start_time.tv_sec) {
+		do_hot_restart(path);
+		__builtin_unreachable();
+	}
+#endif
+}
+
 void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
 {
     int first_time = 1, second_time = 0;
@@ -1202,6 +1307,7 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
 
 	process_events(window);
 	wait_until_next_frame();
+	maybe_hot_restart();
     }
     free_sensor_ui();
     SDL_DestroyWindow(window);
