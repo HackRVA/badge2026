@@ -22,6 +22,7 @@ static uint64_t last_change = 0;
 static user_gpio_callback callback = NULL;
 static int control_key_pressed = 0;
 extern int buttonfuzzer_on;
+static int current_zoom_count = 0;
 
 static struct sim_button_status sim_button_status = { 0 };
 #define BUTTON_DISPLAY_DURATION 15 /* frames */
@@ -72,6 +73,10 @@ void simulator_zoom_ui(float factor)
 {
 	int cx, cy, x1, y1, x2, y2;
 
+	if (factor > 1.0f)
+		current_zoom_count++;
+	else
+		current_zoom_count--;
 	struct sim_lcd_params slp = get_sim_lcd_params();
 
 	cx = slp.xoffset + slp.width / 2;
@@ -714,6 +719,18 @@ void handle_window_event(SDL_Window *window, SDL_Event event)
 			set_sim_lcd_params_rotated();
 		else
 			set_sim_lcd_params_unrotated();
+		if (current_zoom_count > 0) {
+			for (int i = 0; i < current_zoom_count; i++) {
+				zoom_in();
+				current_zoom_count--;
+			}
+		}
+		if (current_zoom_count < 0) {
+			for (int i = 0; i > current_zoom_count; i--) {
+				zoom_out();
+				current_zoom_count++;
+			}
+		}
 		break;
 	default:
 		break;

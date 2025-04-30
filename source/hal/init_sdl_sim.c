@@ -38,6 +38,8 @@
 static int sim_argc;
 static char** sim_argv;
 static int fullscreen = 0;
+static int fullscreen_flag = 0; /* set by '-f' argument to main */
+static int initial_zoom_count = 0; /* set by '-z' flag */
 
 static struct color_sensor_ui {
 	struct sim_slider_input *input[5];
@@ -185,12 +187,14 @@ void *main_in_thread(void* params) {
 
 static struct option long_options[] = {
 	{ "badge-id", required_argument, NULL, 'i' },
+	{ "fullscreen", no_argument, NULL, 'f' },
+	{ "zoom", required_argument, NULL, 'z' },
 	{ NULL, 0, 0, 0 },
 };
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ]\n");
+	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] [ --zoom n ]\n");
 	exit(1);
 }
 
@@ -201,7 +205,7 @@ static void process_options(int argc, char **argv)
 
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "i:", long_options, &option_index);
+		c = getopt_long(argc, argv, "fi:z:", long_options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -212,6 +216,21 @@ static void process_options(int argc, char **argv)
 			} else {
 				fprintf(stderr, "Using custom badge ID: 0x%016lx\n", badge_id);
 				set_custom_badge_id(badge_id);
+			}
+			break;
+		case 'f': /* full screen mode */
+			fullscreen_flag = 1;
+			break;
+		case 'z': /* zoom level */
+			{
+				int zoom_level;
+				int rc = sscanf(optarg, "%d", &zoom_level);
+				if (rc != 1) {
+					usage();
+					__builtin_unreachable();
+				} else {
+					initial_zoom_count = zoom_level;
+				}
 			}
 			break;
 		default:
@@ -1156,6 +1175,19 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
             /* Not sure why I need to wait for the 2nd time for this to work. */
             simulator_zoom_ui(0.5);
 	    second_time = 0;
+	    if (fullscreen_flag && !fullscreen)
+		toggle_fullscreen_mode();
+            if (initial_zoom_count != 0) {
+		if (initial_zoom_count > 0) {
+			for (int i = 0; i < initial_zoom_count; i++) {
+			    simulator_zoom_ui(1.1);
+			}
+		} else if (initial_zoom_count < 0) {
+			for (int i = 0; i < -initial_zoom_count; i++) {
+			    simulator_zoom_ui(0.9);
+			}
+		}
+            }
 	}
 	draw_window(renderer, pix_buf, landscape_pix_buf);
 
