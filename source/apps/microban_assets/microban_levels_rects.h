@@ -2,7 +2,9 @@ typedef struct Rectangle {
     int x, y, width, height;
 } Rectangle;
 
-static const Rectangle microban_levels_rects[156] = {
+#define MAX_LEVELS 156
+
+static const Rectangle microban_levels_rects[MAX_LEVELS] = {
     {0, 0, 128, 256},
     {16, 0, 7, 8},
     {23, 0, 7, 8},
@@ -158,5 +160,5 @@ static const Rectangle microban_levels_rects[156] = {
     {0, 224, 16, 10},
     {16, 224, 14, 11},
     {30, 224, 30, 18},
-    {60, 224, 31, 18}
+    {60, 224, 38, 21}
 };

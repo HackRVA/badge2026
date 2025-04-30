@@ -230,15 +230,14 @@ void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned sho
 //todo: Multiply asset width by asset seqNum field of asset
 //optimization: remove modulus ops
 //optimization: bitmasking for powers of two
-void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int _x_source, int _y_source, int width, int height, unsigned short key_color) {
+void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color) {
     int y_min, y_max, x_min, x_max;
-    int x_source, y_source;
     int y, x, texture_row, texture_x, buffer_row;
     unsigned short *pixdata;
     unsigned short pixel;
 
-    x_source = ((_x_source % asset->x) + asset->x) % asset->x;   //wrap texture coords
-    y_source = ((_y_source % asset->y) + asset->y) % asset->y;
+    if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;    //wrap texture coords. can be skipped if x_source and y_source are always positive
+    if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
 
     y_min = y_pos < 0 ? 0 : y_pos;
     y_max = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
