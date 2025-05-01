@@ -421,22 +421,130 @@ static void register_blocks_for_removal(void)
 				set_cell(x, y, block_get_type(x, y), true, 1);
 }
 
+/* Stephen's particle code -- slightly modified */
+#define MAX_PARTICLES 400
+static struct particle{
+	int x, y, vx, vy, life, color;
+} particle[MAX_PARTICLES];
+static int nparticle = 0;
+
+#define PARTICLE_GRAVITY 64
+#define PARTICLE_FRICTION 800
+
+static void add_particle(int x, int y, int vx, int vy, int color)
+{
+	static unsigned int state = 0xa5a5a5a5;
+
+	if (nparticle >= MAX_PARTICLES)
+		return;
+	particle[nparticle].x = x;
+	particle[nparticle].y = y;
+
+	particle[nparticle].vx = vx * PARTICLE_FRICTION >> 8;
+	particle[nparticle].vy = vy * PARTICLE_FRICTION >> 8;
+	particle[nparticle].life = xorshift(&state) % 100 + 100;
+	particle[nparticle].color = color;
+
+	nparticle++;
+}
+
+static int move_particle(int i)
+{
+	int x, y;
+	particle[i].vy += PARTICLE_GRAVITY;
+
+	particle[i].x += particle[i].vx;
+	particle[i].y += particle[i].vy;
+	particle[i].life--;
+	if (particle[i].life == 0)
+		return 1; /* particle is dead */
+
+	x = particle[i].x / 256;
+	y = particle[i].y / 256;
+
+	/* return 1 if offscreen (dead), 0 if still alive/onscreen */
+	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= LCD_YSIZE - 9);
+}
+
+static void move_particles(void)
+{
+	if (nparticle > 0)
+		/* screen_changed = 1; */
+	for (int i = 0; i < nparticle;) {
+		if (move_particle(i)) { /* spark is dead? */
+			/* delete the particle, by swapping with the last spark and decrementing nsparks */
+			if (i < nparticle - 1)
+				particle[i] = particle[nparticle- 1];
+			nparticle--;
+		} else {
+			i++;
+		}
+	}
+}
+
+static void draw_particle(int i)
+{
+	int x = particle[i].x / 256;
+	int y = particle[i].y / 256;
+
+	FbColor(particle[i].color);
+	FbPoint(x, y);
+}
+
+static void draw_particles(void)
+{
+	for (int i = 0; i < nparticle; i++)
+		draw_particle(i);
+}
+
+enum {
+	MATCH_LEVEL_NONE = 0,
+	MATCH_LEVEL_DOUBLE = 5,
+};
+
 static bool check_matches(void)
 {
-	bool matched = false;
 	int match_count = 0;
+	int match_x[GRID_ROWS * GRID_COLS];
+	int match_y[GRID_ROWS * GRID_COLS];
 
-	for (int y = 0; y < GRID_ROWS; y++)
-		for (int x = 0; x < GRID_COLS; x++)
+	/* record matches */
+	for (int y = 0; y < GRID_ROWS; y++) {
+		for (int x = 0; x < GRID_COLS; x++) {
 			if (is_part_of_match(x, y)) {
-				matched = true;
+				match_x[match_count] = x;
+				match_y[match_count] = y;
 				match_count++;
 			}
+		}
+	}
 
-	if (matched)
+	if (match_count > MATCH_LEVEL_NONE)
 		score += match_count;
 
-	return matched;
+	/* if we detect a double match, we try to spawn particles at their locations */
+	if (match_count > MATCH_LEVEL_DOUBLE) {
+		int spacing = BLOCK_SIZE + BLOCK_SPACING;
+		int origin_x = (LCD_XSIZE / 2) - (GRID_COLS * spacing / 2);
+		int origin_y = 1 * 1 + 2;
+		int center_offset = (BLOCK_SIZE + 3) / 2;
+
+		for (int m = 0; m < match_count; m++) {
+			int cx = origin_x + match_x[m] * spacing + center_offset;
+			int cy = origin_y + match_y[m] * spacing + center_offset;
+
+			for (int i = 0; i < 20; i++) {
+				int vx    = (xorshift(&xorshift_state) % 512) - 256;
+				int vy    = - (xorshift(&xorshift_state) % 512);
+				int idx   = xorshift(&xorshift_state) % PALETTE_SIZE;
+				int color = palette_color_from_index(default_palette, idx);
+
+				add_particle(cx << 8, cy << 8, vx, vy, color);
+			}
+		}
+	}
+
+	return (match_count > 0);
 }
 
 static bool collapse_grid(void)
@@ -542,6 +650,8 @@ static void puzzle_attack_update(void)
 			shift_cursor_up();
 		}
 	}
+
+	move_particles();
 
 	if (swap_requested)
 		swap_blocks_at_cursor();
@@ -815,6 +925,7 @@ static void draw_grid(void)
 
 static void draw_screen(void)
 {
+	FbClear();
 	if (has_grid_changed) {
 		draw_grid();
 		has_grid_changed = 0;
@@ -822,6 +933,7 @@ static void draw_screen(void)
 	draw_cursor(BLOCK_SIZE + BLOCK_SPACING);
 	draw_score();
 	draw_tick();
+	draw_particles();
 }
 
 void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
