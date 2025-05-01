@@ -9,6 +9,7 @@
 #include "xorshift.h"
 #include "random.h"
 #include "dynmenu.h"
+#include "particle.h"
 #include <string.h>
 
 #if TARGET_PICO
@@ -41,6 +42,8 @@ struct pos_vel {
 	int x, y, vx, vy;
 };
 
+static struct particle_pool *sparkpool = NULL;
+
 static struct ship {
 	struct pos_vel p;
 	int angle;
@@ -51,12 +54,6 @@ static struct bullet {
 	signed char life;
 } bullet[MAXBULLETS] = { 0 };
 static int nbullets = 0;
-
-static struct spark {
-	struct pos_vel p;
-	signed char life;
-} spark[MAXSPARKS];
-static int nsparks = 0;
 
 static struct asteroid_form {
 	int x[10];
@@ -181,7 +178,7 @@ static void asteroids_init(void)
 	player_dead_counter = 0;
 	game_over_counter = 0;
 	nbullets = 0;
-	nsparks = 0;
+	sparkpool->nparticles = 0;
 	dynmenu_init(&quitmenu, quitmenu_item, 2);
 	dynmenu_clear(&quitmenu);
 	strcpy(quitmenu.title, "Quit?");
@@ -196,19 +193,6 @@ static void turn(struct ship *player, int angle)
 		player->angle += 128;
 	if (player->angle > 127)
 		player->angle -= 128;
-}
-
-static void add_spark(int x, int y, int vx, int vy, int life)
-{
-	if (nsparks >= MAXSPARKS)
-		return;
-	struct spark *s = &spark[nsparks];
-	s->p.x = x;
-	s->p.y = y;
-	s->p.vx = vx;
-	s->p.vy = vy;
-	s->life = life;
-	nsparks++;
 }
 
 static void thrust(struct ship *player, int thrust_amount)
@@ -236,7 +220,7 @@ static void thrust(struct ship *player, int thrust_amount)
 
 		svx = player->p.vx - 4 * dvx + random_num(64) - 32;
 		svy = player->p.vy - 4 * dvy + random_num(64) - 32;
-		add_spark(player->p.x, player->p.y, svx, svy, 15);
+		sparkpool->config.add_particle(sparkpool, player->p.x, player->p.y, svx, svy, 15, YELLOW);
 	}
 }
 
@@ -254,19 +238,13 @@ static void fire(struct ship *player)
 
 static void add_random_spark(int x, int y, int v)
 {
-	int angle;
-
-	if (nsparks >= MAXSPARKS)
+	if (sparkpool->nparticles >= sparkpool->config.maxparticles)
 		return;
-	struct spark *s = &spark[nsparks];
-	angle = random_num(128);
-	s->p.x = x;
-	s->p.y = y;
+	int angle = random_num(128);
 	int vel = (v / 2) + random_num(v / 2);
-	s->p.vx = (cosine(angle) * vel) >> 8;
-	s->p.vy = (sine(angle) * vel) >> 8;
-	s->life = 15 + random_num(15);
-	nsparks++;
+	int vx = (cosine(angle) * vel) >> 8;
+	int vy = (sine(angle) * vel) >> 8;
+	sparkpool->config.add_particle(sparkpool, x, y, vx, vy, 15 + random_num(15), YELLOW);
 }
 
 static void add_sparks(int x, int y, int v, int n)
@@ -438,11 +416,6 @@ static void move_bullet(struct bullet *b)
 	check_bullet_asteroid_collision(b);
 }
 
-static void move_spark(struct spark *s) {
-	apply_position_delta(&s->p);
-	s->life--;
-}
-
 static void move_asteroid(struct asteroid *a)
 {
 	apply_position_delta(&a->p);
@@ -461,31 +434,11 @@ static void remove_dead_bullets(void)
 	}
 }
 
-static void remove_dead_sparks(void)
-{
-	for (int i = 0; i < nsparks;) {
-		if (spark[i].life <= 0) {
-			if (i < nsparks - 1)
-				spark[i] = spark[nsparks - 1];
-			nsparks--;
-		} else {
-			i++;
-		}
-	}
-}
-
 static void move_bullets(void)
 {
 	for (int i = 0; i < nbullets; i++)
 		move_bullet(&bullet[i]);
 	remove_dead_bullets();
-}
-
-static void move_sparks(void)
-{
-	for (int i = 0; i < nsparks; i++)
-		move_spark(&spark[i]);
-	remove_dead_sparks();
 }
 
 static void move_asteroids(void)
@@ -500,16 +453,6 @@ static void draw_bullets(void)
 		struct bullet *b = &bullet[i];
 		if (onscreen(b->p.x / 256, b->p.y / 256))
 			FbPoint(b->p.x / 256, b->p.y / 256);
-	}
-}
-
-static void draw_sparks(void)
-{
-	FbColor(YELLOW);
-	for (int i = 0; i < nsparks; i++) {
-		struct spark *s = &spark[i];
-		if (onscreen(s->p.x / 256, s->p.y / 256))
-			FbPoint(s->p.x / 256, s->p.y / 256);
 	}
 }
 
@@ -564,12 +507,12 @@ static void draw_screen(void)
 	FbColor(WHITE);
 	move_player(&player);
 	move_bullets();
-	move_sparks();
+	sparkpool->config.move_particles(sparkpool);
 	move_asteroids();
 	draw_player(&player);
 	draw_asteroids();
 	draw_bullets();
-	draw_sparks();
+	sparkpool->config.draw_particles(sparkpool);
 	draw_score();
 	if (game_over_counter) {
 		FbMove(20, LCD_YSIZE / 2);
@@ -614,6 +557,16 @@ static void asteroids_exit(void)
 
 void asteroids_cb(__attribute__((unused)) struct badge_app *app)
 {
+	if (sparkpool == NULL) {
+		sparkpool = get_common_particle_pool();
+#define ASTEROIDS_PARTICLE_POOL_SIG 0xA573801D
+		if (sparkpool->current_badge_app != (int) ASTEROIDS_PARTICLE_POOL_SIG) {
+			sparkpool->current_badge_app = (int) ASTEROIDS_PARTICLE_POOL_SIG;
+			sparkpool->nparticles = 0;
+			sparkpool->config = default_particle_pool_config;
+			sparkpool->config.maxparticles = MAXSPARKS;
+		}
+	}
 	switch (asteroids_state) {
 	case ASTEROIDS_INIT:
 		asteroids_init();
