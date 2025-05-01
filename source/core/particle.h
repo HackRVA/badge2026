@@ -21,16 +21,23 @@
 #define MAX_PARTICLES 400
 
 struct particle {
-	/* Note: x, y, vx, vy are 24.8 fixed point numbers */
-	int x, y, vx, vy, life, color;
+	/* Note: x, y, z, vx, vy, vz are 24.8 fixed point numbers.
+	 * if you don't use the 3d functions, z, and vz are unused
+	 * if you need to do, e.g. 3d perspective projection, you must
+	 * override the particle drawing functions and write that code
+	 * yourself.
+	 */
+	int x, y, z, vx, vy, vz, life, color;
 };
 
 struct particle_pool;
 
 struct particle_pool_config {
-	int gravityx, gravityy; /* 24.8 fixed point numbers */
+	int gravityx, gravityy, gravityz; /* 24.8 fixed point numbers */
 	int maxparticles;
 	void (*add_particle)(struct particle_pool *pool, int x, int y, int vx, int vy, int life, int color);
+	void (*add_3d_particle)(struct particle_pool *pool, int x, int y, int z,
+			int vx, int vy, int vz, int life, int color);
 	void (*remove_particle)(struct particle_pool *pool, struct particle *p);
 	void (*move_particle)(struct particle_pool *pool, struct particle *p);
 	void (*draw_particle)(struct particle *p);
@@ -38,6 +45,7 @@ struct particle_pool_config {
 	void (*move_particles)(struct particle_pool *pool);
 	void (*draw_particles)(struct particle_pool *pool);
 	void (*draw_particles_color)(struct particle_pool *pool, int color);
+	void *cookie; /* For use by badge apps */
 };
 
 struct particle_pool {
@@ -53,6 +61,8 @@ void particle_pool_set_config(struct particle_pool *pool, struct particle_pool_c
 struct particle_pool_config *particle_pool_get_config(struct particle_pool *pool);
 
 void add_particle_default(struct particle_pool *pool, int x, int y, int vx, int vy, int life, int color);
+void add_3d_particle_default(struct particle_pool *pool, int x, int y, int z,
+						int vx, int vy, int vz, int life, int color);
 void remove_particle_default(struct particle_pool *pool, struct particle *p);
 void move_particle_default(struct particle_pool *pool, struct particle *p);
 void draw_particle_default(struct particle *p);
@@ -66,8 +76,10 @@ const struct particle_pool_config default_particle_pool_config
  = {
 	.gravityx = 0,
 	.gravityy = 0,
+	.gravityz = 0,
 	.maxparticles = MAX_PARTICLES,
 	.add_particle = add_particle_default,
+	.add_3d_particle = add_3d_particle_default,
 	.remove_particle = remove_particle_default,
 	.move_particle = move_particle_default,
 	.draw_particle = draw_particle_default,

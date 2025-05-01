@@ -23,8 +23,27 @@ void add_particle_default(struct particle_pool *pool, int x, int y, int vx, int 
 
 	pool->p[pool->nparticles].x = x;
 	pool->p[pool->nparticles].y = y;
+	pool->p[pool->nparticles].z = 0;
 	pool->p[pool->nparticles].vx = vx;
 	pool->p[pool->nparticles].vy = vy;
+	pool->p[pool->nparticles].vz = 0;
+	pool->p[pool->nparticles].life = life;
+	pool->p[pool->nparticles].color = color;
+	pool->nparticles++;
+}
+
+void add_3d_particle_default(struct particle_pool *pool, int x, int y, int z,
+				int vx, int vy, int vz, int life, int color)
+{
+	if (pool->nparticles >= pool->config.maxparticles)
+		return;
+
+	pool->p[pool->nparticles].x = x;
+	pool->p[pool->nparticles].y = y;
+	pool->p[pool->nparticles].z = z;
+	pool->p[pool->nparticles].vx = vx;
+	pool->p[pool->nparticles].vy = vy;
+	pool->p[pool->nparticles].vz = vz;
 	pool->p[pool->nparticles].life = life;
 	pool->p[pool->nparticles].color = color;
 	pool->nparticles++;
@@ -44,8 +63,10 @@ void move_particle_default(struct particle_pool *pool, struct particle *p)
 {
 	p->x += p->vx;
 	p->y += p->vy;
+	p->z += p->vz;
 	p->vx += pool->config.gravityx;
 	p->vy += pool->config.gravityy;
+	p->vz += pool->config.gravityz;
 	if (p->life > 0)
 		p->life--;
 }
