@@ -14,6 +14,7 @@ Author: Stephen M. Cameron <stephenmcameron@gmail.com>
 #include "button.h"
 #include "framebuffer.h"
 #include "dynmenu.h"
+#include "particle.h"
 
 #include "xorshift.h"
 
@@ -187,26 +188,15 @@ struct lunar_base {
 } lunar_base;
 
 #define MAXSPARKS 50
-static struct spark_data {
-	int x, y, vx, vy, alive;
-} spark[MAXSPARKS] = { 0 };
+static struct particle_pool *sparkpool = NULL;
 
 static unsigned int xorshift_state = 0xa5a5a5a5;
 
 static void add_spark(int x, int y, int vx, int vy)
 {
-	int i;
-
-	for (i = 0; i < MAXSPARKS; i++) {
-		if (!spark[i].alive) {
-			spark[i].x = x;
-			spark[i].y = y;
-			spark[i].vx = vx + ((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128;
-			spark[i].vy = vy + ((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128;
-			spark[i].alive = 2 + ((xorshift(&xorshift_state) >> 16) & 0x7);
-			return;
-		}
-	}
+	vx += ((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128;
+	vy += ((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128;
+	sparkpool->config.add_particle(sparkpool, x, y, vx, vy, 2 + ((xorshift(&xorshift_state) >> 16) & 0x7), YELLOW);
 }
 
 static void draw_lunar_lander_msg(int color)
@@ -237,26 +227,11 @@ static void explosion(struct lander_data *lander)
 {
 	int i;
 
+	sparkpool->nparticles = 0;
 	for (i = 0; i < MAXSPARKS; i++) {
-		spark[i].x = lander->x;
-		spark[i].y = lander->y;
-		spark[i].vx = ((xorshift(&xorshift_state) >> 16) & 0xff) - 128;
-		spark[i].vy = ((xorshift(&xorshift_state) >> 16) & 0xff) - 128;
-		spark[i].alive = 100;
-	}
-}
-
-static void move_sparks(void)
-{
-	int i;
-
-	for (i = 0; i < MAXSPARKS; i++) {
-		if (!spark[i].alive)
-			continue;
-		spark[i].x += spark[i].vx;
-		spark[i].y += spark[i].vy;
-		if (spark[i].alive > 0)
-			spark[i].alive--;
+		sparkpool->config.add_particle(sparkpool, lander->x, lander->y,
+			((xorshift(&xorshift_state) >> 16) & 0xff) - 128,
+			((xorshift(&xorshift_state) >> 16) & 0xff) - 128, 100, YELLOW);
 	}
 }
 
@@ -294,23 +269,21 @@ static void draw_fuel_gauge(struct lander_data *lander, int color)
 	}
 }
 
-static void draw_sparks(struct lander_data *lander, int color)
+static void draw_spark(struct particle *p)
 {
-	int i, x1, y1, x2, y2;
+	int x1, y1, x2, y2;
 	const int sx = LCD_XSIZE / 2;
 	const int sy = LCD_YSIZE / 3;
-
-	FbColor(color);
-	for (i = 0; i < MAXSPARKS; i++) {
-		if (!spark[i].alive)
-			continue;
-		x1 = ((spark[i].x - lander->x - spark[i].vx) >> 8) + sx;
-		y1 = ((spark[i].y - lander->y - spark[i].vy) >> 8) + sy;
-		x2 = ((spark[i].x - lander->x) >> 8) + sx;
-		y2 = ((spark[i].y - lander->y) >> 8) + sy;
-		if (x1 >= 0 && x1 <= LCD_XSIZE - 1 && y1 >= 0 && y1 <= LCD_YSIZE - 1 &&
-			x2 >= 0 && x2 <= LCD_XSIZE - 1 && y2 >= 0 && y2 <= LCD_YSIZE - 1)
-			FbLine(x1, y1, x2, y2);
+	if (!p->life)
+		return;
+	x1 = ((p->x - lander.x - p->vx) >> 8) + sx;
+	y1 = ((p->y - lander.y - p->vy) >> 8) + sy;
+	x2 = ((p->x - lander.x) >> 8) + sx;
+	y2 = ((p->y - lander.y) >> 8) + sy;
+	if (x1 >= 0 && x1 <= LCD_XSIZE - 1 && y1 >= 0 && y1 <= LCD_YSIZE - 1 &&
+		x2 >= 0 && x2 <= LCD_XSIZE - 1 && y2 >= 0 && y2 <= LCD_YSIZE - 1) {
+		FbColor(p->color);
+		FbLine(x1, y1, x2, y2);
 	}
 }
 
@@ -726,7 +699,7 @@ static void draw_screen(void)
 {
 	FbColor(WHITE);
 	draw_terrain(&lander, BLACK); /* Erase previously drawn terrain */
-	draw_sparks(&lander, BLACK);
+	sparkpool->config.draw_particles_color(sparkpool, BLACK); /* erase sparks */
 	draw_astronauts(&lander, BLACK);
 	draw_lunar_base(&lander, BLACK);
 	if (mission_success == 0) {
@@ -737,14 +710,14 @@ static void draw_screen(void)
 			lunarlander_state = LUNARLANDER_INIT; /* start over */
 		draw_stats();
 	}
-	move_sparks();
+	sparkpool->config.move_particles(sparkpool);
 	update_message();
 	draw_terrain(&lander, WHITE); /* Draw terrain */
 	draw_lander();
 	draw_astronauts(&lander, GREEN);
 	draw_lunar_base(&lander, CYAN);
 	draw_fuel_gauge(&lander, RED);
-	draw_sparks(&lander, YELLOW);
+	sparkpool->config.draw_particles(sparkpool);
 	draw_lunar_lander_msg(YELLOW);
 	FbSwapBuffers();
 }
@@ -764,6 +737,19 @@ static void lunarlander_exit(void)
 
 void lunarlander_cb(__attribute__((unused)) struct badge_app *app)
 {
+
+	if (!sparkpool)
+		sparkpool = get_common_particle_pool();
+#define LUNARLANDER_POOL_SIG 0xBADA55
+	if (sparkpool->current_badge_app != LUNARLANDER_POOL_SIG) {
+		/* particle pool needs to be initialized */
+		sparkpool->config = default_particle_pool_config;
+		sparkpool->current_badge_app = LUNARLANDER_POOL_SIG;
+		sparkpool->config.draw_particle = draw_spark;
+		sparkpool->config.maxparticles = MAXSPARKS;
+		sparkpool->nparticles = 0;
+	}
+
 	switch (lunarlander_state) {
 	case LUNARLANDER_INIT:
 		lunarlander_init();
