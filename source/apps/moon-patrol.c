@@ -15,6 +15,7 @@
 #include "dynmenu.h"
 #include "rtc.h"
 #include "key_value_storage.h"
+#include "particle.h"
 
 #define GROUND_COLOR x11_DarkGoldenrod
 #define ROCK_COLOR x11_LightSlateGray
@@ -138,11 +139,7 @@ static struct bullet {
 static int nbullets = 0;
 
 #define MAXSPARKS 100 
-static struct spark {
-	int x, y, vx, vy;
-	int alive;
-} spark[MAXSPARKS];
-static int nsparks;
+static struct particle_pool *sparkpool = NULL;
 
 #define MAXSAUCERS 5
 static struct saucer {
@@ -1077,66 +1074,16 @@ static void draw_player(void)
 	FbDrawObject(wheel_points, ARRAYSIZE(wheel_points), WHEEL_COLOR, x + 6, y + wyo3, 32);
 }
 
-static void draw_spark(int i)
+static void draw_spark(struct particle *p)
 {
 	int x, y;
 
-	x = (spark[i].x - screenx) / 256;
-	y = (spark[i].y - screeny) / 256;
+	x = (p->x - screenx) / 256;
+	y = (p->y - screeny) / 256;
 	if (FbOnScreen(x, y)) {
-		FbColor(YELLOW);
+		FbColor(p->color);
 		FbPoint(x, y);
 	}
-}
-
-static void draw_sparks(void)
-{
-	for (int i = 0; i < nsparks; i++)
-		draw_spark(i);
-}
-
-static void move_spark(int i)
-{
-	spark[i].x += spark[i].vx;
-	spark[i].y += spark[i].vy;
-	spark[i].vy += (GRAVITY / 2); /* / 2 because it looks better */
-	if (spark[i].alive > 0)
-		spark[i].alive--;
-}
-
-static void delete_spark(int i)
-{
-	if (i >= nsparks)
-		return;
-	if (i < nsparks)
-		spark[i] = spark[nsparks - 1];
-	nsparks--;
-}
-
-static void move_sparks(void)
-{
-	int i = 0;
-
-	while (i < nsparks) {
-		move_spark(i);
-		if (!spark[i].alive)
-			delete_spark(i);
-		else
-			i++;
-	}
-
-}
-
-static void add_spark(int x, int y, int vx, int vy, int lifetime)
-{
-	if (nsparks >= MAXSPARKS)
-		return;
-	spark[nsparks].x = x;
-	spark[nsparks].y = y;
-	spark[nsparks].vx = vx;
-	spark[nsparks].vy = vy;
-	spark[nsparks].alive = lifetime;
-	nsparks++;
 }
 
 static void add_explosion(int x, int y, int count, int life)
@@ -1148,7 +1095,7 @@ static void add_explosion(int x, int y, int count, int life)
                 vy = xorshift(&xorshift_state) % (5 * 256);
 		vx = vx - ((5 * 256) / 2);
 		vy = vy - ((5 * 256) / 2);
-		add_spark(x, y, vx, vy, xorshift(&xorshift_state) % life);
+		sparkpool->config.add_particle(sparkpool, x, y, vx, vy, xorshift(&xorshift_state) % life, YELLOW);
         }
 }
 
@@ -1312,7 +1259,7 @@ static void draw_screen(void)
 	draw_saucers();
 	draw_bullets();
 	draw_bombs();
-	draw_sparks();
+	sparkpool->config.draw_particles(sparkpool);
 	draw_waypoints();
 	maybe_draw_moonbase();
 	if (!intermission_in_progress)
@@ -1363,7 +1310,7 @@ static void moonpatrol_run(void)
 	move_saucers();
 	move_bullets();
 	move_bombs();
-	move_sparks();
+	sparkpool->config.move_particles(sparkpool);
 	draw_screen();
 	FbSwapBuffers();
 
@@ -1487,6 +1434,18 @@ static void moonpatrol_exit(void)
 
 void moonpatrol_cb(__attribute__((unused)) struct badge_app *app)
 {
+	if (sparkpool == NULL) {
+		sparkpool = get_common_particle_pool();
+#define MOONPATROL_PARTICLE_POOL_SIG 0xe5ca1ade
+		if (sparkpool->current_badge_app != (int) MOONPATROL_PARTICLE_POOL_SIG) {
+			sparkpool->current_badge_app = (int) MOONPATROL_PARTICLE_POOL_SIG;
+			sparkpool->nparticles = 0;
+			sparkpool->config = default_particle_pool_config;
+			sparkpool->config.gravityy = GRAVITY / 2;
+			sparkpool->config.maxparticles = MAXSPARKS;
+			sparkpool->config.draw_particle = draw_spark;
+		}
+	}
 	switch (moonpatrol_state) {
 	case MOONPATROL_INIT:
 		moonpatrol_init();
