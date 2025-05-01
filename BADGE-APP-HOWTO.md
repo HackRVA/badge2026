@@ -359,6 +359,58 @@ Writing Strings to the Framebuffer
 		Newlines are handled.
 ```
 
+Particle system
+---------------
+
+For explosions and sparks and the like, there is a particle system
+shared among the badge apps.  The API is defined in
+[source/core/particle.h](https://github.com/HackRVA/badge2025/blob/main/source/core/particle.h)
+
+There are generic functions for drawing, moving, adding and removing particles, and there
+is a config structure with pointers to these functions so they may be replaced by badge
+app specific versions if the generic implementations are not suitable.
+
+Typical usage of the particle system:
+
+```
+	/* In the badge app's callback, get the pointer to the particle pool */
+	static struct particle_pool *sparkpool = NULL;
+
+	int badge_app_callback(void)
+	{
+		if (sparkpool == NULL) {
+			/* Get pointer to the common particle pool */
+#define MY_BADGE_APP_SIG 0xAAAA1234 // this should be unique to your badge app
+			sparkpool = get_common_particle_pool();
+			if (sparkpool->current_badge_app != MY_BADGE_APP_SIG) {
+				sparkpool->current_badge_app = MY_BADGE_APP_SIG;
+				sparkpool->nparticles = 0;
+				sparkpool->config = default_particle_pool_config;
+				// here is where you might set any custom functions in the config
+			}
+	...
+```
+
+Then, to add sparks...
+
+```
+	sparkpool->config.add_particle(sparkpool, x, y, vx, vy, lifetime, color);
+```
+
+At some point, your code should call functions to move the sparks and draw the sparks,
+exactly where will of course depend on your particular app.
+
+```
+	// Move sparks
+	sparkpool->config.move_particles(sparkpool);
+
+	// Draw sparks
+	sparkpool->config.draw_particles(sparkpool);
+```
+
+You can see examples of using the particle system in various badge apps, like
+lunarlander.c, moon-patrol.c, smashout.c, asteroids.c, and aagunner.c.
+
 Buttons, Directional-Pad Inputs and Rotary Encoders
 ---------------------------------------------------
 
