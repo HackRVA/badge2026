@@ -14,6 +14,7 @@
 #include "random.h"
 #include "rtc.h"
 #include "dynmenu.h"
+#include "particle.h"
 
 #if TARGET_PICO
 #define printf(...)
@@ -440,64 +441,7 @@ static struct camera {
 #define SPARKS_PER_EXPLOSION (MAX_SPARKS / 4)
 #define SPARK_GRAVITY (-10)
 #define TANK_CHUNK_COUNT (10)
-static struct bz_spark {
-	int x, y, z, life, vx, vy, vz;
-} spark[MAX_SPARKS] = { 0 };
-static int nsparks = 0;
-
-static void add_spark(int x, int y, int z, int vx, int vy, int vz, int life)
-{
-	if (nsparks >= MAX_SPARKS)
-		return;
-	struct bz_spark *s = &spark[nsparks];
-	s->x = x;
-	s->y = y;
-	s->z = z;
-	s->vx = vx;
-	s->vy = vy;
-	s->vz = vz;
-	s->life = life;
-	nsparks++;
-}
-
-static void remove_spark(int n)
-{
-	if (n < nsparks - 1)
-		spark[n] = spark[nsparks - 1];
-	nsparks--;
-}
-
-static void move_spark(struct bz_spark *s)
-{
-	s->x += s->vx;
-	s->y += s->vy;
-	s->z += s->vz;
-	s->vy += SPARK_GRAVITY;
-	if (s->y < 0)
-		s->life = 0;
-	if (s->life > 0)
-		s->life--;
-}
-
-static void move_sparks(void)
-{
-	for (int i = 0; i < nsparks; i++)
-		move_spark(&spark[i]);
-}
-
-static void remove_dead_sparks(void)
-{
-	for (int i = 0;;) {
-		if (i >= nsparks)
-			break;
-		struct bz_spark *s = &spark[i];
-		if (s->life > 0) {
-			i++;
-			continue;
-		}
-		remove_spark(i);
-	}
-}
+struct particle_pool *sparkpool = NULL;
 
 static signed char mountain[128];
 
@@ -610,7 +554,7 @@ static void battlezone_init(void)
 	}
 
 	nbz_objects = 0;
-	nsparks = 0;
+	sparkpool->nparticles = 0;
 	prescale_models();
 	add_initial_objects();
 
@@ -1016,14 +960,14 @@ static void draw_objects(struct camera *c)
 			draw_object(c, i);
 }
 
-static void draw_spark(struct camera *c, struct bz_spark *s)
+static void draw_spark(struct camera *c, struct particle *p)
 {
 	int x, y, z, nx, ny, nz, a, sx, sy;
 
 	/* Translate for +object position and -camera position */
-	x = s->x - c->x;
-	y = s->y - c->y;
-	z = s->z - c->z;
+	x = p->x - c->x;
+	y = p->y - c->y;
+	z = p->z - c->z;
 
 	/* Rotate for camera */
 	a = 128 - c->orientation;
@@ -1048,11 +992,12 @@ static void draw_spark(struct camera *c, struct bz_spark *s)
 		FbPoint(sx >> 8, sy >> 8);
 }
 
-static void draw_sparks(struct camera *c)
+static void draw_sparks(struct particle_pool *pool)
 {
+	struct camera *c = pool->config.cookie;
 	FbColor(SPARK_COLOR);
-	for (int i = 0; i < nsparks; i++)
-		draw_spark(c, &spark[i]);
+	for (int i = 0; i < pool->nparticles; i++)
+		draw_spark(c, &pool->p[i]);
 }
 
 static void draw_radar(void)
@@ -1119,7 +1064,7 @@ static void explosion(int x, int y, int z, int count, int chunks)
 		vz = ((int) (xorshift(&xorshift_state) % 600) - 300);
 
 		life = ((int) (xorshift(&xorshift_state) % 30) + 50);
-		add_spark(x, y, z, vx, vy, vz, life); 
+		sparkpool->config.add_3d_particle(sparkpool, x, y, z, vx, vy, vz, life, YELLOW);
 	}
 
 	for (int i = 0; i < chunks; i++) {
@@ -1566,8 +1511,7 @@ static void draw_screen(void)
 	player_has_been_hit = 0;
 	move_objects();
 	remove_dead_objects();
-	move_sparks();
-	remove_dead_sparks();
+	sparkpool->config.move_particles(sparkpool);
 
 	if (player_has_been_hit) {
 		FbBackgroundColor(WHITE);
@@ -1580,7 +1524,7 @@ static void draw_screen(void)
 	draw_horizon();
 	draw_mountains();
 	draw_objects(&camera);
-	draw_sparks(&camera);
+	sparkpool->config.draw_particles(sparkpool); /* calls draw_sparks */
 	draw_radar();
 	draw_reticle();
 #if 0
@@ -1622,6 +1566,16 @@ static void battlezone_exit(void)
 
 void battlezone_cb(__attribute__((unused)) struct badge_app *app)
 {
+	if (sparkpool == NULL) {
+		sparkpool = get_common_particle_pool();
+#define BATTLEZONE_PARTICLE_POOL_SIG 0xB4771300
+		if (sparkpool->current_badge_app != (int) BATTLEZONE_PARTICLE_POOL_SIG) {
+			sparkpool->current_badge_app = (int) BATTLEZONE_PARTICLE_POOL_SIG;
+			sparkpool->config = default_particle_pool_config;
+			sparkpool->config.cookie = &camera;
+			sparkpool->config.draw_particles = draw_sparks;
+		}
+	}
 	switch (battlezone_state) {
 	case BATTLEZONE_INIT:
 		battlezone_init();
