@@ -1574,6 +1574,7 @@ void battlezone_cb(__attribute__((unused)) struct badge_app *app)
 	if (claim_particle_pool(sparkpool, BATTLEZONE_PARTICLE_POOL_SIG)) {
 		sparkpool->config.cookie = &camera;
 		sparkpool->config.draw_particles = draw_sparks;
+		sparkpool->config.gravityy = SPARK_GRAVITY;
 	}
 	switch (battlezone_state) {
 	case BATTLEZONE_INIT:
