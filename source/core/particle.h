@@ -1,6 +1,8 @@
 #ifndef PARTICLE_H__
 #define PARTICLE_H__
 
+#include <stdint.h>
+
 /* This is meant as a common pool of particles to be used by badge apps for cosmetic "sparks"
  * "explosions", etc.
  *
@@ -32,7 +34,8 @@ struct particle {
 	 * life = particle lifetime, decrements with every movement until zero
 	 * color = particle color
 	 */
-	int x, y, z, vx, vy, vz, life, color;
+	int x, y, z;
+	int16_t vx, vy, vz, life, color;
 };
 
 struct particle_pool;
