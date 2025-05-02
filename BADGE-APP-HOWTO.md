@@ -408,8 +408,14 @@ exactly where will of course depend on your particular app.
 	sparkpool->config.draw_particles(sparkpool);
 ```
 
-You can see examples of using the particle system in various badge apps, like
-lunarlander.c, moon-patrol.c, smashout.c, asteroids.c, and aagunner.c.
+You can see some examples of using the particle system in various badge apps, like:
+
+* [aagunner.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/aagunner.c#L688)
+* [asteroids.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/asteroids.c#L565)
+* [battlezone.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/battlezone.c#L1574) (uses custom drawing routine to implement 3D sparks)
+* [lunarlander.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/lunarlander.c#L746)
+* [moon-patrol.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/moon-patrol.c#L1442) (has a custom function for drawing sparks)
+* [smashout.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/smashout.c#L439) (uses custom spark movement and drawing)
 
 Buttons, Directional-Pad Inputs and Rotary Encoders
 ---------------------------------------------------
