@@ -875,14 +875,15 @@ static void draw_screen(void)
 
 void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
 {
+#define PUZZLE_ATTACK_POOL_SIG 0xC111456
 	if (particle_pool == NULL){
 		particle_pool = get_common_particle_pool();
-#define PUZZLE_ATTACK_POOL_SIG 0xC111456
-		if (particle_pool->current_badge_app != (int)PUZZLE_ATTACK_POOL_SIG) {
-			particle_pool->current_badge_app = (int)PUZZLE_ATTACK_POOL_SIG;
-			particle_pool->config = default_particle_pool_config;
-			particle_pool->config.gravityy = (int)PARTICLE_GRAVITY;
-		}
+		particle_pool->nparticles = 0;
+	}
+	if (claim_particle_pool(particle_pool, PUZZLE_ATTACK_POOL_SIG )) {
+		particle_pool->current_badge_app = (int)PUZZLE_ATTACK_POOL_SIG;
+		particle_pool->config = default_particle_pool_config;
+		particle_pool->config.gravityy = (int)PARTICLE_GRAVITY;
 	}
 	switch (puzzle_attack_state) {
 	case PUZZLE_ATTACK_INIT:
