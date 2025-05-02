@@ -559,14 +559,11 @@ void asteroids_cb(__attribute__((unused)) struct badge_app *app)
 {
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();
-#define ASTEROIDS_PARTICLE_POOL_SIG 0xA573801D
-		if (sparkpool->current_badge_app != (int) ASTEROIDS_PARTICLE_POOL_SIG) {
-			sparkpool->current_badge_app = (int) ASTEROIDS_PARTICLE_POOL_SIG;
-			sparkpool->nparticles = 0;
-			sparkpool->config = default_particle_pool_config;
-			sparkpool->config.maxparticles = MAXSPARKS;
-		}
+		sparkpool->nparticles = 0;
 	}
+#define ASTEROIDS_PARTICLE_POOL_SIG 0xA573801D
+	if (claim_particle_pool(sparkpool, ASTEROIDS_PARTICLE_POOL_SIG))
+		sparkpool->config.maxparticles = MAXSPARKS;
 	switch (asteroids_state) {
 	case ASTEROIDS_INIT:
 		asteroids_init();

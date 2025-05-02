@@ -30,6 +30,16 @@ struct particle_pool *get_common_particle_pool(void)
 	return &common_particle;
 }
 
+int claim_particle_pool(struct particle_pool *pool, int app_signature)
+{
+	if (pool->current_badge_app == app_signature)
+		return 0; /* already claimed it. */
+	pool->current_badge_app = app_signature;
+	pool->config = default_particle_pool_config;
+	pool->nparticles = 0;
+	return 1;
+}
+
 void add_particle_default(struct particle_pool *pool, int x, int y, int vx, int vy, int life, int color)
 {
 	if (pool->nparticles >= pool->config.maxparticles)

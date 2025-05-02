@@ -683,12 +683,9 @@ void aagunner_cb(__attribute__((unused)) struct badge_app *app)
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();
 		sparkpool->nparticles = 0;
-#define AAGUNNER_PARTICLE_POOL_SIG 0x0AA777
-		if (sparkpool->current_badge_app != AAGUNNER_PARTICLE_POOL_SIG) {
-			sparkpool->current_badge_app = AAGUNNER_PARTICLE_POOL_SIG;
-			sparkpool->config = default_particle_pool_config;
-		}
 	}
+#define AAGUNNER_PARTICLE_POOL_SIG 0x0AA777
+	(void) claim_particle_pool(sparkpool, AAGUNNER_PARTICLE_POOL_SIG);
 	switch (aagunner_state) {
 	case AAGUNNER_INIT:
 		aagunner_init();

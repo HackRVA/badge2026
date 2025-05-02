@@ -433,13 +433,12 @@ void smashout_cb(__attribute__((unused)) struct badge_app *app)
 {
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
 #define SMASHOUT_PARTICLE_POOL_SIG 0x5111456
-		if (sparkpool->current_badge_app != (int) SMASHOUT_PARTICLE_POOL_SIG ) {
-			sparkpool->current_badge_app = (int) SMASHOUT_PARTICLE_POOL_SIG;
-			sparkpool->config = default_particle_pool_config;
-			sparkpool->config.draw_particles = smashout_draw_sparks;
-			sparkpool->config.move_particles = smashout_move_sparks;
-		}
+	if (claim_particle_pool(sparkpool, SMASHOUT_PARTICLE_POOL_SIG )) {
+		sparkpool->config.draw_particles = smashout_draw_sparks;
+		sparkpool->config.move_particles = smashout_move_sparks;
 	}
 	switch (smashout_program_state) {
 	case SMASHOUT_GAME_INIT:

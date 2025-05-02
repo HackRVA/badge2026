@@ -59,6 +59,17 @@ struct particle_pool {
 
 struct particle_pool *get_common_particle_pool(void);
 
+/* Claim pool for a particular badge app.
+ * If pool->current_badge_app == app_signature, returns 0.
+ * Otherwise sets pool->current_badge_app = app_signature, and sets
+ * pool->config = default_particle_pool_config, and set
+ * pool->nparticles = 0, and finally returns 1.
+ *
+ * The idea is if it returns 1, then the app knows that it must (re)set up any
+ * customizations that it might require for pool->config.
+ */
+int claim_particle_pool(struct particle_pool *pool, int app_signature);
+
 void particle_pool_set_config(struct particle_pool *pool, struct particle_pool_config *config);
 struct particle_pool_config *particle_pool_get_config(struct particle_pool *pool);
 

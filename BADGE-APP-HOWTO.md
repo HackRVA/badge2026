@@ -382,12 +382,12 @@ Typical usage of the particle system:
 			/* Get pointer to the common particle pool */
 #define MY_BADGE_APP_SIG 0xAAAA1234 // this should be unique to your badge app
 			sparkpool = get_common_particle_pool();
-			if (sparkpool->current_badge_app != MY_BADGE_APP_SIG) {
-				sparkpool->current_badge_app = MY_BADGE_APP_SIG;
-				sparkpool->nparticles = 0;
-				sparkpool->config = default_particle_pool_config;
-				// here is where you might set any custom functions in the config
-			}
+			sparkpool->nparticles = 0;
+		}
+		if (claim_particle_pool(sparkpool, MY_BADGE_APP_SIG)) {
+			// here is where you might set any custom functions in the config
+			sparkpool->config.gravityy = 10; // for example.
+		}
 	...
 ```
 

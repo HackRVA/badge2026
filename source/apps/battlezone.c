@@ -1568,13 +1568,12 @@ void battlezone_cb(__attribute__((unused)) struct badge_app *app)
 {
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
 #define BATTLEZONE_PARTICLE_POOL_SIG 0xB4771300
-		if (sparkpool->current_badge_app != (int) BATTLEZONE_PARTICLE_POOL_SIG) {
-			sparkpool->current_badge_app = (int) BATTLEZONE_PARTICLE_POOL_SIG;
-			sparkpool->config = default_particle_pool_config;
-			sparkpool->config.cookie = &camera;
-			sparkpool->config.draw_particles = draw_sparks;
-		}
+	if (claim_particle_pool(sparkpool, BATTLEZONE_PARTICLE_POOL_SIG)) {
+		sparkpool->config.cookie = &camera;
+		sparkpool->config.draw_particles = draw_sparks;
 	}
 	switch (battlezone_state) {
 	case BATTLEZONE_INIT:

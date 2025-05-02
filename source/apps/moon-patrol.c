@@ -1436,15 +1436,13 @@ void moonpatrol_cb(__attribute__((unused)) struct badge_app *app)
 {
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
 #define MOONPATROL_PARTICLE_POOL_SIG 0xe5ca1ade
-		if (sparkpool->current_badge_app != (int) MOONPATROL_PARTICLE_POOL_SIG) {
-			sparkpool->current_badge_app = (int) MOONPATROL_PARTICLE_POOL_SIG;
-			sparkpool->nparticles = 0;
-			sparkpool->config = default_particle_pool_config;
-			sparkpool->config.gravityy = GRAVITY / 2;
-			sparkpool->config.maxparticles = MAXSPARKS;
-			sparkpool->config.draw_particle = draw_spark;
-		}
+	if (claim_particle_pool(sparkpool, MOONPATROL_PARTICLE_POOL_SIG)) {
+		sparkpool->config.gravityy = GRAVITY / 2;
+		sparkpool->config.maxparticles = MAXSPARKS;
+		sparkpool->config.draw_particle = draw_spark;
 	}
 	switch (moonpatrol_state) {
 	case MOONPATROL_INIT:

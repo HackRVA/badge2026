@@ -738,16 +738,15 @@ static void lunarlander_exit(void)
 void lunarlander_cb(__attribute__((unused)) struct badge_app *app)
 {
 
-	if (!sparkpool)
+	if (!sparkpool) {
 		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
 #define LUNARLANDER_POOL_SIG 0xBADA55
-	if (sparkpool->current_badge_app != LUNARLANDER_POOL_SIG) {
+	if (claim_particle_pool(sparkpool, LUNARLANDER_POOL_SIG)) {
 		/* particle pool needs to be initialized */
-		sparkpool->config = default_particle_pool_config;
-		sparkpool->current_badge_app = LUNARLANDER_POOL_SIG;
 		sparkpool->config.draw_particle = draw_spark;
 		sparkpool->config.maxparticles = MAXSPARKS;
-		sparkpool->nparticles = 0;
 	}
 
 	switch (lunarlander_state) {
