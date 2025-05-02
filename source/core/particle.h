@@ -48,6 +48,8 @@ struct particle_pool_config {
 	void *cookie; /* For use by badge apps */
 };
 
+extern const struct particle_pool_config default_particle_pool_config;
+
 struct particle_pool {
 	int current_badge_app; /* to allow apps to detect if the particle pool was tampered with by another app */
 	struct particle_pool_config config;
@@ -70,26 +72,6 @@ void draw_particle_color_default(struct particle *p, int color);
 void move_particles_default(struct particle_pool *pool);
 void draw_particles_default(struct particle_pool *pool);
 void draw_particles_color_default(struct particle_pool *pool, int color);
-
-const struct particle_pool_config default_particle_pool_config
-#ifdef PARTICLE_H_DEFINE_GLOBALS
- = {
-	.gravityx = 0,
-	.gravityy = 0,
-	.gravityz = 0,
-	.maxparticles = MAX_PARTICLES,
-	.add_particle = add_particle_default,
-	.add_3d_particle = add_3d_particle_default,
-	.remove_particle = remove_particle_default,
-	.move_particle = move_particle_default,
-	.draw_particle = draw_particle_default,
-	.draw_particle_color = draw_particle_color_default,
-	.move_particles = move_particles_default,
-	.draw_particles = draw_particles_default,
-	.draw_particles_color = draw_particles_color_default,
-}
-#endif
-;
 
 #endif
 

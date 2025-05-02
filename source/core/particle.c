@@ -1,8 +1,22 @@
-#define PARTICLE_H_DEFINE_GLOBALS
 #include "particle.h"
-#undef PARTICLE_H_DEFINE_GLOBALS
 #include "framebuffer.h"
 #include <stddef.h>
+
+const struct particle_pool_config default_particle_pool_config = {
+	.gravityx = 0,
+	.gravityy = 0,
+	.gravityz = 0,
+	.maxparticles = MAX_PARTICLES,
+	.add_particle = add_particle_default,
+	.add_3d_particle = add_3d_particle_default,
+	.remove_particle = remove_particle_default,
+	.move_particle = move_particle_default,
+	.draw_particle = draw_particle_default,
+	.draw_particle_color = draw_particle_color_default,
+	.move_particles = move_particles_default,
+	.draw_particles = draw_particles_default,
+	.draw_particles_color = draw_particles_color_default,
+};
 
 /* get this via get_common_particle_pool)() */
 static struct particle_pool common_particle = {
