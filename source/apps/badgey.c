@@ -2965,7 +2965,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 6
+#define NUM_STATIC_CHESTS 7
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -3015,6 +3015,9 @@ static struct treasure_clue {
 	/* clues in , (BORTON, town 21 JARLS) */
 	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_rando },
 	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_pub },
+	/* clues in, (BORTON, town 22 KORVIN) */
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_rando },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_pub },
 };
 
 #define NCLUES (ARRAY_SIZE(clue))
@@ -3775,6 +3778,7 @@ static void setup_static_treasures(void)
 	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
 	add_static_treasure(&NW42, 12, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* NW42, NORJIG, SIGTRAP */
 	add_static_treasure(&borton, 13, 24, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
+	add_static_treasure(&borton, 26, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED); /* borton, smuggler's cave, */
 }
 
 static void badgey_init(void)
