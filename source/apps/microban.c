@@ -82,7 +82,7 @@ static enum microban_state_run run_state = GAMEPLAY;
 static int screen_changed = 0;
 
 static int tick;
-// static int Stats.level_number;
+// static int stats.level_number;
 
 
 static int menu_selection = 0;
@@ -94,7 +94,7 @@ static Player player;
 static const Input input_clear = {0};
 static Input input = input_clear;
 
-static int streak = 0;
+// static int streak = 0;
 static int moves = 0;
 static int moves_tried = 0;
 
@@ -104,23 +104,26 @@ static struct Stats {
     bool levels_completed[MAX_LEVELS];
     bool levels_unlocked[MAX_LEVELS];
     int  best_moves[MAX_LEVELS];
+    int  streak;
     int  best_streak;
     int  level_number;
-} Stats;
+} stats;
+
+static bool levelmenufromcompleted;
 
 static int level_width(void) {
-    return microban_levels_rects[Stats.level_number].width;
+    return microban_levels_rects[stats.level_number].width;
 }
 static int level_height(void) {
-    return microban_levels_rects[Stats.level_number].height;
+    return microban_levels_rects[stats.level_number].height;
 }
 
 static void microban_save_game(void)
 {
     // struct badgey_state state;
     // badgey_serialize_state(&state);
-    // Stats.level_number = Stats.level_number;
-    bool saved = flash_kv_store_binary("MICROBAN_SAVED_GAME", &Stats, sizeof(Stats));
+    // stats.level_number = stats.level_number;
+    bool saved = flash_kv_store_binary("MICROBAN_SAVED_GAME", &stats, sizeof(stats));
     if (!saved) {
 #if TARGET_SIMULATOR
         fprintf(stderr, "Failed to save game.\n");
@@ -155,7 +158,7 @@ static void microban_restore_game(void)
         // status_message("Failed to read\nsaved game\n");
         return;
     } else {
-        Stats = state;
+        stats = state;
     }
 }
 
@@ -170,14 +173,13 @@ static bool unlock_levels(void) {
     for (int bp = 0; bp < BREAKPOINT_COUNT - 2; bp++) {
         int count = 0;
         bool requirement_met = false;
-        bool all_complete = false;
         for (int lvl = PROGRESS_BREAKPOINTS[bp]; lvl < PROGRESS_BREAKPOINTS[bp + 1]; lvl++) {
-            if (Stats.levels_completed[lvl] == true) count++;
+            if (stats.levels_completed[lvl] == true) count++;
         }
         if (count >= LEVELS_TO_PROGRESS) requirement_met = true;
         if (requirement_met) {
             for (int lvl = PROGRESS_BREAKPOINTS[bp + 1]; lvl < PROGRESS_BREAKPOINTS[bp + 2]; lvl++) {
-                Stats.levels_unlocked[lvl] = true;
+                stats.levels_unlocked[lvl] = true;
             }
         }
     }
@@ -223,6 +225,8 @@ static void set_level(int levelNo) {
     const struct asset2 *asset = &microban_levels;
     int y, x, texture_row, texture_x, buffer_row;
 
+    levelmenufromcompleted = false;
+
     player.position = (Point){0,0};
     player.pushing = false;
     input = input_clear;
@@ -230,7 +234,7 @@ static void set_level(int levelNo) {
     moves = 0;
     moves_tried = 0;
 
-    menu_selection_level = Stats.level_number;
+    menu_selection_level = stats.level_number;
 
     Rectangle level_rect = microban_levels_rects[levelNo];
     current_level.x = level_rect.width;
@@ -264,7 +268,7 @@ static void set_level(int levelNo) {
 }
 
 static bool check_level(void) {
-    // if (Stats.level_number == 0) return false;
+    // if (stats.level_number == 0) return false;
     int blocks = 0;
     int targets = 0;
     int blocks_on_targets = 0;
@@ -291,47 +295,46 @@ static void microban_init(void)
     player.position = (Point){0,0};
     player.facing = S;
     tick = 0;
-    Stats.level_number = 0;
-    streak = 0;
+    stats.level_number = 0;
+    stats.streak = 0;
     camera.offset.x = LCD_XSIZE / 2 - TILE_SIZE/2;
     camera.offset.y = LCD_YSIZE / 2 - TILE_SIZE/2;
 
     //unlock levels 0-29. (level 0 should be unlocked even though you start from 1)
     for (int lvl = 0; lvl < MAX_LEVELS; lvl += 1) {
-        Stats.levels_completed[lvl] = false;
-        Stats.best_moves[lvl] = 0;
+        stats.levels_completed[lvl] = false;
+        stats.best_moves[lvl] = 0;
         if (lvl < PROGRESS_BREAKPOINTS[1]) {
-            Stats.levels_unlocked[lvl] = true;
+            stats.levels_unlocked[lvl] = true;
         }
     }
-
 
     microban_restore_game();
 
     for (int lvl = 1; lvl < MAX_LEVELS; lvl++) {
-        if (Stats.levels_unlocked[lvl] && !Stats.levels_completed[lvl]) {
-            Stats.level_number = lvl;
-            set_level(Stats.level_number);
+        if (stats.levels_unlocked[lvl] && !stats.levels_completed[lvl]) {
+            stats.level_number = lvl;
+            set_level(stats.level_number);
             run_state = GAMEPLAY;
             break;
         }
     }
 
-
 }
 
 static void process_input_WIN(void) {
     if (input.APressed || input.BPressed) {
-        // Stats.level_number = wrap(Stats.level_number + 1, MAX_LEVELS);
-        // set_level(Stats.level_number);
+        // stats.level_number = wrap(stats.level_number + 1, MAX_LEVELS);
+        // set_level(stats.level_number);
         // run_state = GAMEPLAY;
-        int nextlvl = wrap(Stats.level_number + 1, MAX_LEVELS);
-        if (Stats.levels_unlocked[nextlvl] == true) {
-            Stats.level_number = nextlvl;
-            set_level(Stats.level_number);
+        int nextlvl = wrap(stats.level_number + 1, MAX_LEVELS);
+        if (stats.levels_unlocked[nextlvl] == true) {
+            stats.level_number = nextlvl;
+            set_level(stats.level_number);
             run_state = GAMEPLAY;
         } else {
             run_state = LEVEL_MENU;
+            levelmenufromcompleted = true;
         }
     }
 }
@@ -340,21 +343,22 @@ static void process_input_LEVEL_MENU(void) {
     if (input.BPressed) {
         if (menu_streak_popup) {
             menu_streak_popup = false;
-        } else {
-            menu_selection_level = Stats.level_number;
+        }
+        else if(!levelmenufromcompleted) {
+            menu_selection_level = stats.level_number;
             run_state = GAMEPLAY;
         }
-    } else if (input.APressed && Stats.levels_unlocked[menu_selection_level] == true) {
-        if (menu_selection_level == Stats.level_number) {
-            run_state = GAMEPLAY;
+    } else if (input.APressed && stats.levels_unlocked[menu_selection_level] == true) {
+        if (menu_selection_level == stats.level_number) {
+            if (!levelmenufromcompleted) run_state = GAMEPLAY;
         } else {
-            if (streak >= 3 && !menu_streak_popup) {
+            if (stats.streak >= 3 && !menu_streak_popup) {
                 menu_streak_popup = true;
             } else {
-                streak = 0;
+                stats.streak = 0;
                 menu_streak_popup = false;
-                Stats.level_number = menu_selection_level;
-                set_level(Stats.level_number);
+                stats.level_number = menu_selection_level;
+                set_level(stats.level_number);
                 run_state = GAMEPLAY;
             }
         }
@@ -374,24 +378,25 @@ static void process_input_PAUSE(void) {
         menu_selection = wrap(menu_selection - 1, MENU_ENTRIES);
     } else if (input.APressed) {
         if (menu_selection == MENU_RESET) {
-            set_level(Stats.level_number);
-            if (moves > 0) streak = 0;
+            set_level(stats.level_number);
+            if (moves > 0) stats.streak = 0;
             run_state = GAMEPLAY;
         } else if (menu_selection == MENU_SKIP) {
-            int nextlvl = wrap(Stats.level_number + 1, MAX_LEVELS);
-            if (Stats.levels_unlocked[nextlvl] == true) {
-                Stats.level_number = nextlvl;
-                set_level(Stats.level_number);
-                streak = 0;
+            int nextlvl = wrap(stats.level_number + 1, MAX_LEVELS);
+            if (stats.levels_unlocked[nextlvl] == true) {
+                stats.level_number = nextlvl;
+                set_level(stats.level_number);
+                stats.streak = 0;
                 run_state = GAMEPLAY;
             } else {
                 run_state = LEVEL_MENU;
+                // levelmenufromcompleted = true;
             }
 
         } else if (menu_selection == MENU_LEVEL_MENU) {
             run_state = LEVEL_MENU;
         } else if (menu_selection == MENU_EXIT) {
-            if (moves > 0) streak = 0;
+            if (moves > 0) stats.streak = 0;
             microban_state = MICROBAN_EXIT;
         }
         menu_selection = 0;
@@ -492,11 +497,11 @@ static void process_input_GAMEPLAY(void) {
 
         bool level_complete = check_level();
         if (level_complete) {
-            streak += 1;
-            Stats.levels_completed[Stats.level_number] = true;
-            int prev_best_moves = Stats.best_moves[Stats.level_number];
-            if (moves < prev_best_moves || prev_best_moves == 0) Stats.best_moves[Stats.level_number] = moves;
-            if (streak > Stats.best_streak) Stats.best_streak = streak;
+            stats.streak += 1;
+            stats.levels_completed[stats.level_number] = true;
+            int prev_best_moves = stats.best_moves[stats.level_number];
+            if (moves < prev_best_moves || prev_best_moves == 0) stats.best_moves[stats.level_number] = moves;
+            if (stats.streak > stats.best_streak) stats.best_streak = stats.streak;
             unlock_levels();
             run_state = WIN;
 
@@ -579,7 +584,7 @@ static void draw_level(const struct asset2 *asset, Camera camera) {
 
 static void draw_hud(void)
 {   
-    if (Stats.levels_completed[Stats.level_number] == true) {
+    if (stats.levels_completed[stats.level_number] == true) {
         // FbMove(0,0);
         // FbColor(GREEN);
         // FbWriteString("")
@@ -603,7 +608,7 @@ static void camera_move(void)
     camera.target.x = x;
     camera.target.y = y;
     
-    if (Stats.level_number == 0) return;
+    if (stats.level_number == 0) return;
 
     if (width - TILE_SIZE <= LCD_XSIZE) {
         camera.target.x = width/2;
@@ -630,7 +635,7 @@ static void draw_level_menu(void) {
     int x, y, texture_x,texture_row;
     const struct asset2 *world = &microban_levels;    
     Rectangle level_rect = microban_levels_rects[menu_selection_level];
-    bool selection_unlocked = Stats.levels_unlocked[menu_selection_level] == true;
+    bool selection_unlocked = stats.levels_unlocked[menu_selection_level] == true;
 
     if (selection_unlocked) {
         for (y = 0; y < level_rect.height; y++) {
@@ -659,7 +664,7 @@ static void draw_level_menu(void) {
         if (y > LCD_YSIZE) break;
 
         FbColor(WHITE);
-        if (row == Stats.level_number) {
+        if (row == stats.level_number) {
             FbImageRect(&possum2, 0, y, 5 * 8, 32, 8, 8, MAGENTA);
         } else if (row == menu_selection_level) {
             FbMove(0, y);
@@ -667,9 +672,9 @@ static void draw_level_menu(void) {
         }
 
 
-        if(Stats.levels_completed[row] == true) {
+        if(stats.levels_completed[row] == true) {
             FbColor(GREEN);
-        } else if(Stats.levels_unlocked[row] == false) {
+        } else if(stats.levels_unlocked[row] == false) {
             FbColor(GREY8);
         }
 
@@ -685,9 +690,9 @@ static void draw_level_menu(void) {
         }
     }
 
-    if (Stats.levels_completed[menu_selection_level] == true) {
+    if (stats.levels_completed[menu_selection_level] == true) {
         FbMove(32, 0);
-        snprintf(buf, sizeof(buf), "best moves: %d", Stats.best_moves[menu_selection_level]);
+        snprintf(buf, sizeof(buf), "best moves: %d", stats.best_moves[menu_selection_level]);
         FbWriteString(buf);
     }
     FbColor(WHITE);
@@ -726,7 +731,7 @@ static void draw_screen(void)
     
     camera_move();
 
-    FbImageRect(&bluestreet, 0, 0, camera.target.x + Stats.level_number*211, camera.target.y + Stats.level_number*151, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+    FbImageRect(&bluestreet, 0, 0, camera.target.x + stats.level_number*211, camera.target.y + stats.level_number*151, LCD_XSIZE, LCD_YSIZE, MAGENTA);
 
 
     player.current_tile = get_tile(player.position);
@@ -779,7 +784,7 @@ static void draw_screen(void)
         y += unit;
 
         FbMove(x, y);
-        snprintf(buf, sizeof(buf), "room %d complete", Stats.level_number);
+        snprintf(buf, sizeof(buf), "room %d complete", stats.level_number);
         FbWriteString(buf);
         y += unit;
 
@@ -793,10 +798,10 @@ static void draw_screen(void)
         FbWriteString("try next?");
         y += unit;
 
-        if (streak >= 3) {
+        if (stats.streak >= 3) {
             y += unit;
             FbMove(x, y);
-            snprintf(buf, sizeof(buf), "STREAK: %d!!", streak);
+            snprintf(buf, sizeof(buf), "STREAK: %d!!", stats.streak);
             FbWriteString(buf);
         }
         break;
