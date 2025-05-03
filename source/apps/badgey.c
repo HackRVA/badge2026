@@ -7769,9 +7769,54 @@ static void badgey_restore_game(void)
 	status_message("Saved game\nrestored from\nflash memory");
 }
 
+#if TARGET_SIMULATOR
+static void sanity_check_one_cave_entrance(const struct badgey_world *w, int x, int y)
+{
+	int found = 0;
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].world != w)
+			continue;
+		if (cave_aux_entrance[i].wx != x || cave_aux_entrance[i].wy != y)
+			continue;
+		found = 1;
+		break;
+	}
+	if (!found)
+		fprintf(stderr, "Bad aux cave entrance at %s:(%d, %d)\n", w->name, x, y);
+}
+
+static void sanity_check_aux_cave_entrances_per_world(const struct badgey_world *w)
+{
+	for (int y = 0; y < 64; y++) {
+		for (int x = 0; x < 64; x++) {
+			char c = w->wm[windex(x, y)];
+			if (c == 'c')
+				sanity_check_one_cave_entrance(w, x, y);
+		}
+	}
+}
+#endif
+
+static void sanity_check_aux_cave_entrances(void)
+{
+#if TARGET_SIMULATOR
+	static int already_checked = 0;
+	if (already_checked)
+		return;
+
+	already_checked = 1;
+	sanity_check_aux_cave_entrances_per_world(&ossaria);
+	sanity_check_aux_cave_entrances_per_world(&NW42);
+	sanity_check_aux_cave_entrances_per_world(&borton);
+	sanity_check_aux_cave_entrances_per_world(&skang);
+	sanity_check_aux_cave_entrances_per_world(&gnarg);
+#endif
+}
+
 /* You will need to rename badgey_cb() something else. */
 void badgey_cb(__attribute__((unused)) struct badge_app *app)
 {
+	sanity_check_aux_cave_entrances();
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:
 		badgey_initial_menu();
