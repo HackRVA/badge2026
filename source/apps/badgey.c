@@ -5486,6 +5486,7 @@ static void badgey_cave_menu(void)
 		if (ladder_is_here(player.x, player.y))
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
+		dynmenu_add_item(&cave_menu, "DIG", BADGEY_USE_ITEM, 4);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
 		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
 		menu_setup = 1;
@@ -5519,6 +5520,11 @@ static void badgey_cave_menu(void)
 	case 1: /* use item */
 		menu_setup = 0;
 		set_badgey_state(BADGEY_USE_ITEM);
+		screen_changed = 1;
+		break;
+	case 4: /* dig */
+		menu_setup = 0;
+		set_badgey_state(BADGEY_DIG);
 		screen_changed = 1;
 		break;
 	case DYNMENU_SELECTION_ABORTED:
