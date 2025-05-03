@@ -2,6 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run SDL Simulation",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build_sdl_sim/source/badge2025_c",
+            "cwd": "${workspaceFolder}/build_sdl_sim",
+            "preLaunchTask": "Build SDL Sim",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "stopAtEntry": false,
+            "externalConsole": false
+        },
+        {
             "name": "Pico Debug",
             "device": "RP2040",
             "gdbPath": "arm-none-eabi-gdb",

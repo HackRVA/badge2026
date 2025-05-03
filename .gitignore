@@ -71,7 +71,6 @@ zscan_build/*
 **/.DS_Store
 
 # Visual Studio Code project files
-.vscode/
 *.code-workspace
 
 # Simulator flash storage
