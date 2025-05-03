@@ -2965,7 +2965,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 4
+#define NUM_STATIC_CHESTS 7
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -3009,7 +3009,17 @@ static struct treasure_clue {
 	/* clues in KALFO, (NW42, town 13) */
 	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_pub },
 	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_rando },
+	/* clues in BURNIP, (NW42, town 14) */
+	{ "\nDIG AROUND\nBEHIND SIGTRAP\nIN THE TOWN\nOF NORJIG\n", &NW42, 14, -1, -1, clue_type_rando },
+	{ "\nDIG AROUND\nBEHIND SIGTRAP\nIN THE TOWN\nOF NORJIG\n", &NW42, 14, -1, -1, clue_type_pub },
+	/* clues in , (BORTON, town 21 JARLS) */
+	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_rando },
+	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_pub },
+	/* clues in, (BORTON, town 22 KORVIN) */
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_rando },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_pub },
 };
+
 #define NCLUES (ARRAY_SIZE(clue))
 #define NO_CLUE (-1)
 
@@ -3766,6 +3776,9 @@ static void setup_static_treasures(void)
 	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
 	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
 	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
+	add_static_treasure(&NW42, 12, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* NW42, NORJIG, SIGTRAP */
+	add_static_treasure(&borton, 13, 24, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
+	add_static_treasure(&borton, 26, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED); /* borton, smuggler's cave, */
 }
 
 static void badgey_init(void)
@@ -4367,6 +4380,11 @@ static void check_buttons(int tick)
 			if (x == 'w' || x == 'm' || x == '_' || (x >= 'A' && x <= 'Z') || x == '#') {
 				player.moving = 0;
 				return;
+			} else if ((x == 'c' || (x >= '0' && x <= '9'))
+					&& (newx != player.x || newy != player.y)) {
+				if (player.moving)
+					player.moving = 0; /* stop automatic motion on towns or caves */
+				/* Note that we don't return here. */
 			}
 		}
 	}
@@ -4770,6 +4788,18 @@ static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, 
 	}
 }
 
+static void maybe_draw_player_coords(void)
+{
+	if (player.carrying[POSITION_FINDER] <= 0)
+		return;
+
+	char buf[20];
+	FbColor(WHITE);
+	snprintf(buf, sizeof(buf), "(%d, %d)", player.x, player.y);
+	FbMove(0, LCD_YSIZE - 8);
+	FbWriteString(buf);
+}
+
 static void draw_cave_screen(void)
 {
 	int x = player.x;
@@ -4821,6 +4851,7 @@ static void draw_cave_screen(void)
 		FbWriteString(clue[clue_no].clue_text);
 		FbColor(WHITE);
 	}
+	maybe_draw_player_coords();
 }
 
 static int is_onscreen(int x, int y)
@@ -5372,12 +5403,7 @@ static void draw_screen(void)
 	draw_creatures();
 	draw_ships();
 
-	if (player.carrying[POSITION_FINDER] > 0) {
-		char buf[20];
-		snprintf(buf, sizeof(buf), "(%d, %d)", player.x, player.y);
-		FbMove(0, LCD_YSIZE - 8);
-		FbWriteString(buf);
-	}
+	maybe_draw_player_coords();
 
 	char ch = player.world->wm[windex(player.x, player.y)];
 	if (player.world->type == WORLD_TYPE_PLANET && ((ch >= '0' && ch <= '9') || ch == 'c')) {
@@ -5464,6 +5490,7 @@ static void badgey_cave_menu(void)
 		if (ladder_is_here(player.x, player.y))
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
+		dynmenu_add_item(&cave_menu, "DIG", BADGEY_USE_ITEM, 4);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
 		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
 		menu_setup = 1;
@@ -5497,6 +5524,11 @@ static void badgey_cave_menu(void)
 	case 1: /* use item */
 		menu_setup = 0;
 		set_badgey_state(BADGEY_USE_ITEM);
+		screen_changed = 1;
+		break;
+	case 4: /* dig */
+		menu_setup = 0;
+		set_badgey_state(BADGEY_DIG);
 		screen_changed = 1;
 		break;
 	case DYNMENU_SELECTION_ABORTED:
@@ -7769,9 +7801,54 @@ static void badgey_restore_game(void)
 	status_message("Saved game\nrestored from\nflash memory");
 }
 
+#if TARGET_SIMULATOR
+static void sanity_check_one_cave_entrance(const struct badgey_world *w, int x, int y)
+{
+	int found = 0;
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].world != w)
+			continue;
+		if (cave_aux_entrance[i].wx != x || cave_aux_entrance[i].wy != y)
+			continue;
+		found = 1;
+		break;
+	}
+	if (!found)
+		fprintf(stderr, "Bad aux cave entrance at %s:(%d, %d)\n", w->name, x, y);
+}
+
+static void sanity_check_aux_cave_entrances_per_world(const struct badgey_world *w)
+{
+	for (int y = 0; y < 64; y++) {
+		for (int x = 0; x < 64; x++) {
+			char c = w->wm[windex(x, y)];
+			if (c == 'c')
+				sanity_check_one_cave_entrance(w, x, y);
+		}
+	}
+}
+#endif
+
+static void sanity_check_aux_cave_entrances(void)
+{
+#if TARGET_SIMULATOR
+	static int already_checked = 0;
+	if (already_checked)
+		return;
+
+	already_checked = 1;
+	sanity_check_aux_cave_entrances_per_world(&ossaria);
+	sanity_check_aux_cave_entrances_per_world(&NW42);
+	sanity_check_aux_cave_entrances_per_world(&borton);
+	sanity_check_aux_cave_entrances_per_world(&skang);
+	sanity_check_aux_cave_entrances_per_world(&gnarg);
+#endif
+}
+
 /* You will need to rename badgey_cb() something else. */
 void badgey_cb(__attribute__((unused)) struct badge_app *app)
 {
+	sanity_check_aux_cave_entrances();
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:
 		badgey_initial_menu();

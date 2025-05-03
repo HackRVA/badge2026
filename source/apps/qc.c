@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
 
 #include "button.h"
 #include "ir.h"
@@ -16,6 +15,18 @@
 #include "rtc.h"
 
 #include <utils.h>
+/*
+ * moving `<inttypes.h>` below the other headers
+ * there seems to be some issue specific to Ubuntu 24.04
+ * that prevents the firmware from being built
+ * i get this output:
+ * ```
+ * note: 'PRIu64' is defined in header '<inttypes.h>';
+ * did you forget to '#include <inttypes.h>'?
+ * ```
+ * */
+#include <inttypes.h>
+
 
 #define LED_LVL 50
 
