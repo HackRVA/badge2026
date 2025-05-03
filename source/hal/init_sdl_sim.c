@@ -586,12 +586,14 @@ static void draw_flare_led(struct sim_lcd_params *slp)
 	struct button_coord_list bcl = get_button_coords(slp, w, h);
 	x = bcl.led.x - led_width / 2;
 	y = bcl.led.y - led_height / 2;
-	for (i = 0; i < led_height; i++) {
-		for (j = 0; j < led_width; j++) {
-			p = &led_pixels[i * led_width * 4 + j * 4];
-			p[0] = (char) led_color.red;
-			p[1] = (char) led_color.green;
-			p[2] = (char) led_color.blue;
+	if (led_pixels) {
+		for (i = 0; i < led_height; i++) {
+			for (j = 0; j < led_width; j++) {
+				p = &led_pixels[i * led_width * 4 + j * 4];
+				p[0] = (char) led_color.red;
+				p[1] = (char) led_color.green;
+				p[2] = (char) led_color.blue;
+			}
 		}
 	}
 	if (led_image) {
