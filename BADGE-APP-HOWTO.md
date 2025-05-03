@@ -1529,10 +1529,35 @@ beyond the scope of this document. Google "space partitioning collision detectio
 * gdb "TUI mode"
 
   In gdb, so-called "tui mode" can be activated by pressing "Ctrl-x" then "a" (I remember this
-  by the mnemonic "eXtra Awesome mode").  You may occasionally need to refresh the screen if
-  it is disturbed by output of your program by pressing Ctrl-L.
+  by the mnemonic "eXtra Awesome mode").  With the TUI mode, it's a little easier to tell what's
+  going on. You may occasionally need to refresh the screen if it is disturbed by output of your
+  program by pressing Ctrl-L, or you can use gdb's "-tty=dev" option to make your program connect
+  stdin, stdout, and stderr to another window so it won't disturb GDB's output.
 
   You can switch between source, assembly and combined views by the command "layout next".
+
+* Use stacktrace() and/or raise(SIGTRAP);
+
+  If there is some hard to reproduce bug, but you can devise some "if" statement
+  to detect when it happens, you can write something like:
+
+```
+     #include "stacktrace.h"
+
+     ...
+
+     if (detect_hard_to_catch_bug_symptoms()) {
+		stacktrace("We got'em boys!");
+		raise(SIGTRAP);
+     }
+```
+
+  The call to stacktrace() will print out a stack trace.  The call to "raise(SIGTRAP)" will
+  do one of two things.  If you're not running under GDB, it will halt your program, but if
+  you are running under GDB, it will stop you in the debugger, and you can examine the
+  stack, variables, and all the usual things GDB does.  Depending on the bug, and whether
+  you wish to stop the program when it's detected, "stacktrace()", or "raise(SIGTRAP)" may
+  be helpful.
 
 * Serial debug via USB
 
