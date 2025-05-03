@@ -4784,6 +4784,18 @@ static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, 
 	}
 }
 
+static void maybe_draw_player_coords(void)
+{
+	if (player.carrying[POSITION_FINDER] <= 0)
+		return;
+
+	char buf[20];
+	FbColor(WHITE);
+	snprintf(buf, sizeof(buf), "(%d, %d)", player.x, player.y);
+	FbMove(0, LCD_YSIZE - 8);
+	FbWriteString(buf);
+}
+
 static void draw_cave_screen(void)
 {
 	int x = player.x;
@@ -4835,6 +4847,7 @@ static void draw_cave_screen(void)
 		FbWriteString(clue[clue_no].clue_text);
 		FbColor(WHITE);
 	}
+	maybe_draw_player_coords();
 }
 
 static int is_onscreen(int x, int y)
@@ -5386,12 +5399,7 @@ static void draw_screen(void)
 	draw_creatures();
 	draw_ships();
 
-	if (player.carrying[POSITION_FINDER] > 0) {
-		char buf[20];
-		snprintf(buf, sizeof(buf), "(%d, %d)", player.x, player.y);
-		FbMove(0, LCD_YSIZE - 8);
-		FbWriteString(buf);
-	}
+	maybe_draw_player_coords();
 
 	char ch = player.world->wm[windex(player.x, player.y)];
 	if (player.world->type == WORLD_TYPE_PLANET && ((ch >= '0' && ch <= '9') || ch == 'c')) {
