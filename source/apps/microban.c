@@ -1,0 +1,817 @@
+#include<stdio.h>
+#include "colors.h"
+#include "menu.h"
+#include "button.h"
+#include "framebuffer.h"
+#include "badge.h"
+#include "microban_assets/microban_assets.h"
+
+#define TILE_SIZE 16
+
+enum microban_state_t {
+    MICROBAN_INIT,
+    MICROBAN_RUN,
+    MICROBAN_EXIT,
+};
+
+enum microban_state_run {
+    GAMEPLAY,
+    PAUSE,
+    WIN,
+    LEVEL_MENU,
+};
+
+#define MENU_ENTRIES 4
+enum microcan_menu {
+    MENU_RESET, MENU_SKIP, MENU_LEVEL_MENU, MENU_EXIT
+};
+
+typedef enum Tile {
+    VOID,
+    FLOOR,
+    WALL,
+    TARGET,
+    PLAYER_ON_TARGET,
+    PLAYER_TILE,
+    BLOCK,
+    BLOCK_ON_TARGET,
+} Tile;
+
+typedef enum Cardinal {
+    N,S,E,W
+} Cardinal;
+
+typedef struct Point {
+    int x, y;
+} Point;
+
+
+typedef struct Camera {
+    Point offset;
+    Point target;
+} Camera;
+
+typedef struct Input {
+    bool upPressed;
+    bool downPressed;
+    bool leftPressed;
+    bool rightPressed;
+    bool upHeld;
+    bool downHeld;
+    bool leftHeld;
+    bool rightHeld;
+    bool APressed;
+    bool BPressed;
+    bool AHeld;
+    bool BHeld;
+} Input;
+
+typedef struct Player {
+    Point position;
+    Tile current_tile;
+    Cardinal facing;
+    bool pushing;
+} Player;
+
+
+
+static enum microban_state_t microban_state = MICROBAN_INIT;
+static enum microban_state_run run_state = GAMEPLAY;
+static int screen_changed = 0;
+
+static int tick;
+static int level_number;
+static int level_width(void) {
+    return microban_levels_rects[level_number].width;
+}
+static int level_height(void) {
+    return microban_levels_rects[level_number].height;
+}
+
+static int menu_selection = 0;
+static int menu_selection_level = 0;
+static bool menu_streak_popup = false;
+
+static Camera camera;
+static Player player;
+static const Input input_clear = {0};
+static Input input = input_clear;
+
+static int streak = 0;
+static int moves = 0;
+static int moves_tried = 0;
+
+static bool DrawHud = false;
+
+static struct Stats {
+    bool levels_completed[MAX_LEVELS];
+    bool levels_unlocked[MAX_LEVELS];
+    int  best_moves[MAX_LEVELS];
+    int  best_streak;
+} Stats;
+
+#define BREAKPOINT_COUNT 7
+static const int PROGRESS_BREAKPOINTS[BREAKPOINT_COUNT] = {1, 30, 60, 90, 120, 150, MAX_LEVELS};
+static const int LEVELS_TO_PROGRESS = 3;
+
+static bool unlock_levels(void) {
+    for (int bp = 0; bp < BREAKPOINT_COUNT - 2; bp++) {
+        int count = 0;
+        bool requirement_met = false;
+        bool all_complete = false;
+        for (int lvl = PROGRESS_BREAKPOINTS[bp]; lvl < PROGRESS_BREAKPOINTS[bp + 1]; lvl++) {
+            if (Stats.levels_completed[lvl] == true) count++;
+        }
+        if (count >= LEVELS_TO_PROGRESS) requirement_met = true;
+        if (requirement_met) {
+            for (int lvl = PROGRESS_BREAKPOINTS[bp + 1]; lvl < PROGRESS_BREAKPOINTS[bp + 2]; lvl++) {
+                Stats.levels_unlocked[lvl] = true;
+            }
+        }
+    }
+    return false;
+}
+
+static uint8_t current_level_data[32768]; //huge only for secret level, every other level could be 1024, I think.
+static struct asset2 current_level = {
+    .type = PICTURE8BIT,
+    .seqNum = 1,
+    .x = 16,
+    .y = 16,
+    .colormap = (const uint16_t *) microban_levels_colormap,
+    .pixel = (const unsigned char *) current_level_data,
+};
+
+
+
+/*LEVEL MENU STUFF*/
+
+
+
+/*END LEVEL MENU STUFF*/
+
+
+
+
+static int wrap(int i, int i_max) {
+   return ((i % i_max) + i_max) % i_max;
+}
+
+static Tile get_tile(Point coord) {
+    if (coord.x < 0 || coord.x >= level_width() || coord.y < 0 || coord.y >= level_height()) {
+        return VOID;
+    }
+    uint8_t pixdata = current_level.pixel[coord.y * level_width() + coord.x];
+    return (Tile)pixdata;
+}
+
+static bool tile_valid(Point coord) {
+    if (coord.x < 0 || coord.x >= level_width() || coord.y < 0 || coord.y >= level_height()) {
+        return false;
+    }
+    return true;
+}
+
+static void set_tile(Point coord, Tile tile) {
+    current_level_data[coord.y*level_width() + coord.x] = tile;
+}
+
+static void set_level(int levelNo) {
+    const struct asset2 *asset = &microban_levels;
+    int y, x, texture_row, texture_x, buffer_row;
+
+    player.position = (Point){0,0};
+    player.pushing = false;
+    input = input_clear;
+
+    moves = 0;
+    moves_tried = 0;
+
+    menu_selection_level = level_number;
+
+    Rectangle level_rect = microban_levels_rects[levelNo];
+    current_level.x = level_rect.width;
+    current_level.y = level_rect.height;
+
+    bool player_found = false;
+
+    for (y = 0; y < level_rect.height; y++) {
+        texture_row = (y + level_rect.y) * asset->x;
+        buffer_row = y * level_rect.width;
+        for (x = 0; x < level_rect.width; x++) {
+            texture_x = (x + level_rect.x);
+            uint8_t pixdata = asset->pixel[texture_row + texture_x];
+            unsigned char pixel = (Tile)pixdata;
+            current_level_data[buffer_row + x] = pixel;
+
+            if (!player_found) {
+                if (pixel == PLAYER_TILE) {
+                    player.position = (Point){x, y};
+                    set_tile(player.position, FLOOR);
+                    player_found = true;
+                } else if (pixel == PLAYER_ON_TARGET) {
+                    player.position = (Point){x, y};
+                    set_tile(player.position, TARGET);
+                    player_found = true;
+                }
+            }
+
+        }
+    }
+}
+
+static bool check_level(void) {
+    // if (level_number == 0) return false;
+    int blocks = 0;
+    int targets = 0;
+    int blocks_on_targets = 0;
+    for (int i = 0; i < level_width()*level_height(); i++) {
+        Tile tile = current_level_data[i];
+        if (tile == BLOCK) blocks++;
+        if (tile == BLOCK_ON_TARGET) blocks_on_targets++;
+        if (tile == TARGET) targets++;
+    }
+    if (targets == 0 && blocks == 0 && blocks_on_targets > 0) {
+        return true;
+    }
+    return false;
+}
+
+static void microban_init(void)
+{
+    FbInit();
+    FbClear();
+    input = input_clear;
+    microban_state = MICROBAN_RUN;
+    run_state = GAMEPLAY;
+    screen_changed = 1;
+    player.position = (Point){0,0};
+    player.facing = S;
+    tick = 0;
+    level_number = 1;
+    streak = 0;
+    set_level(level_number);
+    camera.offset.x = LCD_XSIZE / 2 - TILE_SIZE/2;
+    camera.offset.y = LCD_YSIZE / 2 - TILE_SIZE/2;
+
+    for (int lvl = 0; lvl < MAX_LEVELS; lvl += 1) {
+        Stats.levels_completed[lvl] = false;
+        Stats.best_moves[lvl] = 0;
+        if (lvl < PROGRESS_BREAKPOINTS[1]) {
+            Stats.levels_unlocked[lvl] = true;
+        }
+    }
+}
+
+static void process_input_WIN(void) {
+    if (input.APressed || input.BPressed) {
+        // level_number = wrap(level_number + 1, MAX_LEVELS);
+        // set_level(level_number);
+        // run_state = GAMEPLAY;
+        int nextlvl = wrap(level_number + 1, MAX_LEVELS);
+        if (Stats.levels_unlocked[nextlvl] == true) {
+            level_number = nextlvl;
+            set_level(level_number);
+            run_state = GAMEPLAY;
+        } else {
+            run_state = LEVEL_MENU;
+        }
+    }
+}
+
+static void process_input_LEVEL_MENU(void) {
+    if (input.BPressed) {
+        if (menu_streak_popup) {
+            menu_streak_popup = false;
+        } else {
+            menu_selection_level = level_number;
+            run_state = GAMEPLAY;
+        }
+    } else if (input.APressed && Stats.levels_unlocked[menu_selection_level] == true) {
+        if (menu_selection_level == level_number) {
+            run_state = GAMEPLAY;
+        } else {
+            if (streak >= 3 && !menu_streak_popup) {
+                menu_streak_popup = true;
+            } else {
+                streak = 0;
+                menu_streak_popup = false;
+                level_number = menu_selection_level;
+                set_level(level_number);
+                run_state = GAMEPLAY;
+            }
+        }
+    } else if (input.downPressed && !menu_streak_popup) {
+        menu_selection_level += 1;
+        if (menu_selection_level > MAX_LEVELS - 1) menu_selection_level = MAX_LEVELS - 1;
+    } else if (input.upPressed && !menu_streak_popup) {
+        menu_selection_level -= 1;
+        if (menu_selection_level < 1) menu_selection_level = 1;
+    }
+}
+
+static void process_input_PAUSE(void) {
+    if (input.downPressed) {
+        menu_selection = wrap(menu_selection + 1, MENU_ENTRIES);
+    } else if (input.upPressed) {
+        menu_selection = wrap(menu_selection - 1, MENU_ENTRIES);
+    } else if (input.APressed) {
+        if (menu_selection == MENU_RESET) {
+            set_level(level_number);
+            if (moves > 0) streak = 0;
+            run_state = GAMEPLAY;
+        } else if (menu_selection == MENU_SKIP) {
+            int nextlvl = wrap(level_number + 1, MAX_LEVELS);
+            if (Stats.levels_unlocked[nextlvl] == true) {
+                level_number = nextlvl;
+                set_level(level_number);
+                streak = 0;
+                run_state = GAMEPLAY;
+            } else {
+                run_state = LEVEL_MENU;
+            }
+
+        } else if (menu_selection == MENU_LEVEL_MENU) {
+            run_state = LEVEL_MENU;
+        } else if (menu_selection == MENU_EXIT) {
+            if (moves > 0) streak = 0;
+            microban_state = MICROBAN_EXIT;
+        }
+        menu_selection = 0;
+
+    } else if (input.BPressed) {
+        run_state = GAMEPLAY;
+    }
+}
+
+static void process_input_GAMEPLAY(void) {
+    bool move_tried = (input.upPressed || input.rightPressed || input.downPressed || input.leftPressed);
+    bool moved = false;
+    Point new_position = player.position;
+
+    if (input.upHeld) {
+    }
+    if (input.rightHeld) {
+    }
+    if (input.downHeld) {
+    }
+    if (input.leftHeld) {
+    }
+    if (input.AHeld) {
+    }
+    if (input.BHeld) {
+    }
+
+    if (input.APressed) {
+        DrawHud = !DrawHud;
+    }
+    if (input.BPressed) {
+        run_state = PAUSE;
+        menu_selection = 0;
+    }
+
+    if (input.upPressed) {
+        new_position.y -= 1;
+        player.facing = N;
+    } else if (input.rightPressed) {
+        new_position.x += 1;
+        player.facing = E;
+    } else if (input.downPressed) {
+        new_position.y += 1;
+        player.facing = S;
+    } else if (input.leftPressed) {
+        new_position.x -= 1;
+        player.facing = W;
+    }
+
+    if (move_tried) {
+        moves_tried += 1;
+        Tile new_position_tile = get_tile(new_position);
+        if (new_position_tile == BLOCK || new_position_tile == BLOCK_ON_TARGET|| new_position_tile == WALL) {
+            player.pushing = true;
+        }
+        if (new_position_tile == VOID || new_position_tile == FLOOR || new_position_tile == TARGET) {
+            player.position = new_position;
+            player.pushing = false;
+            moved = true;
+        } else if (new_position_tile == BLOCK || new_position_tile == BLOCK_ON_TARGET) {
+            Point block_pos;
+            Tile block_pos_tile;
+            switch (player.facing) {
+            case N:
+                block_pos = (Point){new_position.x, new_position.y - 1};
+                break;
+            case E:
+                block_pos = (Point){new_position.x + 1, new_position.y};
+                break;
+            case S:
+                block_pos = (Point){new_position.x, new_position.y + 1};
+                break;
+            case W:
+                block_pos = (Point){new_position.x - 1, new_position.y};
+                break;
+            }
+            block_pos_tile = get_tile(block_pos);
+            bool valid = tile_valid(block_pos);
+            if (valid && (block_pos_tile == VOID || block_pos_tile == FLOOR || block_pos_tile == TARGET)) {
+                if (new_position_tile == BLOCK) {
+                    set_tile(new_position, FLOOR);
+                } else if (new_position_tile == BLOCK_ON_TARGET) {
+                    set_tile(new_position, TARGET);
+                }
+                if (block_pos_tile == VOID || block_pos_tile == FLOOR) {
+                    set_tile(block_pos, BLOCK);
+                } else if (block_pos_tile == TARGET) {
+                    set_tile(block_pos, BLOCK_ON_TARGET);
+                }
+                player.position = new_position;
+                moved = true;
+            }
+        }
+
+        if (moved) {
+            moves += 1;
+        }
+
+        bool level_complete = check_level();
+        if (level_complete) {
+            streak += 1;
+            Stats.levels_completed[level_number] = true;
+            int prev_best_moves = Stats.best_moves[level_number];
+            if (moves < prev_best_moves || prev_best_moves == 0) Stats.best_moves[level_number] = moves;
+            if (streak > Stats.best_streak) Stats.best_streak = streak;
+            unlock_levels();
+            run_state = WIN;
+        }
+    }
+}
+
+
+
+static void check_buttons(void)
+{
+    int down_latches = button_down_latches();
+    int mask = button_mask();
+
+    input.upPressed =    (BUTTON_PRESSED(BADGE_BUTTON_UP,    down_latches));
+    input.downPressed =  (BUTTON_PRESSED(BADGE_BUTTON_DOWN,  down_latches));
+    input.leftPressed =  (BUTTON_PRESSED(BADGE_BUTTON_LEFT,  down_latches));
+    input.rightPressed = (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches));
+    input.upHeld =       (BUTTON_PRESSED(BADGE_BUTTON_UP,    mask));
+    input.downHeld =     (BUTTON_PRESSED(BADGE_BUTTON_DOWN,  mask));
+    input.leftHeld =     (BUTTON_PRESSED(BADGE_BUTTON_LEFT,  mask));
+    input.rightHeld =    (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, mask));
+    input.APressed =     (BUTTON_PRESSED(BADGE_BUTTON_A,     down_latches));
+    input.BPressed =     (BUTTON_PRESSED(BADGE_BUTTON_B,     down_latches));
+    input.AHeld =        (BUTTON_PRESSED(BADGE_BUTTON_A,     mask));
+    input.BHeld =        (BUTTON_PRESSED(BADGE_BUTTON_B,     mask));
+}
+
+static void draw_level(const struct asset2 *asset, Camera camera) {
+    int y, x, texture_row, texture_x, tile_x, tile_y, camera_x, camera_y;
+    
+    // unsigned char *pixdata;
+    // unsigned char pixel;
+    
+
+    for (y = 0; y < level_height(); y++) {
+        texture_row = (y % asset->y) * asset->x;
+        for (x = 0; x < level_width(); x++) {
+            texture_x = x % asset->x; //factor seqNum here
+            // pixdata = (unsigned short*) &(asset->pixel16[texture_row + texture_x]);
+            uint8_t pixdata = asset->pixel[texture_row + texture_x];
+            Tile tile = (Tile)pixdata; /* 1 pixel per 2 bytes */
+            switch(tile) {
+            case VOID:
+                continue;
+            case FLOOR:
+                tile_x = 0; tile_y = 0;
+                break;
+            case PLAYER_TILE: //void, floor, player
+                tile_x = TILE_SIZE; tile_y = 0;
+                break;
+                // continue;
+            case WALL: //wall
+                tile_x = TILE_SIZE; tile_y = TILE_SIZE * 3;
+                break;
+            case TARGET:
+                tile_x = 0; tile_y = TILE_SIZE;
+                break;
+            case PLAYER_ON_TARGET: //target, player_on_target
+                tile_x = TILE_SIZE; tile_y = TILE_SIZE;
+                break;
+            case BLOCK: //block
+                tile_x = TILE_SIZE * 2; tile_y = 0;
+                break;
+            case BLOCK_ON_TARGET: //block on target
+                tile_x = TILE_SIZE * 2; tile_y = TILE_SIZE;
+                break;
+            }
+
+            camera_x =  -camera.target.x + x*TILE_SIZE + camera.offset.x;
+            camera_y =  -camera.target.y + y*TILE_SIZE + camera.offset.y;
+
+            FbImageRect(&possum2, camera_x, camera_y, tile_x, tile_y, TILE_SIZE, TILE_SIZE, MAGENTA);
+        }
+    }
+}
+
+
+
+static void draw_hud(void)
+{   
+    if (Stats.levels_completed[level_number] == true) {
+        // FbMove(0,0);
+        // FbColor(GREEN);
+        // FbWriteString("")
+        FbImageRect(&possum2, 0, 0, 48, 48, 8, 8, MAGENTA);
+    }
+    char buf[20];
+    FbColor(WHITE);
+    FbMove(8, 0);
+    snprintf(buf, sizeof(buf), "%d,%d moves:%d", player.position.x, player.position.y, moves);
+    FbWriteString(buf);
+
+}
+
+
+static void camera_move(void)
+{   
+    int width = level_width() * TILE_SIZE;
+    int height = level_height() * TILE_SIZE;
+    int x = player.position.x * TILE_SIZE;
+    int y = player.position.y * TILE_SIZE;
+    camera.target.x = x;
+    camera.target.y = y;
+    
+    if (level_number == 0) return;
+
+    if (width - TILE_SIZE <= LCD_XSIZE) {
+        camera.target.x = width/2;
+    } else if (x < LCD_XSIZE/2) {
+        camera.target.x = LCD_XSIZE/2;
+    } else if (x >= width - LCD_XSIZE/2) {
+        camera.target.x = width - LCD_XSIZE/2;
+    }
+
+    if (height - TILE_SIZE <= LCD_YSIZE) {
+        camera.target.y = height/2;
+    } else if (y < LCD_YSIZE/2) {
+        camera.target.y = LCD_YSIZE/2;
+    } else if (y >= height - LCD_YSIZE/2) {
+        camera.target.y = height - LCD_YSIZE/2;
+    }
+}
+
+
+static void draw_level_menu(void) {
+    if (!screen_changed)
+        return;
+
+    int x, y, texture_x,texture_row;
+    const struct asset2 *world = &microban_levels;    
+    Rectangle level_rect = microban_levels_rects[menu_selection_level];
+    bool selection_unlocked = Stats.levels_unlocked[menu_selection_level] == true;
+
+    if (selection_unlocked) {
+        for (y = 0; y < level_rect.height; y++) {
+            texture_row = (y + level_rect.y) * world->x;
+            for (x = 0; x < level_rect.width; x++) {
+                texture_x = (x + level_rect.x);
+                uint8_t pixdata = world->pixel[texture_row + texture_x];
+                unsigned int tile = (Tile)pixdata;
+
+                FbImageRect(&possum2, x * 8 + 24, y * 8 + 8, tile * 8, 32, 8, 8, MAGENTA);
+            }
+        }
+    } else {
+        FbColor(GREY8);
+        FbMove(24, LCD_YSIZE/2 - 8);
+        FbWriteString("COMPLETE 10 ROOMS");
+        FbMove(52, LCD_YSIZE/2);
+        FbWriteString("TO UNLOCK");
+    }
+
+    char buf[20];
+    for (int row = 1; row < MAX_LEVELS; row += 1) {
+        int y = (row - menu_selection_level + 6) * 8;
+
+        if (y < 0) continue;
+        if (y > LCD_YSIZE) break;
+
+        FbColor(WHITE);
+        if (row == level_number) {
+            FbImageRect(&possum2, 0, y, 5 * 8, 32, 8, 8, MAGENTA);
+        } else if (row == menu_selection_level) {
+            FbMove(0, y);
+            FbWriteString(">");
+        }
+
+
+        if(Stats.levels_completed[row] == true) {
+            FbColor(GREEN);
+        } else if(Stats.levels_unlocked[row] == false) {
+            FbColor(GREY8);
+        }
+
+        FbMove(8, y);
+        snprintf(buf, sizeof(buf), "%d", row);
+        FbWriteString(buf);
+
+        for(int i = 0; i < BREAKPOINT_COUNT; i++) {
+            if (row == PROGRESS_BREAKPOINTS[i]) {
+                FbColor(WHITE);
+                FbClippedLine(0, y-1, 32, y-1);
+            }
+        }
+    }
+
+    if (Stats.levels_completed[menu_selection_level] == true) {
+        FbMove(32, 0);
+        snprintf(buf, sizeof(buf), "best moves: %d", Stats.best_moves[menu_selection_level]);
+        FbWriteString(buf);
+    }
+    FbColor(WHITE);
+    if (selection_unlocked) {
+        FbMove(LCD_XSIZE/2, LCD_YSIZE - 16);
+        FbWriteString("A: travel");
+    }
+    FbMove(LCD_XSIZE/2, LCD_YSIZE - 8);
+    FbWriteString("B: return");
+    
+
+    if (menu_streak_popup) {
+        FbMove(16, 32);
+        FbColor(BLACK);
+        FbFilledRectangle(LCD_XSIZE - 32, LCD_YSIZE - 64);
+
+        FbColor(WHITE);
+        FbMove(16, 32);
+        FbRoundedRect(LCD_XSIZE - 32, LCD_YSIZE - 32, 1);
+
+        FbMove(32, 48);
+        FbWriteString("SURE?");
+        FbMove(32, 56);
+        FbWriteString("STREAK WILL BE LOST.");
+    }
+
+
+    FbSwapBuffers();
+    screen_changed = 1;
+}
+
+static void draw_screen(void)
+{
+    if (!screen_changed)
+        return;
+    
+    camera_move();
+
+    FbImageRect(&bluestreet, 0, 0, camera.target.x + level_number*211, camera.target.y + level_number*151, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+
+
+    player.current_tile = get_tile(player.position);
+
+    draw_level(&current_level, camera);
+    int camera_x =  -camera.target.x + player.position.x*TILE_SIZE + camera.offset.x;
+    int camera_y =  -camera.target.y + player.position.y*TILE_SIZE + camera.offset.y;
+    int ptex_x, ptex_y;
+    switch (player.facing) {
+    case N:
+        ptex_x = 0*TILE_SIZE; ptex_y = 4*TILE_SIZE;
+        break;
+    case E:
+        ptex_x = 1*TILE_SIZE; ptex_y = 4*TILE_SIZE;
+        break;
+    case S:
+        ptex_x = 2*TILE_SIZE; ptex_y = 4*TILE_SIZE;
+        break;
+    case W:
+        ptex_x = 3*TILE_SIZE; ptex_y = 4*TILE_SIZE;
+        break;
+    }
+    if (player.current_tile == TARGET) {
+        ptex_y += TILE_SIZE * 2;
+    } else if (player.pushing) {
+        ptex_y += TILE_SIZE;
+    }
+
+    //walk frame 2
+    if (moves_tried % 2 == 0) {
+        ptex_x += TILE_SIZE * 4;
+    }
+
+    FbImageRect(&possum2, camera_x, camera_y, ptex_x, ptex_y, TILE_SIZE, TILE_SIZE, MAGENTA);
+
+    switch (run_state) {
+    case GAMEPLAY:
+        if (DrawHud) draw_hud();
+        break;
+    case WIN: {
+        char buf[20];
+        const int unit = 12;
+        int x = 8;
+        int y = 16;
+
+        FbColor(YELLOW);
+
+        FbMove(x, y);
+        FbWriteString("NICE CLEAR!!");
+        y += unit;
+
+        FbMove(x, y);
+        snprintf(buf, sizeof(buf), "room %d complete", level_number);
+        FbWriteString(buf);
+        y += unit;
+
+        FbMove(x, y);
+        snprintf(buf, sizeof(buf), "in %d moves.", moves);
+        FbWriteString(buf);
+        y += unit;
+
+
+        FbMove(x, y);
+        FbWriteString("try next?");
+        y += unit;
+
+        if (streak >= 3) {
+            y += unit;
+            FbMove(x, y);
+            snprintf(buf, sizeof(buf), "STREAK: %d!!", streak);
+            FbWriteString(buf);
+        }
+        break;
+    }
+
+    case PAUSE:
+        FbColor(YELLOW);
+        FbMove(8, 16 + 12*menu_selection);
+        FbWriteString(">");
+        FbMove(16, 16);
+        FbWriteString("reset");
+        FbMove(16, 28);
+        FbWriteString("skip level");
+        FbMove(16, 40);
+        FbWriteString("level select");
+        FbMove(16, 52);
+        FbWriteString("exit");
+        break;
+
+    case LEVEL_MENU: 
+        break;
+    }
+    
+    FbSwapBuffers();
+    screen_changed = 1;
+}
+
+
+
+static void microban_run(void)
+{   
+    tick += 1;
+    check_buttons();
+    switch (run_state) {
+    case GAMEPLAY:
+        process_input_GAMEPLAY();
+        draw_screen();
+        break;
+    case PAUSE:
+        process_input_PAUSE();
+        draw_screen();
+        break;
+    case WIN:
+        process_input_WIN();
+        draw_screen();
+        break;
+    case LEVEL_MENU:
+        process_input_LEVEL_MENU();
+        draw_level_menu();
+        break;
+    }
+}
+
+
+static void microban_exit(void)
+{
+    microban_state = MICROBAN_INIT; /* So that when we start again, we do not immediately exit */
+    pop_app();
+}
+
+void microban_cb(__attribute__((unused)) struct badge_app *app)
+{
+    switch (microban_state) {
+    case MICROBAN_INIT:
+        microban_init();
+        break;
+    case MICROBAN_RUN:
+        microban_run();
+        break;
+    case MICROBAN_EXIT:
+        microban_exit();
+        break;
+    default:
+        break;
+    }
+}
+
