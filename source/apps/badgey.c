@@ -4376,6 +4376,11 @@ static void check_buttons(int tick)
 			if (x == 'w' || x == 'm' || x == '_' || (x >= 'A' && x <= 'Z') || x == '#') {
 				player.moving = 0;
 				return;
+			} else if ((x == 'c' || (x >= '0' && x <= '9'))
+					&& (newx != player.x || newy != player.y)) {
+				if (player.moving)
+					player.moving = 0; /* stop automatic motion on towns or caves */
+				/* Note that we don't return here. */
 			}
 		}
 	}
