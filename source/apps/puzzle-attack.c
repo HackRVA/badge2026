@@ -881,8 +881,6 @@ void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
 		particle_pool->nparticles = 0;
 	}
 	if (claim_particle_pool(particle_pool, PUZZLE_ATTACK_POOL_SIG )) {
-		particle_pool->current_badge_app = (int)PUZZLE_ATTACK_POOL_SIG;
-		particle_pool->config = default_particle_pool_config;
 		particle_pool->config.gravityy = (int)PARTICLE_GRAVITY;
 	}
 	switch (puzzle_attack_state) {
