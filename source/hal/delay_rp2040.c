@@ -53,7 +53,7 @@ void lp_sleep_us(uint64_t us_to_sleep) {
 
     while (((display_busy() || audio_is_playing() || button_debouncing() || ir_listening()) ||
              led_pwm_is_on(BADGE_LED_RGB_RED) || led_pwm_is_on(BADGE_LED_RGB_BLUE) ||
-             led_pwm_is_on(BADGE_LED_RGB_GREEN)) &&
+             led_pwm_is_on(BADGE_LED_RGB_GREEN) || led_pwm_is_on(BADGE_LED_DISPLAY_BACKLIGHT)) &&
             (rtc_get_us_since_boot() < time_at_call+us_to_sleep)) {
         sleep_us(10);
     }

@@ -15,6 +15,9 @@ class WasmSimulator extends HTMLElement {
   }
 
   render() {
+    const canvasWidth = this.getAttribute("canvas-width") || "auto";
+    const canvasHeight = this.getAttribute("canvas-height") || "80%";
+
     this.innerHTML = `
        <style>
         .emscripten {
@@ -30,16 +33,18 @@ class WasmSimulator extends HTMLElement {
 
         div.emscripten_border {
           border: 1px solid black;
+          position: relative;
         }
 
         canvas.emscripten {
           border: 0px none;
           background-color: black;
+          width: ${canvasWidth};
+          height: ${canvasHeight};
         }
 
         #output {
-          width: 100%;
-          height: 200px;
+          /*width: 80%;*/
           margin: 10px 0;
           background-color: #303446;
           color: #c6d0f5;
@@ -48,18 +53,51 @@ class WasmSimulator extends HTMLElement {
           resize: none;
           display: block;
         }
+
+        #fullscreen-button {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          background-color: #303446;
+          color: #c6d0f5;
+          border: none;
+          padding: 5px 10px;
+          cursor: pointer;
+          font-family: 'Lucida Console', Monaco, monospace;
+        }
+
+        @media (max-width: 600px) {
+          #fullscreen-button {
+            top: 5px;
+            left: 5px;
+            padding: 3px 6px;
+          }
+
+          #output {
+            font-size: 12px;
+          }
+
+          canvas.emscripten {
+            width: auto;
+            height: 80%;
+          }
+        }
       </style>
       <div class="emscripten">
         <progress value="0" max="100" id="progress" hidden></progress>
       </div>
-      <div class="emscripten_border">
+      <div class="emscripten_border" id="canvas-container">
         <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+        <button id="fullscreen-button">Fullscreen</button>
       </div>
       ${this.render_console()}
     `;
 
     this.setupModule();
     this.loadEmscriptenScript();
+    this.setupFullscreenButton();
+    this.adjustCanvasSize();
+    window.addEventListener('resize', this.adjustCanvasSize.bind(this));
   }
 
   setupModule() {
@@ -80,6 +118,10 @@ class WasmSimulator extends HTMLElement {
       monitorRunDependencies: (left) => {
         this.totalDependencies = Math.max(this.totalDependencies, left);
       },
+      setCanvasSize: (width, height) => {
+        canvasElement.width = width;
+        canvasElement.height = height;
+      }
     };
 
     canvasElement.addEventListener("webglcontextlost", (e) => {
@@ -100,6 +142,38 @@ class WasmSimulator extends HTMLElement {
     script.onload = () => console.log(`${scriptSrc} loaded successfully`);
     script.onerror = () => console.error(`Failed to load ${scriptSrc}`);
     document.body.appendChild(script);
+  }
+
+  setupFullscreenButton() {
+    const fullscreenButton = this.querySelector("#fullscreen-button");
+    const canvasElement = this.querySelector("#canvas");
+    const containerElement = this.querySelector("#canvas-container");
+
+    fullscreenButton.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        containerElement.requestFullscreen().catch(err => {
+          alert(`Error attempting to enable fullscreen mode: ${err.message} (${err.name})`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+      this.resizeCanvasToFullscreen();
+    });
+  }
+
+  resizeCanvasToFullscreen() {
+    const canvasElement = this.querySelector("#canvas");
+    const containerElement = this.querySelector("#canvas-container");
+
+    if (document.fullscreenElement) {
+      containerElement.style.width = "auto";
+      containerElement.style.height = "100%";
+      canvasElement.style.width = "auto";
+      canvasElement.style.height = "100%";
+    }
   }
 }
 

@@ -35,16 +35,7 @@ void analog_init(void)
 
 void analog_init_gpio(void)
 {
-    gpio_init(BADGE_GPIO_HALL_EFFECT_ENABLE);
-    gpio_put(BADGE_GPIO_HALL_EFFECT_ENABLE, false);
-    gpio_set_dir(BADGE_GPIO_HALL_EFFECT_ENABLE, true);
-    gpio_set_input_enabled(BADGE_GPIO_HALL_EFFECT_ENABLE, true);
-    gpio_disable_pulls(BADGE_GPIO_HALL_EFFECT_ENABLE); // saves power when asserted
-
-    adc_gpio_init(BADGE_GPIO_ADC_CONDUCTIVITY);
-    adc_gpio_init(BADGE_GPIO_ADC_THERMISTOR);
-    adc_gpio_init(BADGE_GPIO_ADC_HALL_EFFECT);
-    adc_gpio_init(BADGE_GPIO_ADC_BATTERY);
+    adc_gpio_init(BADGE_GPIO_ADC_VOLUME);
 }
 
 uint32_t analog_get_chan_mV(enum analog_channel channel)
@@ -55,11 +46,6 @@ uint32_t analog_get_chan_mV(enum analog_channel channel)
     return count;
 }
 
-float analog_calc_resistance_ohms(uint32_t mV)
-{
-    return analog_calc_rdiv_bottom(3.3f, 2.2e3f, mV);
-}
-
 int8_t analog_calc_mcu_temp_C(uint32_t mV)
 {
     float raw = mV;
@@ -67,35 +53,8 @@ int8_t analog_calc_mcu_temp_C(uint32_t mV)
     return 27 - ((raw - 0.706f) / 0.001721f);
 }
 
-int8_t analog_calc_thermistor_temp_C(uint32_t mV)
+uint8_t analog_get_volume_perc(void)
 {
-    const float R0_inv = 1.0f / 100e3f;
-    const float B_inv = 1.0f / 4.2e3f;
-    const float T0_inv = 1.0f / 298.15f;
-
-    float R = analog_calc_rdiv_bottom(3.3f, 22e3f, mV);
-    float K = 1.0f / (B_inv * log(R * R0_inv) + T0_inv);
-    float C = K - 273.15f;
-    return C;
+    return analog_get_adc_count(ANALOG_CHAN_VOLUME) * 100U / 4095U;
 }
 
-int32_t analog_calc_hall_effect_mT(uint32_t _mV)
-{
-    int32_t mV = _mV;
-    int32_t mT = 1000 - mV;
-    mT /= 11; /* DRV5053OA is -11mV / mT */
-    return mT;
-}
-
-enum analog_sensor_power analog_get_sensor_power(void)
-{
-    return gpio_get(BADGE_GPIO_HALL_EFFECT_ENABLE) ? ANALOG_SENSOR_POWER_DISABLED
-                                                   : ANALOG_SENSOR_POWER_ENABLED;
-}
-
-void analog_set_sensor_power(enum analog_sensor_power power)
-{
-    /* Despite the naming, this signal is active low. */
-    gpio_put(BADGE_GPIO_HALL_EFFECT_ENABLE,
-            ANALOG_SENSOR_POWER_ENABLED == power ? false : true);
-}

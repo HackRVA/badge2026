@@ -21,8 +21,6 @@
 #include "ir.h"
 #include "rtc.h"
 #include "audio.h"
-#include "color_sensor.h"
-#include "mic_pdm.h"
 
 #include <framebuffer.h>
 #include <colors.h>
@@ -119,8 +117,6 @@ void hal_init(void) {
     rtc_init_badge(0);
     audio_init();
     analog_init();
-    color_sensor_init();
-    mic_init();
 
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, hard_fault_handler);
 

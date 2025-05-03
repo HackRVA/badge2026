@@ -34,6 +34,11 @@ struct sim_button_status {
 	int dpad_down;
 	int dpad_right;
 	int dpad_left;
+	int record;
+	int play;
+	int fastforward;
+	int stop_eject;
+	int rewind;
 };
 
 struct sim_button_status get_sim_button_status(void);

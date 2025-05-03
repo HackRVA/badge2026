@@ -3,6 +3,7 @@
 #include <string.h>
 #ifdef __linux__
 #include <signal.h> /* so we can raise(SIGTRAP) if we detect a bug. */
+#include <errno.h>
 #endif
 
 /*
@@ -36,20 +37,26 @@
 #include "xorshift.h"
 #include "rtc.h"
 #include "music.h"
+#include "key_value_storage.h"
 
 static const int screen_cells_wide = (LCD_XSIZE == 160) ? 9 : 7;
 static const int screen_cells_tall = (LCD_YSIZE == 160) ? 9 : 7;
 static const int screen_cells_centerx = (screen_cells_wide == 9) ? 4 : 3;
 static const int screen_cells_centery = (screen_cells_tall == 9) ? 4 : 3;
+static const int xoff[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+static const int yoff[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 
-struct dynmenu planet_menu;
-struct dynmenu_item planet_menu_item[10];
-struct dynmenu cave_menu;
-struct dynmenu_item cave_menu_item[10];
-struct dynmenu town_menu;
-struct dynmenu_item town_menu_item[10];
-struct dynmenu space_menu;
-struct dynmenu_item space_menu_item[10];
+static struct dynmenu planet_menu;
+static struct dynmenu_item planet_menu_item[10];
+static struct dynmenu cave_menu;
+static struct dynmenu_item cave_menu_item[10];
+static struct dynmenu town_menu;
+static struct dynmenu_item town_menu_item[10];
+static struct dynmenu board_ship_menu;
+static struct dynmenu_item board_ship_menu_item[2];
+static struct dynmenu initial_menu;
+static struct dynmenu_item initial_menu_item[10];
+static int game_in_progress = 0;
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
 static const int xo4[] = { 0, 1, 0, -1 };
@@ -195,13 +202,13 @@ static const char ossaria_map[4096] = {
 	"wwwwww..wwwwwww.............................................wwww"
 	"wwwww......w................mmm..........f.............w.....www"
 	"wwwwwww....w.............wwwwwmm.........f.f......w....www...www"
-	"wwwwwwww...ww.......ffff....wwwwww......f.f.......w.w..wwwwwwwww"
-	"wwwwwwww..........ffff........wwwww.....m9f.....w.www...wwwwwwww"
+	"wwwwwwww...ww.......ffff....wwwwww..mm..f.f.......w.w..wwwwwwwww"
+	"wwwwwwww..........ffff........wwwwwmmmmmmcf.....w.www...wwwwwwww"
 	"wwwww...........ffffffff........www.....mmf.....www......wwwwwww"
-	"wwwww.........fffffffffffffff..wwww......mmm......w......wwwwwww"
+	"wwwww.........fffffffffffffff..wwww.4...9mmm......w......wwwwwww"
 	"wwwwww....w..fffff..........wwwwwwwwww.....m.....wwwwwwwwwwwwwww"
 	"wwwwwww..ww..........wwww...wwwwwwwwwwwwwwwww............wwwwwww"
-	"wwwwwww.wwww..4..wwwwwwwwww.wwwwwwwwwwwwwwwwwwwww.........wwwwww"
+	"wwwwwww.wwww.....wwwwwwwwww.wwwwwwwwwwwwwwwwwwwww.........wwwwww"
 	"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.........www"
 	"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.....wwwwwwwwwwwwww......www"
 	"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.....w"
@@ -214,17 +221,17 @@ static const char NW42_map[4096] = {
 	"wwwwwwwww.wwwww..wwwwwwwwwwwwwwwwwwwwwwwwwwwwww..wwwwwwwwwwwwwww"
 	"wwwwwww...........wwwwwwwwwwwwwwwwwwwwwwwwwww....wwwwwwwwwwwwwww"
 	"wwwwww..mmm.......wwwwwwwwwwww..w.wwwwwwwwwww..wwwwwwwwwwwwwwwww"
-	"wwwwww..m.........wwwwwww..w.......wwwwwwwwwwwwwwwwwwwwwwww..www"
-	"wwwwww............wwwww...............wwwwwwwwwwwwwwwww......www"
-	"wwwwwww.0........wwwwww.................wwwwwwwwwwwwwww......www"
-	"wwwwwww........ffwwwwwww................wwww...wwwwwww......wwww"
-	"wwwwww........ff.wwwwwww...............www.....wwwwww.....w.wwww"
-	"wwwww..mmm....ff....wwww..............www......wwwww..ww..wwwwww"
-	"wwwwww....m...ff.....w................ww.......wwwwwwww...wwwwww"
-	"wwwwwwwww.....fff....www.......f.........ff...wwwwwwwwwwwwwwwwww"
+	"wwwwww..m.........wwwwwww..w......wwwwwwwwwwwwwwwwwwwwwwwww..www"
+	"wwwwww............wwwww..........ww...wwwwwwwwwwwwwwwww......www"
+	"wwwwwww.0........wwwwww..........w......wwwwwwwwwwwwwww......www"
+	"wwwwwww........ffwwwwwww.....wwwww......wwww...wwwwwww......wwww"
+	"wwwwww........ff.wwwwwww.....w.1.ww....www.....wwwwww.....w.wwww"
+	"wwwww..mmm....ff....wwww.....w....ww..www......wwwww..ww..wwwwww"
+	"wwwwww....m...ff.....w.......mmc..ww..ww.......wwwwwwww...wwwwww"
+	"wwwwwwwww.....fff....www......mmmmm......ff...wwwwwwwwwwwwwwwwww"
 	"wwwwwwwww.....f..f...w.w......fff.......fff...wwwwww.wwwwwwwwwww"
 	"wwwwwwww........f....w.........ff......ffff..wwwww....wwwwwwwwww"
-	"wwwwwww........................fff.....fff.....1......wwwwwwwwww"
+	"wwwwwww........................fff.....fff.....w......wwwwwwwwww"
 	"wwwww............f..............ffff....f.............wwwwwwwwww"
 	"www..............................f5ff...f............wwwwwwwwwww"
 	"www..............................ffff.............wwwwwwwwwwwwww"
@@ -541,7 +548,7 @@ static const struct badgey_world space = {
 static char dynmap[4096]; /* for dynamically generated locations like towns and caves */
 static char dynworld_name[255];
 
-struct badgey_world dynworld = {
+static struct badgey_world dynworld = {
 	.name = dynworld_name,
 	.type = WORLD_TYPE_TOWN, /* for now */
 	.wm = dynmap,
@@ -1609,6 +1616,54 @@ static const struct asset2 small_fireball = {
 };
 /* End of code generated by png-to-badge-asset from badgey_assets/small-fireball.png Sat Apr 27 08:46:04 2024 */
 
+static const struct point stela_points[] = {
+	{ -60, 101 },
+	{ -60, -96 },
+	{ -24, -112 },
+	{ 46, -111 },
+	{ 76, -94 },
+	{ 75, 100 },
+	{ -128, -128 },
+	{ -40, -86 },
+	{ -28, -86 },
+	{ -128, -128 },
+	{ -16, -88 },
+	{ 7, -85 },
+	{ -128, -128 },
+	{ 27, -87 },
+	{ 48, -87 },
+	{ -128, -128 },
+	{ -37, -69 },
+	{ -19, -70 },
+	{ -128, -128 },
+	{ 0, -70 },
+	{ 19, -71 },
+	{ -128, -128 },
+	{ 35, -69 },
+	{ 47, -68 },
+	{ -128, -128 },
+	{ -39, -50 },
+	{ -14, -53 },
+	{ -128, -128 },
+	{ -2, -56 },
+	{ 18, -56 },
+	{ -128, -128 },
+	{ 36, -51 },
+	{ 53, -53 },
+	{ -128, -128 },
+	{ -39, -31 },
+	{ -27, -33 },
+	{ -128, -128 },
+	{ -14, -34 },
+	{ -4, -34 },
+	{ -128, -128 },
+	{ 12, -32 },
+	{ 30, -35 },
+	{ -128, -128 },
+	{ 43, -33 },
+	{ 53, -33 },
+};
+
 static const struct point upladder[] = {
 	{ -51, -41 },
 	{ 47, -41 },
@@ -1884,6 +1939,208 @@ static const struct point skavo_points[] = {
 static const struct line_drawing skavo_drawing = {
 	&skavo_points[0],
 	ARRAY_SIZE(skavo_points),
+};
+
+static const struct point byrstran_points[] = {
+	{ -94, 121 },
+	{ -80, 124 },
+	{ -64, 118 },
+	{ -67, 94 },
+	{ -69, 72 },
+	{ -67, 101 },
+	{ -73, 101 },
+	{ -78, 94 },
+	{ -78, 106 },
+	{ -89, 99 },
+	{ -128, -128 },
+	{ -93, 120 },
+	{ -93, 97 },
+	{ -91, 65 },
+	{ -87, 87 },
+	{ -77, 73 },
+	{ -66, 62 },
+	{ -66, 50 },
+	{ -62, 25 },
+	{ -61, 46 },
+	{ -57, 58 },
+	{ -41, 47 },
+	{ -39, 34 },
+	{ -36, 46 },
+	{ -32, 39 },
+	{ -34, 21 },
+	{ -49, 15 },
+	{ -64, 19 },
+	{ -67, 29 },
+	{ -81, 43 },
+	{ -88, 47 },
+	{ -104, 48 },
+	{ -113, 47 },
+	{ -116, 34 },
+	{ -115, 21 },
+	{ -111, 30 },
+	{ -106, 4 },
+	{ -115, -22 },
+	{ -109, -50 },
+	{ -110, -25 },
+	{ -101, -2 },
+	{ -102, 25 },
+	{ -86, 9 },
+	{ -79, 3 },
+	{ -77, -10 },
+	{ -70, -25 },
+	{ -71, -11 },
+	{ -62, -24 },
+	{ -64, -43 },
+	{ -65, -63 },
+	{ -63, -38 },
+	{ -59, -25 },
+	{ -60, -11 },
+	{ -60, -3 },
+	{ -48, -7 },
+	{ -35, -7 },
+	{ -31, -12 },
+	{ -33, -26 },
+	{ -33, -43 },
+	{ -23, -46 },
+	{ -15, -60 },
+	{ -3, -66 },
+	{ -1, -83 },
+	{ 0, -82 },
+	{ 2, -64 },
+	{ -2, -57 },
+	{ -10, -46 },
+	{ 4, -54 },
+	{ 5, -69 },
+	{ 14, -85 },
+	{ 26, -93 },
+	{ 15, -77 },
+	{ 12, -57 },
+	{ 7, -44 },
+	{ 16, -48 },
+	{ 23, -63 },
+	{ 28, -70 },
+	{ 42, -81 },
+	{ 33, -64 },
+	{ 25, -53 },
+	{ 24, -37 },
+	{ 14, -29 },
+	{ 16, -19 },
+	{ 22, -15 },
+	{ 37, -6 },
+	{ 50, 1 },
+	{ 61, -6 },
+	{ 59, -19 },
+	{ 59, -37 },
+	{ 62, -59 },
+	{ 62, -36 },
+	{ 64, -20 },
+	{ 69, -11 },
+	{ 77, -21 },
+	{ 82, -50 },
+	{ 84, -58 },
+	{ 83, -29 },
+	{ 82, -11 },
+	{ 79, 3 },
+	{ 84, 11 },
+	{ 92, 19 },
+	{ 98, 27 },
+	{ 115, 32 },
+	{ 124, 46 },
+	{ 123, 6 },
+	{ 127, 42 },
+	{ 125, 64 },
+	{ 108, 64 },
+	{ 94, 48 },
+	{ 87, 28 },
+	{ 85, 45 },
+	{ 69, 28 },
+	{ 60, 18 },
+	{ 40, 15 },
+	{ 18, 17 },
+	{ 16, 26 },
+	{ 31, 39 },
+	{ 40, 50 },
+	{ 46, 27 },
+	{ 50, 56 },
+	{ 47, 77 },
+	{ 56, 52 },
+	{ 55, 24 },
+	{ 60, 62 },
+	{ 55, 80 },
+	{ 61, 93 },
+	{ 61, 105 },
+	{ 68, 108 },
+	{ 74, 89 },
+	{ 73, 69 },
+	{ 75, 100 },
+	{ 76, 120 },
+	{ 73, 124 },
+	{ 44, 124 },
+	{ 32, 110 },
+	{ 32, 88 },
+	{ 31, 63 },
+	{ 37, 90 },
+	{ -128, -128 },
+	{ 29, 69 },
+	{ 16, 62 },
+	{ 0, 62 },
+	{ -27, 68 },
+	{ -39, 79 },
+	{ -53, 93 },
+	{ -63, 104 },
+	{ -128, -128 },
+	{ -102, -38 },
+	{ -99, -65 },
+	{ -105, -94 },
+	{ -91, -119 },
+	{ -99, -90 },
+	{ -92, -62 },
+	{ -102, -36 },
+	{ -128, -128 },
+	{ -65, -85 },
+	{ -71, -111 },
+	{ -64, -123 },
+	{ -65, -81 },
+	{ -128, -128 },
+	{ -27, -67 },
+	{ -21, -101 },
+	{ -3, -121 },
+	{ -27, -68 },
+	{ -128, -128 },
+	{ 66, -57 },
+	{ 59, -81 },
+	{ 64, -108 },
+	{ 66, -57 },
+	{ -128, -128 },
+	{ 99, -81 },
+	{ 102, -108 },
+	{ 105, -83 },
+	{ 100, -80 },
+	{ -128, -128 },
+	{ 119, -11 },
+	{ 113, -38 },
+	{ 119, -57 },
+	{ 120, -14 },
+	{ -128, -128 },
+	{ 15, -102 },
+	{ 30, -125 },
+	{ 26, -107 },
+	{ 16, -102 },
+	{ -128, -128 },
+	{ -27, -33 },
+	{ -14, -29 },
+	{ -20, -27 },
+	{ -26, -33 },
+	{ -128, -128 },
+	{ -6, -31 },
+	{ 5, -38 },
+	{ -2, -28 },
+	{ -4, -31 },
+};
+
+static const struct line_drawing byrstran_drawing = {
+	&byrstran_points[0],
+	ARRAY_SIZE(byrstran_points),
 };
 
 static const struct point hargon_points[] = {
@@ -2586,7 +2843,7 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 	NULL,
 	NULL,
 	NULL,
-	NULL, /* byrstran */
+	&byrstran_drawing,
 	&hargon_drawing,
 	&rovdan_drawing,
 	&skavo_drawing,
@@ -2629,7 +2886,7 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define ITEM_TYPE_SOFTWARE 5
 #define ITEM_TYPE_USELESS 6
 
-const struct shop_item {
+static const struct shop_item {
 	char *name;
 	int price;
 	unsigned char item_type;
@@ -2666,24 +2923,119 @@ const struct shop_item {
 #define POSITION_FINDER 13
 	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define MAPPING_STONE 14
-	{ "MAPPING STONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
+	{ "MAP GEMSTONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
+#define BADGE_BOM 15
+	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define LED_SCREEN 16
+	{ "LED SCREEN", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define PLASTIC_DPAD 17
+	{ "DPAD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define A_BUTTON 18
+	{ "A-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define B_BUTTON 19
+	{ "B-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define RP2040CHIP 20
+	{ "RP2040 CHIP", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define CIRCUIT_BOARD 21
+	{ "CIRCUIT BOARD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define SMALL_SPEAKER 22
+	{ "SMALL SPEAKER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define AMP_CHIP 23
+	{ "AMPLIFIER CHIP", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define RESET_BUTTON 24
+	{ "RESET BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define USB_CONNECTOR 25
+	{ "USB CONNECTOR", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define BATTERY 26
+	{ "BATTERY", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define SOLDER 27
+	{ "ROLL OF SOLDER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+#define RVASEC_BADGE 28
+	{ "RVASEC BADGE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 };
 
 #define MAX_ITEMS_PER_SHOP 8
-struct shop {
+static struct shop {
 	int item[MAX_ITEMS_PER_SHOP];
 	int nitems;
 } shop[NUMSHOPS];
 
-#define MAX_CHESTS 20
-#define NUM_CHESTS_PER_CAVE 15
+/* There are a number of "static" chests that are manually placed in the game, plus
+ * some randomly placed chests.  chest[0] .. chest[NUM_STATIC_CHESTS - 1] are the static
+ * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
+ */
+#define MAX_CHESTS 100
+#define NUM_STATIC_CHESTS 4
+#define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
+	struct badgey_world *world;
+	int town_or_cave;
 	int x, y;
 	int gp;
 	int specialty_item; /* index into shop_item[], or -1 for none */
-	int buried;
+#define CHEST_STATUS_BURIED 1
+#define CHEST_STATUS_UNCONCEALED 0
+#define CHEST_STATUS_HARVESTED -1
+	int8_t status;
 } chest[MAX_CHESTS];
 static int nchests = 0;
+
+enum clue_type {
+	clue_type_engraving, clue_type_rando, clue_type_hacker, clue_type_pub, clue_type_temple,
+};
+
+static struct treasure_clue {
+	char *clue_text;
+	const struct badgey_world *world;
+	int town_or_cave;
+	int x, y;
+	enum clue_type type;
+} clue[] = {
+	/* clues in BALF (ossaria, town 3) */
+	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, 3, -1, -1, clue_type_rando },
+	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, 3, -1, -1, clue_type_hacker },
+	{ "\nBE SURE TO\nGET A COMPASS\nBEFORE ENTERING\nTHE CAVES", &ossaria, 3, -1, -1, clue_type_pub },
+	/* clues in ONVAL (ossaria, town 4) */
+	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_pub },
+	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_hacker },
+	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_rando },
+	/* clues in the CAVES OF INSANITY (ossaria, cave 8) */
+	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
+			&ossaria, 8, 34, 60, clue_type_engraving, },
+	/* clues in SURSEE (NW42, town 10) */
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_rando },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_pub },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_temple },
+	/* clues in KALFO, (NW42, town 13) */
+	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_pub },
+	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_rando },
+};
+#define NCLUES (ARRAY_SIZE(clue))
+#define NO_CLUE (-1)
+
+#define MAX_STELA_PER_CAVE 10
+static struct stela {
+	int x, y;
+	int clue_num;
+} stela[MAX_STELA_PER_CAVE];
+static int nstela = 0;
+
+/* There are the "normal" cave entrances, and then there are auxiliary entrances.
+ * The normal cave entrances are just numerals 5-9 on the overworld map, leading
+ * into the corresponding caves at a fixed location in the cave.
+ * cave_aux_entrance[] is for secondary entrances to caves, marked by a 'c' on the map,
+ * and supplemented by this data to tell where in the cave they are.
+ */
+static const struct cave_aux_entrance {
+	const struct badgey_world *world;
+	int cave_num;
+	int wx, wy, cx, cy; /* world coord of aux entrance (wx, wy), and coords inside cave (cx, cy) */
+	int dwx, dwy; /* default cave entrance world coords */
+} cave_aux_entrance[] = {
+	{ &ossaria, 9, 41, 54, 37, 35, 40, 56 },
+	{ &NW42, 5, 31, 11, 32, 34, 37, 35, },
+};
+#define NCAVE_AUX_ENTRANCES ARRAY_SIZE(cave_aux_entrance)
 
 const char *proprietor[] = { /* indexed by shop type */
 	"  INNKEEP",
@@ -2904,12 +3256,17 @@ struct creature {
 	struct creature_specific_data csd;
 	uint8_t no_in_party;
 	int hit_points;
+	int16_t clue;
 };
 
 #define MAX_CREATURES 25
 #define NUM_MONSTERS 20
 #define NUM_CAVE_MONSTERS 20
 #define MAX_COMBAT_CREATURES 5
+#define GUARDS_PER_TOWN 8
+#define CITIZENS_PER_TOWN 8
+#define ROBOT1_PER_TOWN 2
+#define ROBOT3_PER_TOWN 2
 static struct creature planet_creature[MAX_CREATURES];
 static struct creature town_creature[MAX_CREATURES];
 static struct creature space_creature[MAX_CREATURES];
@@ -2925,6 +3282,7 @@ static int *ncreatures = &nspace_creatures; /* points to one of nplanet_, ntown_
 static struct ship {
 	int x, y;
 	int dir; 
+	int player_aboard;
 } ship[NUM_SHIPS];
 static int nships = 0;
 
@@ -2936,6 +3294,8 @@ static struct player {
 	int wx[5], wy[5]; /* coords at each level */
 	int in_town;
 	int in_cave;
+	int town_or_cave_num;
+	int seedx, seedy; /* For cave regeneration after restoring game from flash */
 	int dir;
 	int moving;
 	unsigned char in_shop;
@@ -2944,8 +3304,12 @@ static struct player {
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
-	unsigned char cbx, cby;
+	unsigned char cbx, cby; /* combat arena x,y */
+	int aboard_ship;
+	int candidate_ship;
+	int last_boarded_ship; /* to keep your ship from sailing off without you */
 #define EQUIPPED_NONE 255
+	int stop_automatic_motion; /* stops automatic motion in caves */
 } player = {
 	.world = &space,
 	.x = 32,
@@ -2966,10 +3330,13 @@ static struct player {
 	.equipped_armor = EQUIPPED_NONE,
 };
 
-/* Program states.  Initial state is BADGEY_INIT */
+/* Program states.  Initial state is BADGEY_INITIAL MENU */
 enum badgey_state_t {
+	BADGEY_INITIAL_MENU,
 	BADGEY_INIT,
 	BADGEY_CONTINUE,
+	BADGEY_INTRO,
+	BADGEY_INTRO_WAIT,
 	BADGEY_PLANET_MENU,
 	BADGEY_CAVE_MENU,
 	BADGEY_TOWN_MENU,
@@ -2982,18 +3349,21 @@ enum badgey_state_t {
 	BADGEY_STATS,
 	BADGEY_EQUIP_WEAPON,
 	BADGEY_EQUIP_ARMOR,
-	BADGEY_EXIT_CONFIRM,
+	BADGEY_ABANDON_CONFIRM,
 	BADGEY_COMBAT,
 	BADGEY_COLLECT_TREASURE,
 	BADGEY_DIG,
 	BADGEY_USE_ITEM,
 	BADGEY_DISPLAY_MAP,
+	BADGEY_MAYBE_BOARD_SHIP,
+	BADGEY_INVENTORY,
+	BADGEY_SAVE_GAME,
+	BADGEY_RESTORE_GAME,
 	BADGEY_EXIT,
 };
 
-static enum badgey_state_t badgey_state = BADGEY_INIT;
+static enum badgey_state_t badgey_state = BADGEY_INITIAL_MENU;
 static enum badgey_state_t previous_badgey_state = BADGEY_RUN;
-static enum badgey_state_t badgey_unconfirm_state = BADGEY_RUN;
 
 static int screen_changed = 0;
 
@@ -3110,17 +3480,6 @@ static char message_to_display[255];
 static char message_displayed = 0;
 static int water_scroll = 0;
 
-static void confirm_exit(void)
-{
-	badgey_unconfirm_state = badgey_state;
-	set_badgey_state(BADGEY_EXIT_CONFIRM);
-}
-
-static void unconfirm_exit(void)
-{
-	set_badgey_state(badgey_unconfirm_state);
-}
-
 /* hack used for scrolling textures in badgey RPG game */
 #define BUFFER( ADDR ) G_Fb.buffer[(ADDR)]
 static void FbImage8bit2scrolling(const struct asset2 *asset, unsigned char seqNum, int scroll)
@@ -3217,6 +3576,7 @@ static void add_shopkeeper(int x, int y, unsigned char shoptype, unsigned int *s
 	creature[n].csd.citizen.icon = minicon + (xorshift(seed) % (maxicon - minicon));
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3249,6 +3609,7 @@ static void add_robot1(unsigned char roadchar, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3312,6 +3673,7 @@ static void add_guard(unsigned char roadchar, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3347,6 +3709,7 @@ static void add_citizen(int roadchar, unsigned int *seed)
 	creature[n].csd.citizen.icon = ICON_CITIZEN1 + (xorshift(seed) % 6);
 	creature[n].info = (n % HUMAN_NUM_GENERIC_RESPONSES) + HUMAN_MIN_RESPONSE;
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3371,11 +3734,45 @@ static void spawn_planet_initial_monsters(void);
 static void spawn_planet_initial_ships(void);
 static void setup_planet_initial_treasures(void);
 
+static void add_static_treasure(const struct badgey_world *world, int town_or_cave, int x, int y,
+			int gp, int specialty_item, int status)
+{
+	if (nchests >= NUM_STATIC_CHESTS) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "%s:%d: add_static_treasure(): "
+				"too many static treasures, increase NUM_STATIC_CHESTS\n",
+				__FILE__, __LINE__);
+		exit(1);
+#else
+		return;
+#endif
+	}
+
+	chest[nchests].world = (struct badgey_world *) world;
+	chest[nchests].town_or_cave = town_or_cave;
+	chest[nchests].x = x;
+	chest[nchests].y = y;
+	chest[nchests].gp = gp;
+	chest[nchests].specialty_item = specialty_item;
+	chest[nchests].status = status;
+	nchests++;
+}
+
+static void setup_static_treasures(void)
+{
+	nchests = 0;
+	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
+	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
+	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
+	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
+	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
+}
+
 static void badgey_init(void)
 {
 	FbInit();
 	FbClear();
-	player.x = 37;
+	player.x = 32;
 	player.y = 32;
 	player.world = &ossaria;
 	player.world_level = 1;
@@ -3385,18 +3782,27 @@ static void badgey_init(void)
 	player.wy[0] = 4;
 	player.in_town = 0;
 	player.in_cave = 0;
+	player.town_or_cave_num = 0;
+	player.seedx = 0;
+	player.seedy = 0;
 	player.dir = 0;
 	player.moving = 0;
 	player.in_shop = 0;
 	player.money = 500;
 	memset(player.carrying, 0, sizeof(player.carrying));
+	player.carrying[POSITION_FINDER] = 1;
 	player.carrying[MAPPING_STONE] = 1;
+	player.carrying[COMPASS_ITEM] = 1;
 	player.carrying_dirty = 1;
+	player.aboard_ship = -1;
+	player.candidate_ship = -1;
+	player.last_boarded_ship = -1;
+	setup_static_treasures();
 	spawn_planet_initial_monsters();
-	spawn_planet_initial_ships();
 	setup_planet_initial_treasures();
-	set_badgey_state(BADGEY_CONTINUE);
+	spawn_planet_initial_ships();
 	screen_changed = 1;
+	game_in_progress = 1;
 }
 
 static void badgey_continue(void)
@@ -3426,9 +3832,13 @@ static void badgey_collect_treasure(int treasure)
 			player.carrying_dirty = 1;
 		}
 
-		if (treasure < nchests - 1)
-			chest[treasure] = chest[nchests - 1];
-		nchests--;
+		if (treasure < NUM_STATIC_CHESTS) {
+			chest[treasure].status = CHEST_STATUS_HARVESTED;
+		} else {
+			if (treasure < nchests - 1)
+				chest[treasure] = chest[nchests - 1];
+			nchests--;
+		}
 
 		FbClear();
 		FbColor(WHITE);
@@ -3456,6 +3866,17 @@ static void badgey_collect_treasure(int treasure)
 	}
 }
 
+static int chest_in_players_world(int chest_num)
+{
+	if (player.world == chest[chest_num].world)
+		return 1;
+	if (player.old_world[player.world_level] == chest[chest_num].world &&
+		(player.in_town || player.in_cave) &&
+		player.town_or_cave_num == (chest[chest_num].town_or_cave % 10))
+		return 1;
+	return 0;
+}
+
 static void badgey_dig(void)
 {
 	static int screen_changed = 1;
@@ -3463,7 +3884,10 @@ static void badgey_dig(void)
 	static enum badgey_state_t prev;
 
 	for (int i = 0; i < nchests; i++) {
-		if (player.x == chest[i].x && player.y == chest[i].y && chest[i].buried) {
+		if (player.x == chest[i].x && player.y == chest[i].y &&
+			chest[i].status == CHEST_STATUS_BURIED) {
+			if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
+				continue; /* chest is in another world, not the current world */
 			prev = previous_badgey_state; /* this is a little hacky... oh well. */
 			badgey_collect_treasure(i);
 			got_treasure = 1;
@@ -3502,16 +3926,30 @@ static void badgey_dig(void)
 
 static void check_for_treasure(void)
 {
-	for (int i = 0; i < nchests; i++)
-		if (player.x == chest[i].x && player.y == chest[i].y && !chest[i].buried) {
-			badgey_collect_treasure(i);
-			break;
+	for (int i = 0; i < nchests; i++) {
+		if (chest[i].status != CHEST_STATUS_UNCONCEALED)
+			continue;
+		if (player.x == chest[i].x && player.y == chest[i].y) {
+			if (i < NUM_STATIC_CHESTS) {
+				if (chest_in_players_world(i)) {
+					badgey_collect_treasure(i);
+					break;
+				}
+			} else {
+				badgey_collect_treasure(i);
+				break;
+			}
 		}
+	}
 }
 
 static void cave_check_buttons(void)
 {
 	int newx, newy, newdir;
+#define NO_MOVE 5
+	static int last_move_dir = NO_MOVE;
+	static uint64_t last_move_time = (uint64_t) -1;
+	uint64_t now = rtc_get_ms_since_boot();
 
 	newx = player.x;
 	newy = player.y;
@@ -3522,10 +3960,12 @@ static void cave_check_buttons(void)
 		newdir--;
 		if (newdir < 0)
 			newdir += 4;
+		last_move_dir = NO_MOVE;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 		newdir++;
 		if (newdir > 3)
 			newdir -= 4;
+		last_move_dir = NO_MOVE;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		newx += xo4[player.dir];
 		newy += yo4[player.dir];
@@ -3537,6 +3977,7 @@ static void cave_check_buttons(void)
 			newy += 64;
 		if (newy > 63)
 			newy -= 64;
+		last_move_dir = player.dir;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		int backdir = newdir + 2;
 		if (backdir > 3)
@@ -3551,11 +3992,29 @@ static void cave_check_buttons(void)
 			newy += 64;
 		if (newy > 63)
 			newy -= 64;
+		last_move_dir = NO_MOVE;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		if (player.world->type == WORLD_TYPE_CAVE)
 			set_badgey_state(BADGEY_CAVE_MENU);
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		confirm_exit();
+		/* Maybe B-button can do something in the caves ... */
+	} else {
+		if (player.stop_automatic_motion)
+			last_move_dir = NO_MOVE;
+		if (last_move_dir != NO_MOVE) {
+			if ((now - last_move_time) > 300) {
+				newx += xo4[last_move_dir];
+				newy += yo4[last_move_dir];
+				if (newx < 0)
+					newx += 64;
+				if (newx > 63)
+					newx -= 64;
+				if (newy < 0)
+					newy += 64;
+				if (newy > 63)
+					newy -= 64;
+			}
+		}
 	}
 	if (dynmap[windex(newx, newy)] == '#')
 		return;
@@ -3564,6 +4023,7 @@ static void cave_check_buttons(void)
 	player.x = newx;
 	player.y = newy;
 	player.dir = newdir;
+	last_move_time = now;
 	check_for_treasure();
 	screen_changed = 1;
 }
@@ -3587,6 +4047,7 @@ static void spawn_monster_at(int x, int y, unsigned int *seed)
 	creature[n].y = y;
 	creature[n].no_in_party = (unsigned char) ((xorshift(seed) % 4) + 1);
 	creature[n].name = (n % ARRAY_SIZE(creature_name));
+	creature[n].clue = NO_CLUE;
 	(*ncreatures)++;
 }
 
@@ -3649,6 +4110,7 @@ static void spawn_ship(unsigned int *seed)
 	ship[nships].x = x;
 	ship[nships].y = y;
 	ship[nships].dir = 1;
+	ship[nships].player_aboard = 0;
 #if TARGET_SIMULATOR
 	printf("Ship spawned at %d, %d\n", x, y);
 #endif
@@ -3668,12 +4130,14 @@ static void spawn_planet_initial_monsters(void)
 static void setup_planet_initial_treasures(void)
 {
 	/* Temporary test treasure */
-	nchests = 1;
-	chest[0].x = 32;
-	chest[0].y = 32;
-	chest[0].gp = 100;
-	chest[0].specialty_item = -1;
-	chest[0].buried = 1;
+	nchests = NUM_STATIC_CHESTS + 1;
+	chest[NUM_STATIC_CHESTS].world = NULL;
+	chest[NUM_STATIC_CHESTS].town_or_cave = -1; /* non-static chests are always in current world */
+	chest[NUM_STATIC_CHESTS].x = 32;
+	chest[NUM_STATIC_CHESTS].y = 32;
+	chest[NUM_STATIC_CHESTS].gp = 100;
+	chest[NUM_STATIC_CHESTS].specialty_item = -1;
+	chest[NUM_STATIC_CHESTS].status = CHEST_STATUS_BURIED;
 }
 
 static void spawn_planet_initial_ships(void)
@@ -3682,9 +4146,117 @@ static void spawn_planet_initial_ships(void)
 	nships = 0;
 	for (int i = 0; i < NUM_SHIPS; i++)
 		spawn_ship(&seed);
+
+	if (player.world == &ossaria) {
+		/* Park a ship on the southern coast of Ossaria near the town of Onval
+		 * so player doesn't have to just wait around for a ship to randomly
+		 * sail by.
+		 */
+		player.last_boarded_ship = 0;
+		ship[0].x = 39;
+		ship[0].y = 58;
+	}
 }
 
 static void enter_combat(int cr);
+
+static void maybe_board_ship(void)
+{
+	static int menu_setup = 0;
+
+	if (player.candidate_ship == -1 || player.aboard_ship != -1) {
+		set_badgey_state(BADGEY_RUN);
+		return;
+	}
+
+	if (!menu_setup) {
+		dynmenu_clear(&board_ship_menu);
+		dynmenu_init(&board_ship_menu, board_ship_menu_item, ARRAY_SIZE(board_ship_menu_item));
+		dynmenu_set_title(&board_ship_menu, "BOARD SHIP?", "", "");
+		dynmenu_add_item(&board_ship_menu, "NO", 0, 0);
+		dynmenu_add_item(&board_ship_menu, "YES", 1, 1);
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&board_ship_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&board_ship_menu)) {
+	default:
+	case 0:
+		set_badgey_state(BADGEY_RUN);
+		break;
+	case 1:
+		player.aboard_ship = player.candidate_ship;
+		player.x = ship[player.candidate_ship].x;
+		player.y = ship[player.candidate_ship].y;
+		ship[player.candidate_ship].player_aboard = 1;
+		player.candidate_ship = -1;
+		set_badgey_state(BADGEY_RUN);
+		screen_changed = 1;
+		break;
+	}
+}
+
+static void badgey_inventory(void)
+{
+	static int first_item = 0;
+	static int screen_changed = 1;
+
+
+	if (screen_changed) {
+		FbClear();
+		FbColor(YELLOW);
+		FbMove(0, 0);
+		FbWriteString("INVENTORY:\n");
+		FbColor(WHITE);
+
+		int count = 0;
+		for (int i = 0; i < (int) ARRAY_SIZE(player.carrying); i++) {
+			if (i < first_item)
+				continue;
+			if (player.carrying[i]) {
+				FbWriteString(shop_item[i].name);
+				FbWriteString("\n");
+				FbMoveX(0);
+				count++;
+			}
+			if (count > 10)
+				break;
+		}
+		FbSwapBuffers();
+		screen_changed = 0;
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+		/* Advance first_item to the next item the player is carrying */
+		for (int i = first_item + 1; i < (int) ARRAY_SIZE(player.carrying); i++) {
+			if (player.carrying[i]) {
+				first_item = i;
+				screen_changed = 1;
+				break;
+			}
+		}
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+		/* move first_item backe the previous item the player is carrying */
+		for (int i = first_item - 1; i >= 0; i--) {
+			if (player.carrying[i]) {
+				first_item = i;
+				screen_changed = 1;
+				break;
+			}
+		}
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		first_item = 0;
+		screen_changed = 1;
+		set_badgey_state(BADGEY_RUN);
+	}
+}
 
 static void check_buttons(int tick)
 {
@@ -3736,7 +4308,7 @@ static void check_buttons(int tick)
 			set_badgey_state(BADGEY_SPACE_MENU);
 		newmoving = 0;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		confirm_exit();
+		/* maybe B button can do something? */
 		newmoving = 0;
 	}
 
@@ -3767,8 +4339,8 @@ static void check_buttons(int tick)
 				player.world = new_world;
 				screen_changed = 1;
 				spawn_planet_initial_monsters();
-				spawn_planet_initial_ships();
 				setup_planet_initial_treasures();
+				spawn_planet_initial_ships();
 				player.moving = 0;
 				return;
 			}
@@ -3776,14 +4348,35 @@ static void check_buttons(int tick)
 	} else {
 		char x = player.world->wm[windex(newx, newy)];
 		/* Prevent player from traversing water or mountains or signage or walls */
-		if (x == 'w' || x == 'm' || x == '_' || (x >= 'A' && x <= 'Z') || x == '#') {
-			player.moving = 0;
-			return;
+		if (x == 'w' && player.aboard_ship == -1) {
+			/* check for a ship */
+			for (int i = 0 ; i < nships; i++) {
+				if (ship[i].x == newx && ship[i].y == newy) {
+					player.candidate_ship = i;
+					set_badgey_state(BADGEY_MAYBE_BOARD_SHIP);
+				}
+			}
+		}
+		if (player.aboard_ship != -1) {
+			/* If player is aboard ship, we can only move where there's water */
+			if (x != 'w') {
+				player.moving = 0;
+				return;
+			}
+		} else {
+			if (x == 'w' || x == 'm' || x == '_' || (x >= 'A' && x <= 'Z') || x == '#') {
+				player.moving = 0;
+				return;
+			}
 		}
 	}
 	if (newx != player.x || newy != player.y) {
 		player.x = newx;
 		player.y = newy;
+		if (player.aboard_ship != -1) {
+			ship[player.aboard_ship].x = newx;
+			ship[player.aboard_ship].y = newy;
+		}
 		player.wx[player.world_level] = newx;
 		player.wy[player.world_level] = newy;
 		screen_changed = 1;
@@ -3796,13 +4389,23 @@ static void check_buttons(int tick)
 			}
 		}
 
-		if (!time_for_combat || player.in_town)
-			for (int i = 0; i < nchests; i++)
-				if (chest[i].x == player.x && chest[i].y == player.y && !chest[i].buried) {
-					treasure = i;
-					printf("treasure = %d\n", treasure);
-					break;
+		if (!time_for_combat || player.in_town) {
+			for (int i = 0; i < nchests; i++) {
+				if (chest[i].status != CHEST_STATUS_UNCONCEALED)
+					continue;
+				if (chest[i].x == player.x && chest[i].y == player.y) {
+					if (i < NUM_STATIC_CHESTS) {
+						if (chest_in_players_world(i)) {
+							treasure = i;
+							break;
+						}
+					} else {
+						treasure = i;
+						break;
+					}
 				}
+			}
+		}
 
 		if (player.in_town) {
 			time_for_combat = 0; /* for now, can't fight in towns */
@@ -3821,8 +4424,9 @@ static void check_buttons(int tick)
 					creature = &planet_creature[0];
 					ncreatures = &nplanet_creatures;
 					spawn_planet_initial_monsters();
-					spawn_planet_initial_ships();
 					setup_planet_initial_treasures();
+					/* Don't respawn ships when emerging from town */
+					// spawn_planet_initial_ships();
 					player.moving = 0;
 				}
 			}
@@ -3850,12 +4454,13 @@ static void draw_cell(int x, int y, unsigned char c)
 		if (c != '_')
 			FbCharacter(c);
 		break;
+	case 'c': /* extra cave entrance */
 	case '0' ... '9':
 		if (player.world->type == WORLD_TYPE_SPACE) { /* player is in space?  it's a planet */
 			FbImage2(&planet, 0);
 		} else {
 			/* Not in space, so ... */
-			if ((c - '0') < 5)
+			if (c != 'c' && (c - '0') < 5)
 				FbImage2(&town, 0);
 			else
 				FbImage2(&cave, 0);
@@ -3924,7 +4529,7 @@ static int visibility_evaluator(int x, int y, void *cookie)
 	if (y < 0)
 		y += 64;
 	char c = player.world->wm[windex(x, y)];
-	if (c == 'm' || c == 'f' || c == '#' || (c >= '0' && c <= '9')) { /* mountains, forest, towns/caves block visibility */
+	if (c == 'm' || c == 'f' || c == '#' || (c >= '0' && c <= '9') || (c == 'c')) { /* mountains, forest, towns/caves block visibility */
 		d->answer = 0;
 		return 1; /* stop bline algorithm */
 	}
@@ -4102,16 +4707,66 @@ static void draw_cave_creature(int x, int y, int depth, int scale)
 	}
 }
 
+static void stop_automatic_motion_in_cave(int x, int y)
+{
+	if (player.x == x && player.y == y)
+		player.stop_automatic_motion = 1;
+}
+
+static void draw_cave_stela(int x, int y, int depth, int scale, int *clue)
+{
+	for (int i = 0; i < nstela; i++) {
+		if (x != stela[i].x || y != stela[i].y)
+			continue;
+		stop_automatic_motion_in_cave(stela[i].x, stela[i].y);
+		int sx = LCD_XSIZE / 2;
+		int sy = cave_y[depth];
+		FbDrawObject(stela_points, ARRAY_SIZE(stela_points),
+			WHITE, sx, sy, scale / 2);
+		if (depth == 0)
+			*clue = stela[i].clue_num;
+		else
+			*clue = -1;
+	}
+}
+
 static void draw_treasure_chest(int x, int y, int depth, int scale)
 {
 	for (int i = 0; i < nchests; i++) {
+		if (chest[i].status != CHEST_STATUS_UNCONCEALED)
+			continue;
 		if (x != chest[i].x || y != chest[i].y)
 			continue;
+		if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
+			continue;
+		stop_automatic_motion_in_cave(chest[i].x, chest[i].y);
 		int sx = LCD_XSIZE / 2;
 		int sy = cave_y[depth];
 		FbDrawObject(treasure_chest_drawing.points, treasure_chest_drawing.npoints,
 				YELLOW, sx, sy, scale / 2);
 		break;
+	}
+}
+
+static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, int scale)
+{
+	if (x == 32 && y == 62) { /* default up ladder */
+		draw_up_ladder(ladder_start, start_inc, scale);
+		stop_automatic_motion_in_cave(x, y);
+	}
+
+	/* draw auxiliary cave exits */
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].cx != x)
+			continue;
+		if (cave_aux_entrance[i].cy != y)
+			continue;
+		if (cave_aux_entrance[i].cave_num != player.town_or_cave_num)
+			continue;
+		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
+			continue;
+		draw_up_ladder(ladder_start, start_inc, scale);
+		stop_automatic_motion_in_cave(x, y);
 	}
 }
 
@@ -4126,9 +4781,11 @@ static void draw_cave_screen(void)
 	int hit_back_wall = 0;
 	int drawing_start = 40 * 256;
 	int drawing_start_inc = 18 * 256;
+	int clue_no = -1;
 
-	FbColor(WHITE);
+	player.stop_automatic_motion = 0;
 	for (int i = 0; i < 4; i++) {
+		FbColor(WHITE);
 		draw_left_cave(x, y, start, start_inc);
 		draw_right_cave(x, y, start, start_inc);
 		hit_back_wall = draw_back_cave(x, y, start, start_inc);
@@ -4136,9 +4793,9 @@ static void draw_cave_screen(void)
 		ladder_start += start_inc;
 		start_inc = (start_inc * 205) / 256; /* means: * 0.8 */
 		scale = (scale * 205) / 256;
-		if (x == 32 && y == 62)
-			draw_up_ladder(ladder_start, start_inc, scale);
+		maybe_draw_up_ladder(x, y, ladder_start, start_inc, scale);
 		draw_cave_creature(x, y, i, scale);
+		draw_cave_stela(x, y, i, scale, &clue_no);
 		draw_treasure_chest(x, y, i, scale);
 		drawing_start_inc = (drawing_start_inc * 205) / 256;
 		drawing_start -= drawing_start_inc;
@@ -4156,6 +4813,13 @@ static void draw_cave_screen(void)
 		FbMove(40, 0);
 		FbWriteString(dirname[player.dir]);
 		FbBackgroundColor(BLACK);
+	}
+	if (clue_no != -1) {
+		FbColor(YELLOW);
+		FbMove(5, 5);
+		FbWriteString("ENGRAVED STELA:\n\n");
+		FbWriteString(clue[clue_no].clue_text);
+		FbColor(WHITE);
 	}
 }
 
@@ -4507,7 +5171,13 @@ static void move_ships(void)
 	if (player.world->type != WORLD_TYPE_PLANET)
 		return;
 	for (int i = 0; i < nships; i++) {
-		move_ship(i);
+		/* If the player is controlling the ship, don't move it autonomously.
+		 * If the player was last aboard this ship, then they "own" it, and it
+		 * should not sail off without the player (but they can only "own"
+		 * one ship at a time.)
+		 */
+		if (!ship[i].player_aboard && i != player.last_boarded_ship)
+			move_ship(i);
 	}
 }
 
@@ -4539,7 +5209,7 @@ static const struct town_info {
 		town_ponds | town_armoury | town_weapons | town_hackerspace,
 	},
 	{ "ONVAL",
-		town_creek | town_weapons | town_armoury | town_temple,
+		town_creek | town_weapons | town_armoury | town_temple | town_hackerspace,
 	},
 	{ "CAVES OF ZOR", 0 },
 	{ "XANFIR MINES", 0 },
@@ -4696,7 +5366,8 @@ static void draw_screen(void)
 	int centerx = (LCD_XSIZE == 160) ? 8 + 16 * 4 : 8 + 16 * 3;
 	int centery = (LCD_YSIZE == 160) ? 8 + 16 * 4 : 8 + 16 * 3;
 
-	draw_cell(centerx, centery, '@');
+	if (player.aboard_ship == -1)
+		draw_cell(centerx, centery, '@');
 
 	draw_creatures();
 	draw_ships();
@@ -4709,7 +5380,7 @@ static void draw_screen(void)
 	}
 
 	char ch = player.world->wm[windex(player.x, player.y)];
-	if (player.world->type == WORLD_TYPE_PLANET && ch >= '0' && ch <= '9') {
+	if (player.world->type == WORLD_TYPE_PLANET && ((ch >= '0' && ch <= '9') || ch == 'c')) {
 		/* figure which world we're no */
 		int world_no = -1;
 		for (size_t i = 0; i < ARRAY_SIZE(space.subworld); i++)
@@ -4718,15 +5389,68 @@ static void draw_screen(void)
 				break;
 			}
 		if (world_no != -1) {
-			/* Player is standing on a town or cave, so print the town/cave name */
-			FbMove(0, 0);
-			FbColor(WHITE);
-			FbWriteString(towninfo[world_no * 10 + (ch - '0')].name);
+			/* Player is standing on a town or cave, so print the town/cave name, unless secondary cave entrance */
+			if (ch != 'c') {
+				FbMove(0, 0);
+				FbColor(WHITE);
+				FbWriteString(towninfo[world_no * 10 + (ch - '0')].name);
+			}
 		}
 	}
 
 	screen_changed = 0;
 	FbPushBuffer();
+}
+
+static int ladder_is_here(int x, int y)
+{
+	if (x == 32 && y == 62) /* default ladder */
+		return 1;
+
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].cx != x)
+			continue;
+		if (cave_aux_entrance[i].cy != y)
+			continue;
+		if (cave_aux_entrance[i].cave_num != player.town_or_cave_num)
+			continue;
+		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
+			continue;
+		return 1;
+	}
+	return 0;
+}
+
+static void find_player_cave_exit_coords(int *x, int *y)
+{
+	if (player.x == 32 && player.y == 62) { /* default cave exit */
+		*x = player.wx[player.world_level];
+		*y = player.wy[player.world_level];
+		return;
+	}
+	/* Must be an auxiliary exit */
+	for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+		if (cave_aux_entrance[i].cx != player.x)
+			continue;
+		if (cave_aux_entrance[i].cy != player.y)
+			continue;
+		if (cave_aux_entrance[i].cave_num != player.town_or_cave_num)
+			continue;
+		if (cave_aux_entrance[i].world != player.old_world[player.world_level])
+			continue;
+		*x = cave_aux_entrance[i].wx;
+		*y = cave_aux_entrance[i].wy;
+		return;
+	}
+	/* Shouldn't get here. */
+	*x = player.wx[player.world_level];
+	*y = player.wy[player.world_level];
+#if TARGET_SIMULATOR
+	fprintf(stderr, "%s:%d: BUG: could not find aux cave exit: %s: cave %d, cave coords %d,%d\n",
+		__FILE__, __LINE__, player.old_world[player.world_level]->name,
+		player.town_or_cave_num, player.x, player.y);
+	exit(1);
+#endif
 }
 
 static void badgey_cave_menu(void)
@@ -4737,11 +5461,11 @@ static void badgey_cave_menu(void)
 		dynmenu_clear(&cave_menu);
 		dynmenu_init(&cave_menu, cave_menu_item, ARRAY_SIZE(cave_menu_item));
 		dynmenu_set_title(&cave_menu, "", "", "");
-		if (player.x == 32 && player.y == 62)
+		if (ladder_is_here(player.x, player.y))
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
-		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 3);
+		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
 		menu_setup = 1;
 	}
 
@@ -4753,16 +5477,19 @@ static void badgey_cave_menu(void)
 		if (player.world->type == WORLD_TYPE_CAVE && player.world_level > 0) {
 			struct badgey_world const *old_world = player.old_world[player.world_level];
 			if (old_world) {
+				int nwx, nwy;
+				find_player_cave_exit_coords(&nwx, &nwy);
 				player.world = old_world;
 				player.world_level--;
-				player.x = player.wx[player.world_level];
-				player.y = player.wy[player.world_level];
+				player.x = nwx;
+				player.y = nwy;
 				set_badgey_state(BADGEY_RUN);
 				screen_changed = 1;
 				player.in_cave = 0;
 				spawn_planet_initial_monsters();
-				spawn_planet_initial_ships();
 				setup_planet_initial_treasures();
+				/* Don't respawn ships when emerging from caves */
+				// spawn_planet_initial_ships();
 			}
 			menu_setup = 0;
 		}
@@ -4780,7 +5507,7 @@ static void badgey_cave_menu(void)
 		break;
 	case 3: /* quit */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
 	}
@@ -4796,7 +5523,7 @@ static void badgey_space_menu(void)
 		dynmenu_set_title(&cave_menu, "", "", "");
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 0);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 1);
-		dynmenu_add_item(&cave_menu, "QUIT", BADGEY_EXIT_CONFIRM, 2);
+		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 2);
 		menu_setup = 1;
 	}
 
@@ -4817,16 +5544,28 @@ static void badgey_space_menu(void)
 		break;
 	case 2: /* quit */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
 	}
 }
 
+static int find_shopkeeper(int shop_type)
+{
+	for (int i = 0; i < *ncreatures; i++) {
+		if (creature[i].type != CREATURE_TYPE_CITIZEN)
+			continue;
+		if (creature[i].csd.citizen.shopkeep != shop_type)
+			continue;
+		return i;
+	}
+	return -1;
+}
+
 static void badgey_talk_to_shopkeeper(void)
 {
 	static int menu_setup = 0;
-	int st, n;
+	int st;
 
 	st = player.in_shop;
 	if (st < 0 || st >= (int) ARRAY_SIZE(proprietor)) {
@@ -4842,18 +5581,15 @@ static void badgey_talk_to_shopkeeper(void)
 		dynmenu_init(&town_menu, town_menu_item, ARRAY_SIZE(town_menu_item));
 		dynmenu_set_title(&town_menu, shopname[st], "", "");
 		dynmenu_add_item(&town_menu, "EXIT THIS MENU", BADGEY_RUN, 254);
-		n = 1;
-		for (size_t i = 0; i < ARRAY_SIZE(shop_item); i++) {
-			if (shop_item[i].shop_type == st) {
-				char menu_item[15];
-				snprintf(menu_item, 15, "%2d %s",
-					shop_item[i].price, shop_item[i].name);
-				dynmenu_add_item(&town_menu, menu_item, BADGEY_RUN, i);
-				n++;
-			}
+		for (int i = 0; i < shop[st].nitems; i++) {
+			char menu_item[15];
+			int item = shop[st].item[i];
+			snprintf(menu_item, 15, "%2d %s",
+				shop_item[item].price, shop_item[item].name);
+			dynmenu_add_item(&town_menu, menu_item, BADGEY_RUN, i);
 		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
-		dynmenu_add_item(&town_menu, "QUIT", BADGEY_EXIT_CONFIRM, 255);
+		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
 		menu_setup = 1;
 	}
 
@@ -4867,9 +5603,9 @@ static void badgey_talk_to_shopkeeper(void)
 		menu_setup = 0;
 		set_badgey_state(BADGEY_TOWN_MENU);
 		return;
-	} else if (choice == 255) { /* exit */
+	} else if (choice == 255) { /* main menu */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		return;
 	} else if (choice == 253) { /* stats */
@@ -4877,16 +5613,24 @@ static void badgey_talk_to_shopkeeper(void)
 		set_badgey_state(BADGEY_STATS);
 	} else if (choice > 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
+		char *clue_text = "";
+		int shopkeeper = find_shopkeeper(st);
+		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE)
+			clue_text = clue[creature[shopkeeper].clue].clue_text;
+
 		if (player.money < shop_item[choice].price) {
 			snprintf(message, sizeof(message), "\n\n"
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
 					" MONEY FOR\n THAT\n");
 		} else {
-			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n",
-					shop_item[choice].price,
-					shop_item[choice].name);
-			player.money -= shop_item[choice].price;
-			player.carrying[choice]++;
+			int item = shop[st].item[choice];
+
+			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
+					shop_item[item].price,
+					shop_item[item].name,
+					clue_text);
+			player.money -= shop_item[item].price;
+			player.carrying[item]++;
 			player.carrying_dirty = 1;
 		}
 		status_message(message);
@@ -4946,6 +5690,8 @@ static void badgey_talk_to_citizen(void)
 				creature_name[creature[c].name], creature_info[i]);
 		FbMove(0, 0);
 		FbWriteString(buf);
+		if (creature[c].clue != NO_CLUE)
+			FbWriteString(clue[creature[c].clue].clue_text);
 		FbSwapBuffers();
 		screen_changed = 0;
 	}
@@ -4994,8 +5740,9 @@ static void badgey_town_menu(void)
 		dynmenu_add_item(&town_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
 		dynmenu_add_item(&town_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
 		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 8);
+		dynmenu_add_item(&town_menu, "INVENTORY", BADGEY_INVENTORY, 9);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
-		dynmenu_add_item(&town_menu, "QUIT", BADGEY_EXIT_CONFIRM, 4);
+		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 4);
 		menu_setup = 1;
 	}
 
@@ -5014,8 +5761,8 @@ static void badgey_town_menu(void)
 	case 3: /* stats */
 		set_badgey_state(BADGEY_STATS);
 		break;
-	case 4: /* exit */
-		confirm_exit();
+	case 4: /* main menu */
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		break;
 	case 5: /* equip weapon */
 		set_badgey_state(BADGEY_EQUIP_WEAPON);
@@ -5028,12 +5775,45 @@ static void badgey_town_menu(void)
 	case 8: /* dig */
 		set_badgey_state(BADGEY_DIG);
 		break;
+	case 9: /* inventory */
+		set_badgey_state(BADGEY_INVENTORY);
+		break;
 	default:
 		set_badgey_state(BADGEY_RUN);
 		break;
 	}
 	screen_changed = 1;
 	menu_setup = 0;
+}
+
+static void maybe_disembark_ship(void)
+{
+	if (player.aboard_ship == -1)
+		return; /* shouldn't happen */
+
+	for (int i = 0; i < 8; i++) {
+		int tx = wrap(player.x + xoff[i]);
+		int ty = wrap(player.y + yoff[i]);
+		char ch = player.world->wm[windex(tx, ty)];
+		switch (ch) {
+		case '.': /* grass */
+		case '0' ... '9': /* town or cave */
+		case 'f': /* forest */
+		case 'd': /* dirt */
+		case 'b': /* brick */
+		case '=': /* boards */
+			player.last_boarded_ship = player.aboard_ship;
+			ship[player.aboard_ship].player_aboard = 0;
+			player.x = tx;
+			player.y = ty;
+			player.aboard_ship = -1;
+			player.candidate_ship = -1;
+			return;
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 static void badgey_planet_menu(void)
@@ -5046,17 +5826,20 @@ static void badgey_planet_menu(void)
 		dynmenu_init(&planet_menu, planet_menu_item, ARRAY_SIZE(planet_menu_item));
 		strcpy(planet_menu.title, "");
 		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 0);
+		if (player.aboard_ship != -1)
+			dynmenu_add_item(&planet_menu, "DISEMBARK SHIP", BADGEY_RUN, 9);
 		dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
 		if (underchar >= '0' && underchar <= '4')
 			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 2);
-		if (underchar >= '5' && underchar <= '9')
+		if ((underchar >= '5' && underchar <= '9') || underchar == 'c')
 			dynmenu_add_item(&planet_menu, "ENTER CAVE", BADGEY_RUN, 2);
 		dynmenu_add_item(&planet_menu, "EQUIP WEAPON", BADGEY_STATS, 3);
 		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 4);
 		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 5);
 		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 6);
+		dynmenu_add_item(&planet_menu, "INVENTORY", BADGEY_INVENTORY, 10);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
-		dynmenu_add_item(&planet_menu, "QUIT", BADGEY_EXIT_CONFIRM, 8);
+		dynmenu_add_item(&planet_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 8);
 		menu_setup = 1;
 	}
 
@@ -5082,7 +5865,7 @@ static void badgey_planet_menu(void)
 		break;
 	case 2: /* Enter town or cave */
 		menu_setup = 0;
-		if (underchar >= '0' && underchar <= '9')
+		if ((underchar >= '0' && underchar <= '9') || underchar == 'c')
 			set_badgey_state(BADGEY_ENTER_TOWN_OR_CAVE);
 		else
 			set_badgey_state(BADGEY_RUN);
@@ -5097,9 +5880,9 @@ static void badgey_planet_menu(void)
 		set_badgey_state(BADGEY_RUN);
 		screen_changed = 1;
 		break;
-	case 8: /* quit */
+	case 8: /* main menu */
 		screen_changed = 1;
-		confirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
 	case 3: /* equip weapon */
@@ -5121,6 +5904,15 @@ static void badgey_planet_menu(void)
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_DIG);
+		break;
+	case 9: /* disembark from ship */
+		maybe_disembark_ship();
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_RUN);
+		break;
+	case 10: /* inventory */
+		set_badgey_state(BADGEY_INVENTORY);
 		break;
 	}
 }
@@ -5543,17 +6335,101 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 	}
 
 	/* Here is where we will add specialty items to shops based on town */
+	if (town == 3 && player.world == &ossaria) { /* BALF on OSSARIA */
+		add_shop_item(SHOP_HACKERSPACE, BADGE_BOM);
+		printf("Added badge bom to hackerspace shop\n");
+	}
 }
 
-static void setup_town_treasures(int town)
+static void setup_town_treasures(__attribute__((unused)) int town)
 {
 	/* temporary test treasure */
-	nchests = 1;
-	chest[0].x = 32;
-	chest[0].y = 32;
-	chest[0].gp = 100;
-	chest[0].specialty_item = -1;
-	chest[0].buried = 1;
+	nchests = NUM_STATIC_CHESTS + 1;
+	chest[NUM_STATIC_CHESTS].world = NULL;
+	chest[NUM_STATIC_CHESTS].town_or_cave = -1; /* non-static chests are always in the current world. */
+	chest[NUM_STATIC_CHESTS].x = 32;
+	chest[NUM_STATIC_CHESTS].y = 32;
+	chest[NUM_STATIC_CHESTS].gp = 100;
+	chest[NUM_STATIC_CHESTS].specialty_item = -1;
+	chest[NUM_STATIC_CHESTS].status = CHEST_STATUS_BURIED;
+}
+
+static void assign_clue_to_rando(unsigned int *seed, int16_t clue_number)
+{
+	int ncandidates = GUARDS_PER_TOWN + CITIZENS_PER_TOWN +
+				ROBOT1_PER_TOWN + ROBOT3_PER_TOWN;
+	int count = 0;
+	do {
+		int c = (xorshift(seed) % ncandidates);
+		if (creature[c].clue != NO_CLUE)
+			continue;
+		if (creature[c].type == CREATURE_TYPE_CITIZEN &&
+			creature[c].csd.citizen.shopkeep != SHOP_NONE)
+			continue; /* shop keeper is not "rando" */
+		if (creature[c].type == CREATURE_TYPE_CITIZEN ||
+				creature[c].type == CREATURE_TYPE_GUARD ||
+				creature[c].type == CREATURE_TYPE_ROBOT1 ||
+				creature[c].type == CREATURE_TYPE_ROBOT3) {
+			creature[c].clue = clue_number;
+			break;
+		}
+		count++;
+		if (count > 30) {
+#if TARGET_SIMULATOR
+			fprintf(stderr, "Failed to assign clue %d\n", clue_number);
+#endif
+			break;
+		}
+	} while (1);
+}
+
+static void assign_clue_to_shopkeeper(int16_t clue_number, int shop_type)
+{
+	for (int i = 0; i < *ncreatures; i++) {
+		if (creature[i].type != CREATURE_TYPE_CITIZEN)
+			continue;
+		if (creature[i].csd.citizen.shopkeep != shop_type)
+			continue;
+		if (creature[i].clue != NO_CLUE)
+			continue;
+		creature[i].clue = clue_number;
+		return;
+	}
+#if TARGET_SIMULATOR
+	fprintf(stderr, "Failed to assign clue %d\n", clue_number);
+#endif
+}
+
+static void distribute_town_clues(int town_number, unsigned int *seed)
+{
+	/* this is called before player enters town, so overworld is player's current world */
+	const struct badgey_world *overworld = player.world;
+
+	for (unsigned int i = 0; i < NCLUES; i++) {
+		if (clue[i].world != overworld)
+			continue;
+		if (clue[i].town_or_cave != town_number)
+			continue;
+		switch (clue[i].type) {
+		case clue_type_rando:
+			assign_clue_to_rando(seed, i);
+			break;
+		case clue_type_hacker:
+			assign_clue_to_shopkeeper(i, SHOP_HACKERSPACE);
+			break;
+		case clue_type_pub:
+			assign_clue_to_shopkeeper(i, SHOP_PUB);
+			break;
+		case clue_type_temple:
+			assign_clue_to_shopkeeper(i, SHOP_TEMPLE);
+			break;
+		case clue_type_engraving:
+			/* TO DO */
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 static void generate_town(int town_number)
@@ -5561,6 +6437,11 @@ static void generate_town(int town_number)
 	int x, y;
 	unsigned int seed;
 	int treecount = 0;
+
+	/* Switch to town_creature array */
+	creature = &town_creature[0];
+	ncreatures = &ntown_creatures;
+	*ncreatures = 0;
 
 	x = player.x;
 	y = player.y;
@@ -5674,26 +6555,27 @@ static void generate_town(int town_number)
 
 	arrange_shop_contents(town);
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < GUARDS_PER_TOWN; i++)
 		add_guard(roadchar, &seed);
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < CITIZENS_PER_TOWN; i++)
 		add_citizen(roadchar, &seed);
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < ROBOT1_PER_TOWN; i++)
 		add_robot1(roadchar, &seed);
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < ROBOT3_PER_TOWN; i++)
 		add_robot3(roadchar, &seed);
 
 	setup_town_treasures(town);
+	distribute_town_clues(town, &seed);
 }
 
-static void enter_dynmap(int x, int y)
+static void enter_dynmap(int x, int y, int origx, int origy)
 {
 	player.world_level++;
-	player.wx[player.world_level] = player.x;
-	player.wy[player.world_level] = player.y;
+	player.wx[player.world_level] = origx;
+	player.wy[player.world_level] = origy;
 	player.old_world[player.world_level] = player.world;
 	player.x = x;
 	player.y = y;
@@ -5702,19 +6584,18 @@ static void enter_dynmap(int x, int y)
 
 static void enter_town(int town_number)
 {
-	creature = &town_creature[0];
-	ncreatures = &ntown_creatures;
-	*ncreatures = 0;
 	generate_town(town_number);
 	dynworld.type = WORLD_TYPE_TOWN;
-	enter_dynmap(6, 32);
+	enter_dynmap(6, 32, player.x, player.y);
 	player.in_town = 1;
+	player.town_or_cave_num = town_number;
 }
 
 static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed, int *total_dug)
 {
 	/* check we're not too close to the edge of the map */ 
-	if (x < 1 || x > 62 || y < 1 || y > 62)
+	/* limit y from going below 32 just to shrink the maze size down to something tolerable */
+	if (x < 1 || x > 62 || y < 32 || y > 62)
 		return; /* quit digging */
 
 	/* Check we're not about to connect to another existing tunnel */
@@ -5782,11 +6663,13 @@ static void spawn_treasure_chest_at(int x, int y, unsigned int *seed)
 {
 	if (nchests >= MAX_CHESTS)
 		return;
+	chest[nchests].world = NULL; /* dynamically created chests are always in the current world */
+	chest[nchests].town_or_cave = -1;
 	chest[nchests].x = x;
 	chest[nchests].y = y;
 	chest[nchests].gp = (xorshift(seed) % 50) + 20;
 	chest[nchests].specialty_item = -1;
-	chest[nchests].buried = 0;
+	chest[nchests].status = CHEST_STATUS_UNCONCEALED;
 	nchests++;
 }
 
@@ -5808,16 +6691,36 @@ static void populate_cave(unsigned int *seed)
 	creature = &town_creature[0];
 	ncreatures = &ntown_creatures;
 	*ncreatures = 0;
-	nchests = 0;
+	nchests = NUM_STATIC_CHESTS;
 
 	for (int i = 0; i < NUM_CAVE_MONSTERS; i++)
 		spawn_cave_monster(seed);
 
-	for (int i = 0; i < NUM_CHESTS_PER_CAVE; i++)
+	for (int i = 0; i < NUM_RAND_CHESTS_PER_CAVE; i++)
 		spawn_treasure_chest(seed);
 }
 
-static void generate_cave(int cave_number)
+static void engrave_cave(int cave_number)
+{
+	nstela = 0;
+	const struct badgey_world *overworld = player.world; /* player hasn't yet entered cave */
+	for (unsigned int i = 0; i < NCLUES; i++) {
+		if (clue[i].world != overworld)
+			continue;
+		if (clue[i].town_or_cave != cave_number)
+			continue;
+		if (clue[i].type != clue_type_engraving)
+			continue;
+		stela[nstela].x = clue[i].x;
+		stela[nstela].y = clue[i].y;
+		stela[nstela].clue_num = i;
+		nstela++;
+		if (nstela >= MAX_STELA_PER_CAVE)
+			break;
+	}
+}
+
+static void generate_cave(int cave_number, int seedx, int seedy)
 {
 	int world_no = -1;
 	for (size_t i = 0; i < ARRAY_SIZE(space.subworld); i++)
@@ -5833,22 +6736,62 @@ static void generate_cave(int cave_number)
 	}
 #endif
 	int caveno = cave_number + (world_no * 10) + 5;
-	unsigned int seed = (player.x + 64 * player.y * (caveno + 1)) ^ 0x5a5a5a5a;
+	unsigned int seed = (seedx + 64 * seedy * (caveno + 1)) ^ 0x5a5a5a5a;
 
 	memset(dynmap, '#', sizeof(dynmap)); /* Fill the map with walls. */
 	int total_dug = 0;
 	dig_cave(dynmap, 32, 62, 0, &seed, &total_dug);
 	populate_cave(&seed);
+	engrave_cave(cave_number);
 	print_cave(dynmap);
 }
 
 static void enter_cave(int cave_number)
 {
-	generate_cave(cave_number);
+	int cx, cy, owx, owy;
+	int seedx, seedy;
+
+	cx = 32; /* Default cave entrance coords */
+	cy = 62;
+	owx = player.x;
+	owy = player.y; 
+	seedx = player.x; /* Assume using primary entrance until proven otherwise */
+	seedy = player.y;
+
+	if (cave_number == 'c' - '0') { /* auxiliary cave entrance? */
+		int found = 0;
+		for (unsigned int i = 0; i < NCAVE_AUX_ENTRANCES; i++) {
+			if (cave_aux_entrance[i].world != player.world)
+				continue;
+			if (cave_aux_entrance[i].wx != player.x || cave_aux_entrance[i].wy != player.y)
+				continue;
+			cave_number = cave_aux_entrance[i].cave_num;
+			cx = cave_aux_entrance[i].cx;
+			cy = cave_aux_entrance[i].cy;
+			owx = cave_aux_entrance[i].dwx;
+			owy = cave_aux_entrance[i].dwy;
+			seedx = owx; /* Must use x,y of primary cave entrance for seed purposes */
+			seedy = owy;
+			found = 1;
+			break;
+		}
+		if (!found) {
+			cave_number = 5;
+#if TARGET_SIMULATOR
+			fprintf(stderr, "BUG: %s:%d: Bad auxiliary cave entrance %s:(%d,%d)\n",
+					__FILE__, __LINE__, player.world->name, player.x, player.y);
+			exit(1);
+#endif
+		}
+	}
+	generate_cave(cave_number, seedx, seedy);
+	player.seedx = seedx;
+	player.seedy = seedy;
 	dynworld.type = WORLD_TYPE_CAVE;
-	enter_dynmap(32, 62);
+	enter_dynmap(cx, cy, owx, owy);
 	player.dir = 0;
 	player.in_cave = 1;
+	player.town_or_cave_num = cave_number;
 	screen_changed = 1;
 }
 
@@ -5857,7 +6800,7 @@ static void badgey_enter_town_or_cave(void)
 	int underchar = player.world->wm[windex(player.x, player.y)];
 	if (underchar >= '0' && underchar <= '4') {
 		enter_town(underchar - '0');
-	} else if (underchar >= '5' && underchar <= '9') {
+	} else if ((underchar >= '5' && underchar <= '9') || underchar == 'c') {
 		enter_cave(underchar - '0');
 	}
 	set_badgey_state(BADGEY_RUN);
@@ -6182,6 +7125,7 @@ static void badgey_display_surface_map(void)
 			case '7':
 			case '8':
 			case '9':
+			case 'c':
 				draw_map_town(j, i);
 				break;
 			case 'd':
@@ -6333,7 +7277,7 @@ static void draw_combat_field(void)
 	ch = player.world->wm[windex(player.x, player.y)];
 	if (ch == 'f') /* change forest to grass */
 		ch = '.';
-	if (ch >= '0' && ch <= '9') /* town or cave? change to grass */
+	if ((ch >= '0' && ch <= '9') || ch == 'c') /* town or cave? change to grass */
 		ch = '.';
 
 	for (int y = 0; y < screen_cells_tall; y++) {
@@ -6462,50 +7406,388 @@ static void badgey_combat(void)
 	}
 }
 
-static void badgey_exit_confirm(void)
+static void badgey_abandon_confirm(void)
 {
 	static int menu_ready = 0;
-	static struct dynmenu ecm;
-	static struct dynmenu_item ecm_item[2];
+	static struct dynmenu menu;
+	static struct dynmenu_item menu_item[2];
 
 	if (!menu_ready) {
-		dynmenu_clear(&ecm);
-		dynmenu_init(&ecm, ecm_item, ARRAY_SIZE(ecm_item));
-		dynmenu_set_title(&ecm, "REALLY QUIT?", "", "");
-		dynmenu_add_item(&ecm, "NO, DON'T QUIT", BADGEY_RUN, 1);
-		dynmenu_add_item(&ecm, "YES, QUIT", BADGEY_EXIT_CONFIRM, 2);
+		dynmenu_clear(&menu);
+		dynmenu_init(&menu, menu_item, ARRAY_SIZE(menu_item));
+		dynmenu_set_title(&menu, "GAME IN", "PROGRESS.", "ABANDON IT?");
+		dynmenu_add_item(&menu, "NO", BADGEY_INITIAL_MENU, 1);
+		dynmenu_add_item(&menu, "ABANDON IT", BADGEY_ABANDON_CONFIRM, 2);
 		menu_ready = 1;
 	}
 
-	if (!dynmenu_let_user_choose(&ecm))
+	if (!dynmenu_let_user_choose(&menu))
 		return;
 
-	switch (dynmenu_get_user_choice(&ecm)) {
+	switch (dynmenu_get_user_choice(&menu)) {
 	case 2:
-		set_badgey_state(BADGEY_EXIT);
+		set_badgey_state(BADGEY_INIT);
 		break;
 	case 1:
 	default:
-		unconfirm_exit();
+		set_badgey_state(BADGEY_INITIAL_MENU);
 		break;
 	}
 }
 
 static void badgey_exit(void)
 {
-	set_badgey_state(BADGEY_CONTINUE); /* So that when we start again, we do not immediately exit */
+	set_badgey_state(BADGEY_INITIAL_MENU); /* So that when we start again, we do not immediately exit */
 	pop_app();
+}
+
+static void badgey_initial_menu(void)
+{
+	static int menu_setup = 0;
+
+	if (!menu_setup) {
+		dynmenu_clear(&initial_menu);
+		dynmenu_init(&initial_menu, initial_menu_item, ARRAY_SIZE(initial_menu_item));
+		dynmenu_set_title(&initial_menu, "BADGEYS BIG", "ADVENTURE", "");
+		dynmenu_add_item(&initial_menu, "INTRO", 0, 0);
+		if (game_in_progress) {
+			dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
+			dynmenu_add_item(&initial_menu, "RESUME GAME", 1, 2);
+			dynmenu_add_item(&initial_menu, "SAVE GAME", 1, 4);
+		}
+		dynmenu_add_item(&initial_menu, "RESTORE GAME", 1, 5);
+		dynmenu_add_item(&initial_menu, "START NEW GAME", 1, 3);
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&initial_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&initial_menu)) {
+	case 0: /* intro */
+		set_badgey_state(BADGEY_INTRO);
+		break;
+	case 1: /* pause game */
+		pop_app();
+		break;
+	case 2: /* resume game */
+		set_badgey_state(BADGEY_CONTINUE);
+		break;
+	case 3: /* new game */
+		menu_setup = 0; /* to ensure the pause/resume items get added to menu */
+		if (!game_in_progress)
+			set_badgey_state(BADGEY_INIT);
+		else
+			set_badgey_state(BADGEY_ABANDON_CONFIRM);
+		break;
+	case 4: /* save game */
+		set_badgey_state(BADGEY_SAVE_GAME);
+		break;
+	case 5: /* restore game */
+		set_badgey_state(BADGEY_RESTORE_GAME);
+		menu_setup = 0;
+		break;
+	}
+}
+
+static void badgey_intro(void)
+{
+	FbClear();
+	FbColor(WHITE);
+	FbMove(0, 0);
+	FbWriteString("Welcome to BADGEY'S\n");
+	FbWriteString("Big Adventure!\n\n");
+	FbWriteString("You must attend\n");
+	FbWriteString("RVASEC in RICHMOND\n");
+	FbWriteString("You will need to\n");
+	FbWriteString("assemble a BADGE.\n");
+	FbWriteString("But the DIABOLICAL\n");
+	FbWriteString("JAKE has scattered\n");
+	FbWriteString("the components of\n");
+	FbWriteString("the BADGE all over\n");
+	FbWriteString("the place. You will\n");
+	FbWriteString("need to search them\n");
+	FbWriteString("out, then make\n");
+	FbWriteString("your way to RICHMOND\n");
+	FbWriteString("Good luck!");
+	FbSwapBuffers();
+	set_badgey_state(BADGEY_INTRO_WAIT);
+}
+
+static void badgey_intro_wait(void)
+{
+	int down_latches = button_down_latches();
+
+	if (down_latches != 0)
+		set_badgey_state(BADGEY_INITIAL_MENU);
+}
+
+struct badgey_state {
+	/* player stuff */
+	uint32_t checksum;
+	unsigned char world;
+	unsigned char old_world[5];
+	int world_level;
+	int x, y;
+	int wx[5], wy[5];
+	int in_town;
+	int in_cave;
+	int town_or_cave_num;
+	int seedx, seedy; /* for regeneration of caves after restoring from flash */
+	int dir;
+	int money;
+	int hp;
+	unsigned char carrying[ARRAY_SIZE(shop_item)];
+	unsigned char equipped_weapon, equipped_armor;
+	int aboard_ship;
+	int candidate_ship;
+	int last_boarded_ship;
+
+	/* location of our player's current ship, if any */
+	int last_boarded_ship_x;
+	int last_boarded_ship_y;
+
+	int8_t chest_status[NUM_STATIC_CHESTS];
+};
+
+static const struct badgey_world *world_list[] = {
+	&ossaria,
+	&NW42,
+	&borton,
+	&skang,
+	&gnarg,
+	&space,
+	&dynworld,
+};
+
+static unsigned char badgey_serialize_world_ptr(const struct badgey_world *w)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(world_list); i++)
+		if (w == world_list[i])
+			return i;
+	if (w == &dynworld)
+		return 6;
+	return 255;
+}
+
+static const struct badgey_world *badgey_deserialize_world_index(unsigned char w)
+{
+	if (w < ARRAY_SIZE(world_list))
+		return world_list[w];
+	return NULL;
+}
+
+static void badgey_serialize_state(struct badgey_state *state)
+{
+	memset(state, 0, sizeof(*state));
+	state->world = badgey_serialize_world_ptr(player.world);
+	for (int i = 0; i < 5; i++)
+		state->old_world[i] = badgey_serialize_world_ptr(player.old_world[i]);
+	state->x = player.x;
+	state->y = player.y;
+	for (int i = 0; i < 5; i++) {
+		state->wx[i] = player.wx[i];
+		state->wy[i] = player.wy[i];
+	}
+	state->world_level = player.world_level;
+	state->in_town = player.in_town;
+	state->in_cave = player.in_cave;
+	state->town_or_cave_num = player.town_or_cave_num;
+	state->seedx = player.seedx;
+	state->seedy = player.seedy;
+	state->dir = player.dir;
+	state->money = player.money;
+	state->hp = player.hp;
+	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
+		state->carrying[i] = player.carrying[i];
+	state->equipped_weapon = player.equipped_weapon;
+	state->equipped_armor = player.equipped_armor;
+	state->aboard_ship = player.aboard_ship;
+	if (player.last_boarded_ship >= 0 && player.last_boarded_ship < (int) ARRAY_SIZE(ship)) {
+		state->last_boarded_ship_x = ship[player.last_boarded_ship].x;
+		state->last_boarded_ship_y = ship[player.last_boarded_ship].y;
+	} else {
+		state->last_boarded_ship_x = 0;
+		state->last_boarded_ship_y = 0;
+	}
+
+	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
+		state->chest_status[i] = (int8_t) chest[i].status;
+
+	unsigned char *x = (unsigned char *) state;
+	uint32_t checksum = 0;
+
+	for (int i = 0; i < (int) sizeof(*state); i++)
+		checksum += (int) x[i];
+	state->checksum = checksum;
+}
+
+static void badgey_deserialize_state(struct badgey_state *state)
+{
+	player.carrying_dirty = 1;
+	player.in_shop = 0; /* will get set correctly later anyway */
+	player.cbx = 0;
+	player.cby = 0;
+	player.candidate_ship = -1; /* will get set elsewhere */
+
+	player.world = badgey_deserialize_world_index(state->world);
+	for (int i = 0; i < 5; i++) {
+		player.old_world[i] = badgey_deserialize_world_index(state->old_world[i]);
+		player.wx[i] = state->wx[i];
+		player.wy[i] = state->wy[i];
+	}
+	player.x = state->x;
+	player.y = state->y;
+	player.world_level = state->world_level;
+	player.in_town = state->in_town;
+	player.in_cave = state->in_cave;
+
+	if (player.world == &dynworld) {
+		if (player.in_town)
+			dynworld.type = WORLD_TYPE_TOWN;
+		else
+			dynworld.type = WORLD_TYPE_CAVE;
+	}
+
+	player.town_or_cave_num = state->town_or_cave_num;
+	player.seedx = state->seedx;
+	player.seedy = state->seedy;
+	player.dir = state->dir;
+	player.money = state->money;
+	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
+		player.carrying[i] = state->carrying[i];
+	player.equipped_weapon = state->equipped_weapon;
+	player.equipped_armor = state->equipped_armor;
+	player.aboard_ship = state->aboard_ship;
+	player.candidate_ship = state->candidate_ship;
+
+	/* Spawn all the stuff in the overworld */
+	if (player.world->type != WORLD_TYPE_SPACE) {
+		const struct badgey_world *w = player.world;
+		int world_level = player.world_level;
+		int x = player.x;
+		int y = player.y;
+		if (player.in_town || player.in_cave) {
+			/* Have to do this to make generate_town() work right here. */
+			player.world = player.old_world[world_level];
+			player.world_level = world_level - 1;
+			player.x = player.wx[world_level - 1];
+			player.y = player.wy[world_level - 1];
+		}
+
+		spawn_planet_initial_monsters();
+		setup_planet_initial_treasures();
+		spawn_planet_initial_ships();
+
+		if (player.in_town || player.in_cave) {
+			player.world = w;
+			player.world_level = world_level;
+			player.x = x;
+			player.y = y;
+		}
+	}
+
+	/* TODO: restore last boarded ship coords */
+
+	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
+		chest[i].status = state->chest_status[i];
+}
+
+static void badgey_save_game(void)
+{
+	struct badgey_state state;
+
+	badgey_serialize_state(&state);
+	bool saved = flash_kv_store_binary("BADGEY_SAVED_GAME", &state, sizeof(state));
+	if (!saved) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "Failed to save game.\n");
+#endif
+		set_badgey_state(BADGEY_INITIAL_MENU);
+		status_message("Failed to save\ngame\n");
+		return;
+	}
+	set_badgey_state(BADGEY_INITIAL_MENU);
+}
+
+static void badgey_restore_game(void)
+{
+	struct badgey_state state;
+
+	memset(&state, 0, sizeof(state));
+
+	bool ok = flash_kv_get_binary("BADGEY_SAVED_GAME", &state, sizeof(state));
+	if (!ok) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "Failed to read BADGEY_SAVED_GAME: %s\n", strerror(errno));
+#endif
+		set_badgey_state(BADGEY_INITIAL_MENU);
+		status_message("Failed to read\nsaved game\n");
+		return;
+	}
+	uint32_t checksum = 0;
+	unsigned char *c = (unsigned char *) &state;
+	for (int i = 4; i < (int) sizeof(state); i++)
+		checksum += (int) c[i];
+
+	if (checksum != state.checksum) {
+#if TARGET_SIMULATOR
+		fprintf(stderr, "BADGEY_SAVE_GAME checksum is wrong.\n");
+#endif
+		set_badgey_state(BADGEY_INITIAL_MENU);
+		status_message("Saved game had\nbad checksum\n");
+		return;
+	}
+	badgey_init(); /* In case user immediately did RESTORE GAME, be sure to initialize some stuff not saved */
+
+	badgey_deserialize_state(&state);
+
+	game_in_progress = 1;
+	if (player.in_town || player.in_cave) {
+		const struct badgey_world *w = player.world;
+		int world_level = player.world_level;
+		int x = player.x;
+		int y = player.y;
+
+		/* Have to do this to make generate_town() work right here. */
+		player.world = player.old_world[world_level];
+		player.world_level = world_level - 1;
+		player.x = player.wx[world_level - 1];
+		player.y = player.wy[world_level - 1];
+
+		if (player.in_town)
+			generate_town(player.town_or_cave_num);
+		else
+			generate_cave(player.town_or_cave_num, player.seedx, player.seedy);
+
+		player.world = w;
+		player.world_level = world_level;
+		player.x = x;
+		player.y = y;
+	}
+	set_badgey_state(BADGEY_RUN);
+	status_message("Saved game\nrestored from\nflash memory");
 }
 
 /* You will need to rename badgey_cb() something else. */
 void badgey_cb(__attribute__((unused)) struct badge_app *app)
 {
 	switch (badgey_state) {
+	case BADGEY_INITIAL_MENU:
+		badgey_initial_menu();
+		break;
 	case BADGEY_INIT:
 		badgey_init();
+		set_badgey_state(BADGEY_CONTINUE);
 		break;
 	case BADGEY_CONTINUE:
 		badgey_continue();
+		break;
+	case BADGEY_INTRO:
+		badgey_intro();
+		break;
+	case BADGEY_INTRO_WAIT:
+		badgey_intro_wait();
 		break;
 	case BADGEY_PLANET_MENU:
 		badgey_planet_menu();
@@ -6522,8 +7804,8 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 	case BADGEY_RUN:
 		badgey_run();
 		break;
-	case BADGEY_EXIT_CONFIRM:
-		badgey_exit_confirm();
+	case BADGEY_ABANDON_CONFIRM:
+		badgey_abandon_confirm();
 		break;
 	case BADGEY_EXIT:
 		badgey_exit();
@@ -6561,6 +7843,18 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_DISPLAY_MAP:
 		badgey_display_map();
+		break;
+	case BADGEY_MAYBE_BOARD_SHIP:
+		maybe_board_ship();
+		break;
+	case BADGEY_INVENTORY:
+		badgey_inventory();
+		break;
+	case BADGEY_SAVE_GAME:
+		badgey_save_game();
+		break;
+	case BADGEY_RESTORE_GAME:
+		badgey_restore_game();
 		break;
 	default:
 		break;

@@ -18,6 +18,7 @@ target_sources(${PRODUCT} PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/ui.c
 	${CMAKE_CURRENT_LIST_DIR}/stacktrace.c
 	${CMAKE_CURRENT_LIST_DIR}/RVAsec-14.c
+	${CMAKE_CURRENT_LIST_DIR}/particle.c
         )
 
 

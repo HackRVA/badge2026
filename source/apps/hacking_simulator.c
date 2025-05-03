@@ -205,6 +205,9 @@ static struct cell *head;
 
 static int is_fully_connected(void)
 {
+	if (!tail)
+		return 0;
+
 	if ((tail->x == GRID_SIZE && tail->y == target) &&
 		pipes[tail->pipe_index].io.right)
 		return 1;
@@ -563,6 +566,9 @@ static struct cell* get_cell(int x, int y)
 
 static struct cell* get_next_cell(struct cell *current_cell)
 {
+	if (!current_cell)
+		return NULL;
+
 	/* try all four neighbors 
 	 * we would have to rule out connected */
 	int x = current_cell->x;
@@ -776,12 +782,6 @@ static void check_buttons(void)
 	}
 }
 
-static void handle_splash_screen_btn(void)
-{
-	initialize_grid();
-	hacking_simulator_state = HACKINGSIMULATOR_RUN;
-}
-
 static void render_flow_cell(struct cell current_cell)
 {
 	int i;
@@ -813,7 +813,7 @@ static void render_hackingsimulator_splash_screen(void)
 		BUTTON_PRESSED(BADGE_BUTTON_ENCODER_SW, down_latches) ||
 #endif
 		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
-		handle_splash_screen_btn();
+		hacking_simulator_state = HACKINGSIMULATOR_RUN;
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
 		hacking_simulator_state = HACKINGSIM_QUIT_CONFIRM;
 }
@@ -1047,6 +1047,7 @@ static void hackingsimulator_init(void)
 	cursor_y_index = 0;
 	fill_line = 0;
 	hacking_simulator_state = HACKINGSIMULATOR_SPLASH_SCREEN;
+	initialize_grid();
 }
 
 static void hackingsimulator_run(void)

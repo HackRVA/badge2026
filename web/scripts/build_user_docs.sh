@@ -24,3 +24,5 @@ done
 for file in "${FILES[@]}"; do
 	cp "$BUILD_DIR/$file" "$DST_DIR/"
 done
+
+cp docs/user_docs/simulator.html $DST_DIR

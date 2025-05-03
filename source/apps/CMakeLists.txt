@@ -28,7 +28,6 @@ target_sources(${PRODUCT} PUBLIC
 	      ${CMAKE_CURRENT_LIST_DIR}/puzzle-attack.c
         # ${CMAKE_CURRENT_LIST_DIR}/badge-app-template.c
 	${CMAKE_CURRENT_LIST_DIR}/aagunner.c
-	${CMAKE_CURRENT_LIST_DIR}/rover_adventure.c
 	${CMAKE_CURRENT_LIST_DIR}/default_menu_app.c
 	${CMAKE_CURRENT_LIST_DIR}/carousel_menu_app.c
 	${CMAKE_CURRENT_LIST_DIR}/screensaver_app.c

@@ -10,6 +10,12 @@
 #include <SDL.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/time.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <signal.h>
 
 #include "framebuffer.h"
 #include "display.h"
@@ -30,7 +36,6 @@
 #include "xorshift.h"
 #include "sim_slider_input.h"
 #include "utils.h"
-#include "color_sensor.h"
 #include "analog.h"
 
 #define UNUSED __attribute__((unused))
@@ -39,6 +44,11 @@
 static int sim_argc;
 static char** sim_argv;
 static int fullscreen = 0;
+static int fullscreen_flag = 0; /* set by '-f' argument to main */
+static int initial_zoom_count = 0; /* set by '-z' flag */
+static int hot_restart = 0;
+static struct timeval sim_start_time;
+static char **saved_args; /* for hot restarting */
 
 static struct color_sensor_ui {
 	struct sim_slider_input *input[5];
@@ -53,14 +63,7 @@ static struct analog_sensor_ui {
 static void color_sensor_ui_callback(__attribute__((unused)) struct sim_slider_input *s,
 				__attribute__((unused))  float v)
 {
-	struct color_sample sample;
-
-	sample.error_flags = 0;
-
-	/* Not quite sure about the range of these, we'll assume 0-255 */
-	for (int i = 0; i < (int) ARRAY_SIZE(sample.rgbwi); i++)
-		sample.rgbwi[i] = (uint16_t) (color_sensor_ui.color_value[i] * 255);
-	color_sensor_set_sample(sample);
+	// FIXME remove this
 	button_reset_last_input_timestamp(); /* inhibit screensaver */
 }
 
@@ -106,10 +109,10 @@ static void analog_sensor_ui_callback(__attribute__((unused)) struct sim_slider_
 	struct analog_sim_values values;
 
 	/* 3250 mV = High-Z -- basically, the battery voltage, I think */
-	values.value[ANALOG_CHAN_CONDUCTIVITY] = (int) (3250 * analog_sensor_ui.value[0]);
-	values.value[ANALOG_CHAN_THERMISTOR] = (int) (3250 * analog_sensor_ui.value[1]);
-	values.value[ANALOG_CHAN_HALL_EFFECT] = (int) (2000 * analog_sensor_ui.value[2]);
-	values.value[ANALOG_CHAN_BATT_V] = (int) (3250 * analog_sensor_ui.value[3]);
+	values.value[ANALOG_CHAN_0] = (int) (3250 * analog_sensor_ui.value[0]);
+	values.value[ANALOG_CHAN_0] = (int) (3250 * analog_sensor_ui.value[1]);
+	values.value[ANALOG_CHAN_0] = (int) (2000 * analog_sensor_ui.value[2]);
+	values.value[ANALOG_CHAN_VOLUME] = (int) (3250 * analog_sensor_ui.value[3]);
 	/* not sure about this one... */
 	values.value[ANALOG_CHAN_MCU_TEMP] = (int) (706 * analog_sensor_ui.value[4]);
 	analog_sensors_set_values(values);
@@ -193,12 +196,15 @@ void *main_in_thread(void* params) {
 
 static struct option long_options[] = {
 	{ "badge-id", required_argument, NULL, 'i' },
+	{ "fullscreen", no_argument, NULL, 'f' },
+	{ "hotrestart", no_argument, NULL, 'h' },
+	{ "zoom", required_argument, NULL, 'z' },
 	{ NULL, 0, 0, 0 },
 };
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ]\n");
+	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] [ --hotrestart ] [ --zoom n ]\n");
 	exit(1);
 }
 
@@ -209,7 +215,7 @@ static void process_options(int argc, char **argv)
 
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "i:", long_options, &option_index);
+		c = getopt_long(argc, argv, "fhi:z:", long_options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -222,6 +228,24 @@ static void process_options(int argc, char **argv)
 				set_custom_badge_id(badge_id);
 			}
 			break;
+		case 'f': /* full screen mode */
+			fullscreen_flag = 1;
+			break;
+		case 'z': /* zoom level */
+			{
+				int zoom_level;
+				int rc = sscanf(optarg, "%d", &zoom_level);
+				if (rc != 1) {
+					usage();
+					__builtin_unreachable();
+				} else {
+					initial_zoom_count = zoom_level;
+				}
+			}
+			break;
+		case 'h':
+			hot_restart = 1;
+			break;
 		default:
 			usage();
 			__builtin_unreachable();
@@ -230,10 +254,31 @@ static void process_options(int argc, char **argv)
 	}
 }
 
-int hal_run_main(int (*main_func)(int, char**), int argc, char** argv) {
+/* Copy program arguments into an something suitable for calling execv() */
+static void save_args(int argc, char *argv[], char ***saved_argv)
+{
+	*saved_argv = calloc(sizeof((*saved_argv)[0]), argc + 1);
+	for (int i = 0; i < argc; i++)
+		(*saved_argv)[i] = strdup(argv[i]);
+	(*saved_argv)[argc] = NULL;
+}
 
+/* Free args allocated by save_args(); */
+static void free_argv(char **argv)
+{
+        for (int i = 0; argv[i]; i++)
+                free(argv[i]);
+        free(argv);
+}
+
+int hal_run_main(int (*main_func)(int, char**), int argc, char** argv)
+{
     sim_argc = argc;
     sim_argv = argv;
+
+    save_args(argc, argv, &saved_args); /* For later hot restart */
+
+    gettimeofday(&sim_start_time, NULL);
 
     pthread_t app_thread;
     pthread_create(&app_thread, NULL, main_in_thread, main_func);
@@ -248,6 +293,7 @@ int hal_run_main(int (*main_func)(int, char**), int argc, char** argv) {
 void hal_deinit(void) {
     flash_deinit();
     printf("stub fn: %s in %s\n", __FUNCTION__, __FILE__);
+    free_argv(saved_args);
 }
 
 void hal_reboot(void) {
@@ -498,6 +544,16 @@ static void draw_button_inputs(struct sim_lcd_params *slp)
 	draw_rotary_button_position(&bcl.right_rotary, 0);
 	draw_rotary_button_position(&bcl.left_rotary, 1);
 #endif
+	if (button_status.record)
+		draw_button_press(&bcl.record);
+	if (button_status.play)
+		draw_button_press(&bcl.play);
+	if (button_status.fastforward)
+		draw_button_press(&bcl.fastforward);
+	if (button_status.stop_eject)
+		draw_button_press(&bcl.stop_eject);
+	if (button_status.rewind)
+		draw_button_press(&bcl.rewind);
 	sim_button_status_countdown();
 }
 
@@ -987,14 +1043,14 @@ static int buttonfuzzer(SDL_Event *event)
 		}
 	};
 
-	int n = (xorshift(&seed) % 12); /* six buttons, press or release = 12 combos */
+	int n = (xorshift(&seed) % 22); /* eleven buttons, press or release = 22 combos */
 
-	if (n < 6)
+	if (n < 11)
 		*event = keyrelease_template;
 	else
 		*event = keypress_template;
 
-	switch (n % 6) {
+	switch (n % 11) {
 	case 0:
 		event->key.keysym.sym = SDLK_SPACE; /* A button */
 		break;
@@ -1012,6 +1068,16 @@ static int buttonfuzzer(SDL_Event *event)
 		break;
 	case 5:
 		event->key.keysym.sym = SDLK_DOWN; /* down d-pad */
+		break;
+	case 6: event->key.keysym.sym = SDLK_1; /* record */
+		break;
+	case 7: event->key.keysym.sym = SDLK_2; /* play */
+		break;
+	case 8: event->key.keysym.sym = SDLK_3; /* fastforward */
+		break;
+	case 9: event->key.keysym.sym = SDLK_4; /* stop_eject */
+		break;
+	case 10: event->key.keysym.sym = SDLK_5; /* rewind */
 		break;
 	}
 	return 1;
@@ -1125,6 +1191,76 @@ static void wait_until_next_frame(void)
     next_frame += 33; /* 30 Hz */
 }
 
+#ifdef __linux__
+static void do_hot_restart(char *path)
+{
+	fprintf(stderr, "New executable detected, hot restarting!\n");
+#if 0
+	fprintf(stderr, "path = '%s'\n", path);
+	for (int i = 0; saved_args[i] != NULL; i++)
+		fprintf(stderr, "  argv[%d] = '%s'\n", i, saved_args[i]);
+#endif
+	(void) execvp(path, saved_args);
+	/* we should not get here, if we're here, bad juju has happened */
+	write(1, "Bad juju: exevp() failed\n", 25);
+	raise(SIGTRAP); /* abort, or invoke debugger */
+}
+#endif
+
+static void maybe_hot_restart(void)
+{
+	/* for now, hot restart only works on linux */
+#ifdef __linux__
+
+	char path[PATH_MAX];
+
+	if (!hot_restart)
+		return;
+
+	static int counter = 0;
+
+	counter++;
+	if (counter > 100)
+		counter = 0;
+
+	if (counter != 0)
+		return;
+
+	/* Find our current executable file */
+	ssize_t len = readlink("/proc/self/exe", path, sizeof(path));
+	if (len < 0) {
+		fprintf(stderr, "readlink(\"/proc/self/exe\"): %s\n", strerror(errno));
+		return;
+	}
+	if (len < (long) sizeof(path))
+		path[len] = '\0';
+
+	/* Interestingly, if you recompile while the program is running, the
+	 * /proc/self/exe symlink will contain the original pathname with
+	 * " (deleted)" appended to it. WTF? Ok.
+	 */
+	if (len > 10) {
+		char *x = &path[len - 10];
+		if (strcmp(x, " (deleted)") == 0)
+			*x = '\0'; /* Cut off the " (deleted)" to get the actual path. */
+	}
+
+	/* stat our executable to get its last modification time */
+	static struct stat statbuf;
+	int rc = stat(path, &statbuf);
+	if (rc < 0) {
+		fprintf(stderr, "stat(\"%s\"): %s\n", path, strerror(errno));
+		return;
+	}
+
+	/* Is our executable newer than what we are currently running?  If so, hot restart */
+	if (statbuf.st_mtim.tv_sec > sim_start_time.tv_sec) {
+		do_hot_restart(path);
+		__builtin_unreachable();
+	}
+#endif
+}
+
 void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
 {
     int first_time = 1, second_time = 0;
@@ -1144,6 +1280,19 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
             /* Not sure why I need to wait for the 2nd time for this to work. */
             simulator_zoom_ui(0.5);
 	    second_time = 0;
+	    if (fullscreen_flag && !fullscreen)
+		toggle_fullscreen_mode();
+            if (initial_zoom_count != 0) {
+		if (initial_zoom_count > 0) {
+			for (int i = 0; i < initial_zoom_count; i++) {
+			    simulator_zoom_ui(1.1);
+			}
+		} else if (initial_zoom_count < 0) {
+			for (int i = 0; i < -initial_zoom_count; i++) {
+			    simulator_zoom_ui(0.9);
+			}
+		}
+            }
 	}
 	draw_window(renderer, pix_buf, landscape_pix_buf);
 
@@ -1158,6 +1307,7 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
 
 	process_events(window);
 	wait_until_next_frame();
+	maybe_hot_restart();
     }
     free_sensor_ui();
     SDL_DestroyWindow(window);
@@ -1172,5 +1322,5 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
     printf("If you see leak sanitizer complaining about memory and _XlcDefaultMapModifiers\n");
     printf("it's because SDL is programmed by monkeys.\n");
     printf("\n\n\n");
-    exit(0);
+    return;
 }

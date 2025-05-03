@@ -35,8 +35,6 @@ void save_flash(void) {
             break;
         }
     }
-
-    fwrite(flash_data, 1, sizeof(flash_data), f);
     fclose(f);
     printf("Saved flash data at %s\n", flash_filename);
 }
@@ -90,7 +88,12 @@ size_t flash_data_read(uint8_t sector, uint16_t offset, uint8_t *buf, size_t len
         len = max_len;
     }
 
-    memcpy(buf, &flash_data[sector][offset], len);
+    while (offset >= FLASH_SECTOR_SIZE) {
+	offset -= FLASH_SECTOR_SIZE;
+	sector++;
+    }
+    unsigned char *x = &flash_data[sector][offset];
+    memcpy(buf, x, len);
     return len;
 }
 
@@ -110,8 +113,14 @@ size_t flash_data_write(uint8_t sector, uint16_t offset, const uint8_t *buf, siz
     }
 
     for (size_t i=0; i<len; i++) {
+	int o = offset + i;
+	int s = sector;
+	while (o >= FLASH_SECTOR_SIZE) {
+		s++;
+		o -= FLASH_SECTOR_SIZE;
+	}
         // NOR flash writes pull 1s to 0s only.
-        flash_data[sector][offset+i] &= buf[i];
+        flash_data[s][o] &= buf[i];
     }
 
     return len;

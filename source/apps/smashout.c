@@ -15,6 +15,7 @@
 #include "rtc.h"
 #include "xorshift.h"
 #include "dynmenu.h"
+#include "particle.h"
 
 /* TODO figure out where these should really come from */
 #define PADDLE_HEIGHT 12
@@ -44,23 +45,6 @@ static struct smashout_brick {
 	unsigned char x, y, alive; /* upper left corner of brick */
 } brick[NUM_BRICK_ROWS * NUM_BRICK_COLUMNS];
 
-/* When a brick is destroyed, it emits sparks.  On linux, it looks good
- * if the sparks are the same color as the destroyed brick.  On the badge
- * you really can't see the sparks unless they're white
- */
-#define USE_COLORED_SPARKS 0
-#define SPARKS_PER_BRICK 8
-#define MAXSPARKS 25
-static struct spark_data {
-	int x, y, vx, vy, alive;
-#if USE_COLORED_SPARKS
-#define SPARK_COLOR spark[i].color
-	int color;
-#else
-#define SPARK_COLOR WHITE
-#endif
-} spark[MAXSPARKS] = { 0 };
-
 static int score = 0;
 static int balls = 0;
 static int score_inc = 0;
@@ -74,6 +58,10 @@ enum smashout_program_state_t {
 	SMASHOUT_GAME_MAYBE_EXIT,
 	SMASHOUT_GAME_EXIT,
 };
+
+static struct particle_pool *sparkpool = NULL;
+#define SPARK_COLOR WHITE
+#define SPARKS_PER_BRICK 8
 
 static int brick_color[4] = { YELLOW, GREEN, RED, BLUE };
 
@@ -190,27 +178,13 @@ static int ylim(int y)
 	return y;
 }
 
-#if USE_COLORED_SPARKS
 static void add_spark(int x, int y, int color)
-#else
-static void add_spark(int x, int y, __attribute__((unused)) int color)
-#endif
 {
-	int i;
-
-	for (i = 0; i < MAXSPARKS; i++) {
-		if (!spark[i].alive) {
-			spark[i].x = x;
-			spark[i].y = y;
-			spark[i].vx = (((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128);
-			spark[i].vy = (((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128);
-			spark[i].alive = 4 + ((xorshift(&xorshift_state) >> 16) & 0x7);
-#if USE_COLORED_SPARKS
-			spark[i].color = color;
-#endif
-			return;
-		}
-	}
+	sparkpool->config.add_particle(sparkpool, x, y,
+			(((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128),
+			(((xorshift(&xorshift_state) >> 16) & 0x0ff) - 128),
+			4 + ((xorshift(&xorshift_state) >> 16) & 0x7),
+			color);
 }
 
 static void add_sparks(int x, int y, int n, int color)
@@ -221,47 +195,53 @@ static void add_sparks(int x, int y, int n, int color)
 		add_spark(x, y, color);
 }
 
-static void smashout_move_sparks(void)
+static void smashout_draw_spark_color(struct particle *p, int color)
+{
+	int x0, y0, x1, y1;
+	x0 = ((p->x - 2 * p->vx) >> 3);
+	y0 = ((p->y - 2 * p->vy) >> 3);
+	x1 = ((p->x - p->vx) >> 3);
+	y1 = ((p->y - p->vy) >> 3);
+	if (x0 >= 0 && x0 <= 127 && y0 >= 0 && y0 <= 127 &&
+		x1 >= 0 && x1 <= 127 && y1 >= 0 && y1 <= 127) {
+		FbColor(color);
+		FbLine(x0, y0, x1, y1);
+	}
+}
+
+static void smashout_move_sparks(struct particle_pool *pool)
 {
 	int i;
 
-	for (i = 0; i < MAXSPARKS; i++) {
-		if (!spark[i].alive)
+	for (i = 0; i < pool->nparticles; i++) {
+		struct particle *p = &pool->p[i];
+		if (p->life == 0)
 			continue;
-		spark[i].x += spark[i].vx;
-		spark[i].y += spark[i].vy;
-		if (spark[i].alive > 0) {
-			spark[i].alive--;
-			if (!spark[i].alive) {
-				/* Erase dead sparks */
-				int x0, y0, x1, y1;
-				x0 = ((spark[i].x - 2 * spark[i].vx) >> 3);
-				y0 = ((spark[i].y - 2 * spark[i].vy) >> 3);
-				x1 = ((spark[i].x - spark[i].vx) >> 3);
-				y1 = ((spark[i].y - spark[i].vy) >> 3);
-				if (x0 >= 0 && x0 <= 127 && y0 >= 0 && y0 <= 127 &&
-					x1 >= 0 && x1 <= 127 && y1 >= 0 && y1 <= 127) {
-					FbColor(BLACK);
-					FbLine(x0, y0, x1, y1);
-				}
+		p->x += p->vx;
+		p->y += p->vy;
+		if (p->life > 0) {
+			p->life--;
+			if (!p->life) {
+				smashout_draw_spark_color(p, BLACK); /* Erase dead sparks */
 			}
 		}
 	}
 }
 
-static void smashout_draw_sparks(void)
+static void smashout_draw_sparks(struct particle_pool *pool)
 {
 	int i, x0, y0, x1, y1, x2, y2;
 
-	for (i = 0; i < MAXSPARKS; i++) {
-		if (!spark[i].alive)
+	for (i = 0; i < pool->nparticles; i++) {
+		struct particle *p = &pool->p[i];
+		if (p->life == 0)
 			continue;
-		x0 = ((spark[i].x - 2 * spark[i].vx) >> 3);
-		y0 = ((spark[i].y - 2 * spark[i].vy) >> 3);
-		x1 = ((spark[i].x - spark[i].vx) >> 3);
-		y1 = ((spark[i].y - spark[i].vy) >> 3);
-		x2 = ((spark[i].x) >> 3);
-		y2 = ((spark[i].y) >> 3);
+		x0 = ((p->x - 2 * p->vx) >> 3);
+		y0 = ((p->y - 2 * p->vy) >> 3);
+		x1 = ((p->x - p->vx) >> 3);
+		y1 = ((p->y - p->vy) >> 3);
+		x2 = ((p->x) >> 3);
+		y2 = ((p->y) >> 3);
 		if (x0 >= 0 && x0 <= 127 && y0 >= 0 && y0 <= 127 &&
 			x1 >= 0 && x1 <= 127 && y1 >= 0 && y1 <= 127) {
 			FbColor(BLACK);
@@ -396,7 +376,7 @@ static void smashout_draw_screen(void)
 {
 	smashout_draw_paddle();
 	smashout_draw_ball();
-	smashout_draw_sparks();
+	sparkpool->config.draw_particles(sparkpool);
 	smashout_draw_bricks();
 	draw_score_and_balls(BLACK);
 	score += score_inc;
@@ -412,7 +392,7 @@ static void smashout_game_play(void)
 	smashout_check_buttons();
 	smashout_move_paddle();
 	smashout_move_ball();
-	smashout_move_sparks();
+	sparkpool->config.move_particles(sparkpool);
 	smashout_draw_screen();
 }
 
@@ -451,6 +431,15 @@ static void smashout_game_exit(void)
 
 void smashout_cb(__attribute__((unused)) struct badge_app *app)
 {
+	if (sparkpool == NULL) {
+		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
+#define SMASHOUT_PARTICLE_POOL_SIG 0x5111456
+	if (claim_particle_pool(sparkpool, SMASHOUT_PARTICLE_POOL_SIG )) {
+		sparkpool->config.draw_particles = smashout_draw_sparks;
+		sparkpool->config.move_particles = smashout_move_sparks;
+	}
 	switch (smashout_program_state) {
 	case SMASHOUT_GAME_INIT:
 		smashout_game_init();

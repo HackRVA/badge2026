@@ -22,6 +22,7 @@ static uint64_t last_change = 0;
 static user_gpio_callback callback = NULL;
 static int control_key_pressed = 0;
 extern int buttonfuzzer_on;
+static int current_zoom_count = 0;
 
 static struct sim_button_status sim_button_status = { 0 };
 #define BUTTON_DISPLAY_DURATION 15 /* frames */
@@ -61,12 +62,21 @@ void sim_button_status_countdown(void)
 	countdown_to_zero(&sim_button_status.dpad_down);
 	countdown_to_zero(&sim_button_status.dpad_right);
 	countdown_to_zero(&sim_button_status.dpad_left);
+	countdown_to_zero(&sim_button_status.record);
+	countdown_to_zero(&sim_button_status.play);
+	countdown_to_zero(&sim_button_status.fastforward);
+	countdown_to_zero(&sim_button_status.stop_eject);
+	countdown_to_zero(&sim_button_status.rewind);
 }
 
 void simulator_zoom_ui(float factor)
 {
 	int cx, cy, x1, y1, x2, y2;
 
+	if (factor > 1.0f)
+		current_zoom_count++;
+	else
+		current_zoom_count--;
 	struct sim_lcd_params slp = get_sim_lcd_params();
 
 	cx = slp.xoffset + slp.width / 2;
@@ -164,6 +174,21 @@ int mouse_button_down_cb(SDL_MouseButtonEvent *event, struct button_coord_list *
 	} else if (mouse_close_enough(x, y, &bcl->dpad_right)) {
                 button = BADGE_BUTTON_RIGHT;
                 sim_button_status.dpad_right = BUTTON_DISPLAY_DURATION;
+	} else if (mouse_close_enough(x, y, &bcl->record)) {
+		button = BADGE_BUTTON_RECORD;
+		sim_button_status.record = BUTTON_DISPLAY_DURATION;
+	} else if (mouse_close_enough(x, y, &bcl->play)) {
+		button = BADGE_BUTTON_PLAY;
+		sim_button_status.play = BUTTON_DISPLAY_DURATION;
+	} else if (mouse_close_enough(x, y, &bcl->fastforward)) {
+		button = BADGE_BUTTON_FASTFORWARD;
+		sim_button_status.fastforward = BUTTON_DISPLAY_DURATION;
+	} else if (mouse_close_enough(x, y, &bcl->stop_eject)) {
+		button = BADGE_BUTTON_STOP_EJECT;
+		sim_button_status.stop_eject = BUTTON_DISPLAY_DURATION;
+	} else if (mouse_close_enough(x, y, &bcl->rewind)) {
+		button = BADGE_BUTTON_REWIND;
+		sim_button_status.rewind = BUTTON_DISPLAY_DURATION;
 	}
 	if (button != BADGE_BUTTON_MAX) {
                 last_mouse_pressed_button = button;
@@ -346,6 +371,26 @@ int key_press_cb(SDL_Keysym *keysym)
 		buttonfuzzer_on = !buttonfuzzer_on;
 		printf("Button fuzzer %sactivated.\n", buttonfuzzer_on ? "" : "de");
 		break;
+	case SDLK_1:
+            button = BADGE_BUTTON_RECORD;
+            sim_button_status.record = BUTTON_DISPLAY_DURATION;
+	    break;
+	case SDLK_2:
+            button = BADGE_BUTTON_PLAY;
+            sim_button_status.play = BUTTON_DISPLAY_DURATION;
+	    break;
+	case SDLK_3:
+            button = BADGE_BUTTON_FASTFORWARD;
+            sim_button_status.fastforward = BUTTON_DISPLAY_DURATION;
+	    break;
+	case SDLK_4:
+            button = BADGE_BUTTON_STOP_EJECT;
+            sim_button_status.stop_eject = BUTTON_DISPLAY_DURATION;
+	    break;
+	case SDLK_5:
+            button = BADGE_BUTTON_REWIND;
+            sim_button_status.rewind = BUTTON_DISPLAY_DURATION;
+	    break;
         default:
             break;
     }
@@ -409,6 +454,21 @@ int key_release_cb(SDL_Keysym *keysym)
             button = BADGE_BUTTON_ENCODER_2_SW;
         break;
 #endif
+	case SDLK_1:
+	    button = BADGE_BUTTON_RECORD;
+	break;
+	case SDLK_2:
+	    button = BADGE_BUTTON_PLAY;
+	break;
+	case SDLK_3:
+	    button = BADGE_BUTTON_FASTFORWARD;
+	break;
+	case SDLK_4:
+	    button = BADGE_BUTTON_STOP_EJECT;
+	break;
+	case SDLK_5:
+	    button = BADGE_BUTTON_REWIND;
+	break;
         default:
             break;
     }
@@ -659,6 +719,18 @@ void handle_window_event(SDL_Window *window, SDL_Event event)
 			set_sim_lcd_params_rotated();
 		else
 			set_sim_lcd_params_unrotated();
+		if (current_zoom_count > 0) {
+			for (int i = 0; i < current_zoom_count; i++) {
+				zoom_in();
+				current_zoom_count--;
+			}
+		}
+		if (current_zoom_count < 0) {
+			for (int i = 0; i > current_zoom_count; i--) {
+				zoom_out();
+				current_zoom_count++;
+			}
+		}
 		break;
 	default:
 		break;

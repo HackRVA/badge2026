@@ -9,6 +9,7 @@
 #include "xorshift.h"
 #include "dynmenu.h"
 #include "badge.h"
+#include "particle.h"
 
 #define INITIAL_ANGLE 64+32
 #define MIN_ANGLE 64
@@ -139,10 +140,7 @@ static struct aagunner {
 	.currently_firing = 0,
 };
 
-static struct spark {
-	int x, y, vx, vy, life, color;
-} spark[MAX_SPARKS];
-static int nsparks = 0;
+static struct particle_pool *sparkpool = NULL;
 
 static struct missile {
 	int x, y, vx, vy;
@@ -157,68 +155,6 @@ static int nbullets = 0;
 
 static struct dynmenu main_menu;
 static struct dynmenu_item menu_item[15];
-
-static void add_spark(int x, int y, int vx, int vy, int color)
-{
-	static unsigned int state = 0xa5a5a5a5;
-
-	if (nsparks >= MAX_SPARKS)
-		return;
-	spark[nsparks].x = x;
-	spark[nsparks].y = y;
-	spark[nsparks].vx = vx;
-	spark[nsparks].vy = vy;
-	spark[nsparks].life = xorshift(&state) % 100 + 100;
-	spark[nsparks].color = color;
-	nsparks++;
-}
-
-static int move_spark(int i)
-{
-	int x, y;
-	spark[i].x += spark[i].vx;
-	spark[i].y += spark[i].vy;
-	spark[i].life--;
-	if (spark[i].life == 0)
-		return 1; /* spark is dead */
-
-	x = spark[i].x / 256;
-	y = spark[i].y / 256;
-
-	/* return 1 if offscreen (dead), 0 if still alive/onscreen */
-	return (x < 0 || x >= LCD_XSIZE || y < 0 || y >= LCD_YSIZE - 9);
-}
-
-static void move_sparks(void)
-{
-	if (nsparks > 0)
-		screen_changed = 1;
-	for (int i = 0; i < nsparks;) {
-		if (move_spark(i)) { /* spark is dead? */
-			/* delete the spark, by swapping with the last spark and decrementing nsparks */
-			if (i < nsparks - 1)
-				spark[i] = spark[nsparks - 1];
-			nsparks--;
-		} else {
-			i++;
-		}
-	}
-}
-
-static void draw_spark(int i)
-{
-	int x = spark[i].x / 256;
-	int y = spark[i].y / 256;
-
-	FbColor(spark[i].color);
-	FbPoint(x, y);
-}
-
-static void draw_sparks(void)
-{
-	for (int i = 0; i < nsparks; i++)
-		draw_spark(i);
-}
 
 static void add_bullet(int x, int y, int vx, int vy)
 {
@@ -268,7 +204,7 @@ static int move_bullet(int i)
 			vx = (vx * (xorshift(&state) % 256)) / 256;
 			vy = (vy * (xorshift(&state) % 256)) / 256;
 
-			add_spark(x, y, vx, vy, YELLOW);
+			sparkpool->config.add_particle(sparkpool, x, y, vx, vy, xorshift(&state) % 100 + 100, YELLOW);
 		}
 		missiles_killed++;
 		missiles_killed_this_wave++;
@@ -345,7 +281,8 @@ static int move_missile(int i)
 	y = missile[i].y / 256;
 
 	if ((xorshift(&state) & 0x0f) == 0x01)
-		add_spark(missile[i].x, missile[i].y, missile[i].vx / 2, missile[i].vy / 2, RED);
+		sparkpool->config.add_particle(sparkpool, missile[i].x, missile[i].y, missile[i].vx / 2, missile[i].vy / 2,
+						xorshift(&state) % 100 + 100, RED);
 
 	if (y >= 40 && missile[i].mirv_count > 0) {
 		struct missile *m = &missile[i];
@@ -362,7 +299,8 @@ static int move_missile(int i)
 			v = (xorshift(&state) % 50) + 1;
 			vx = (cosine(angle) * v) / 8;
 			vy = (sine(angle) * v) / 8;
-			add_spark(missile[i].x, missile[i].y, vx, vy, YELLOW);
+			sparkpool->config.add_particle(sparkpool, missile[i].x, missile[i].y, vx, vy,
+						xorshift(&state) % 100 + 100, YELLOW);
 		}
 		missile_impacts++;
 		missile_impacts_this_wave++;
@@ -531,7 +469,7 @@ static void aagunner_new_game(void)
 	missile_cooldown = wave[current_wave].max_missile_cooldown;
 	nmissiles = 0;
 	nbullets = 0;
-	nsparks = 0;
+	sparkpool->nparticles = 0;
 	screen_changed = 1;
 	FbClear();
 	aagunner_state = AAGUNNER_BEGIN_WAVE;
@@ -576,7 +514,7 @@ static void aagunner_begin_wave(void)
 		missile_cooldown = wave[current_wave].min_missile_cooldown;
 		missiles_this_wave = 0;
 		nmissiles = 0;
-		nsparks = 0;
+		sparkpool->nparticles = 0;
 		nbullets = 0;
 		shots_fired_this_wave = 0;
 		missile_impacts_this_wave = 0;
@@ -678,7 +616,7 @@ static void draw_screen(void)
 	draw_aiming_indicator();
 	draw_bullets();
 	draw_missiles();
-	draw_sparks();
+	sparkpool->config.draw_particles(sparkpool);
 	FbSwapBuffers();
 	screen_changed = 0;
 }
@@ -728,7 +666,7 @@ static void aagunner_run(void)
 	move_bullets();
 	launch_missiles();
 	move_missiles();
-	move_sparks();
+	sparkpool->config.move_particles(sparkpool);
 	draw_screen();
 	maybe_end_wave();
 }
@@ -741,6 +679,13 @@ static void aagunner_exit(void)
 
 void aagunner_cb(__attribute__((unused)) struct badge_app *app)
 {
+
+	if (sparkpool == NULL) {
+		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
+#define AAGUNNER_PARTICLE_POOL_SIG 0x0AA777
+	(void) claim_particle_pool(sparkpool, AAGUNNER_PARTICLE_POOL_SIG);
 	switch (aagunner_state) {
 	case AAGUNNER_INIT:
 		aagunner_init();

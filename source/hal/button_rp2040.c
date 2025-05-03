@@ -25,6 +25,13 @@ static const int8_t button_to_gpio_pin[BADGE_BUTTON_MAX] = {
     BADGE_GPIO_DPAD_UP,
     BADGE_GPIO_DPAD_RIGHT,
 
+    /* Badgeman */
+    BADGE_GPIO_BTN_RECORD,
+    BADGE_GPIO_BTN_PLAY,
+    BADGE_GPIO_BTN_FASTFORWARD,
+    BADGE_GPIO_BTN_STOP_EJECT,
+    BADGE_GPIO_BTN_REWIND,
+
 #if BADGE_HAS_ROTARY_SWITCHES
     /* Rotary encoder 1 */
     BADGE_GPIO_SW,
