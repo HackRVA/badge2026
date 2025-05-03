@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <inttypes.h>
+
 
 #include "colors.h"
 #include "x11_colors.h"
@@ -16,6 +16,19 @@
 #include "rtc.h"
 #include "key_value_storage.h"
 #include "particle.h"
+
+/*
+ * moving `<inttypes.h>` below the other headers
+ * there seems to be some issue specific to Ubuntu 24.04
+ * that prevents the firmware from being built
+ * i get this output:
+ * ```
+ * note: 'PRIu64' is defined in header '<inttypes.h>';
+ * did you forget to '#include <inttypes.h>'?
+ * ```
+ * */
+#include <inttypes.h>
+
 
 #define GROUND_COLOR x11_DarkGoldenrod
 #define ROCK_COLOR x11_LightSlateGray
