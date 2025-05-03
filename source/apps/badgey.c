@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef __linux__
+#if TARGET_SIMULATOR
 #include <signal.h> /* so we can raise(SIGTRAP) if we detect a bug. */
 #include <errno.h>
 #endif
