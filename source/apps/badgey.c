@@ -5709,7 +5709,7 @@ static void badgey_talk_to_shopkeeper(void)
 		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE)
 			clue_text = clue[creature[shopkeeper].clue].clue_text;
 
-		if (player.money < shop_item[choice].price) {
+		if (player.money < shop_item[shop[st].item[choice]].price) {
 			snprintf(message, sizeof(message), "\n\n"
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
 					" MONEY FOR\n THAT\n");
