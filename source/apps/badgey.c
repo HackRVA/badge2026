@@ -7121,20 +7121,23 @@ static void draw_map_unknown(int x, int y)
 static void badgey_display_player_on_map(void)
 {
 	static int blink = 0;
+	int cave_offset = 0;
+	if (player.world->type == WORLD_TYPE_CAVE)
+		cave_offset = -15;
 	blink++;
 	if (blink > 128)
 		blink = 0;
 	if (blink & 0x8) {
-		draw_map_single_color_point(player.x, player.y, RED);
+		draw_map_single_color_point(player.x, player.y + cave_offset, RED);
 		FbColor(WHITE);
-		draw_map_single_color_point(player.x - 1, player.y - 1, WHITE);
-		draw_map_single_color_point(player.x - 1, player.y, WHITE);
-		draw_map_single_color_point(player.x - 1, player.y + 1, WHITE);
-		draw_map_single_color_point(player.x + 1, player.y - 1, WHITE);
-		draw_map_single_color_point(player.x + 1, player.y, WHITE);
-		draw_map_single_color_point(player.x + 1, player.y + 1, WHITE);
-		draw_map_single_color_point(player.x, player.y - 1, WHITE);
-		draw_map_single_color_point(player.x, player.y + 1, WHITE);
+		draw_map_single_color_point(player.x - 1, player.y + cave_offset - 1, WHITE);
+		draw_map_single_color_point(player.x - 1, player.y + cave_offset, WHITE);
+		draw_map_single_color_point(player.x - 1, player.y + cave_offset + 1, WHITE);
+		draw_map_single_color_point(player.x + 1, player.y + cave_offset - 1, WHITE);
+		draw_map_single_color_point(player.x + 1, player.y + cave_offset, WHITE);
+		draw_map_single_color_point(player.x + 1, player.y + cave_offset + 1, WHITE);
+		draw_map_single_color_point(player.x, player.y + cave_offset - 1, WHITE);
+		draw_map_single_color_point(player.x, player.y + cave_offset + 1, WHITE);
 	}
 }
 
@@ -7259,16 +7262,16 @@ static void badgey_display_surface_map(void)
 
 static void badgey_display_cave_map(void)
 {
-	for (int i = 0; i < 64; i++) {
+	for (int i = 31; i < 64; i++) {
 		for (int j = 0; j < 64; j++) {
 			char x = player.world->wm[windex(j, i)];
 			switch (x) {
 			case '#':
-				draw_map_wall(j, i);
+				draw_map_wall(j, i - 15);
 				break;
 			case ' ':
 			default:
-				draw_map_empty_space(j, i);
+				draw_map_empty_space(j, i -15);
 				break;
 			}
 		}
