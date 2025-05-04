@@ -69,6 +69,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "button.h"
 #include "colors.h"
@@ -82,6 +83,8 @@
 #include "particle.h"
 
 #define IS_ENDLESS_PLAY_DISABLED 0
+#define ENABLE_LIGHTNING 1
+#define DEBUG_LIGHTNING 0
 
 static int has_screen_changed = 0;
 static int has_grid_changed = 1;
@@ -426,9 +429,152 @@ static void register_blocks_for_removal(void)
 				set_cell(x, y, block_get_type(x, y), true, 1);
 }
 
+#if ENABLE_LIGHTNING
+/*
+ * the lightning looks way cooler with more segments
+ * but i guess we should be somewhat memory conscious
+ */
+#define MAX_LIGHTNING_SEGS 32
+struct lightning_seg { int16_t x1, y1, x2, y2; };
+static struct lightning_seg lightning[MAX_LIGHTNING_SEGS];
+static int lightning_count = 0;
+static bool lightning_active = false;
+static int  lightning_frames_left = 0;
+
+/*
+ * subdivide_lightning
+ * inspired by wordwarvi lightning
+ *
+ * This implementation is different in that it it stores segments
+ * to draw later rather than drawing them directly
+ */
+static void subdivide_lightning(int x1, int y1, int x2, int y2)
+{
+	if (lightning_count >= MAX_LIGHTNING_SEGS)
+		return;
+
+	int dx = abs(x2 - x1);
+	int dy = abs(y2 - y1);
+
+	if (dx < 10 && dy < 10) {
+		lightning[lightning_count++] = (struct lightning_seg){x1, y1, x2, y2};
+		return;
+	}
+
+	int x3 = (x1 + x2) / 2;
+	int y3 = (y1 + y2) / 2;
+
+	if (dx < 9)
+		dx = 9;
+	if (dy < 9)
+		dy = 9;
+
+	/* perturb the midpoint using xorshift */
+	int rx = (xorshift(&xorshift_state) % (2*dx)) - dx;
+	int ry = (xorshift(&xorshift_state) % (2*dy)) - dy;
+
+	x3 += (rx * 2) / 5;
+	y3 += (ry * 2) / 5;
+
+#if DEBUG_LIGHTNING
+	printf("subdivide: %d, %d, %d, %d, %d, %d\n", x1, y1, x2, y2, x3, y3);
+#endif
+	subdivide_lightning(x1, y1, x3, y3);
+	subdivide_lightning(x3, y3, x2, y2);
+}
+
+static void draw_lightning(void)
+{
+	if (!lightning_active) return;
+
+	FbColor(WHITE);
+	for (int i = 0; i < lightning_count; i++) {
+#if DEBUG_LIGHTNING
+		printf("segment-white: %d, %d, %d, %d\n",
+			(unsigned char)lightning[i].x1,
+			(unsigned char)lightning[i].y1,
+			(unsigned char)lightning[i].x2,
+			(unsigned char)lightning[i].y2
+		);
+#endif
+		FbLine(
+			(unsigned char)lightning[i].x1,
+			(unsigned char)lightning[i].y1,
+			(unsigned char)lightning[i].x2,
+			(unsigned char)lightning[i].y2
+		);
+	}
+
+	FbColor(BLUE);
+	for (int i = 0; i < lightning_count; i++) {
+#if DEBUG_LIGHTNING
+		printf("segment-blue: %d, %d, %d, %d\n",
+			(unsigned char)lightning[i].x1,
+			(unsigned char)lightning[i].y1,
+			(unsigned char)lightning[i].x2,
+			(unsigned char)lightning[i].y2
+		);
+#endif
+		FbLine(
+			(unsigned char)(lightning[i].x1 - 1),
+			(unsigned char) lightning[i].y1,
+			(unsigned char)(lightning[i].x2 - 1),
+			(unsigned char) lightning[i].y2
+		);
+		FbLine(
+			(unsigned char)(lightning[i].x1 + 1),
+			(unsigned char) lightning[i].y1,
+			(unsigned char)(lightning[i].x2 + 1),
+			(unsigned char) lightning[i].y2
+		);
+	}
+
+	if (--lightning_frames_left <= 0)
+	  lightning_active = false;
+}
+
+/*
+ * pixel_coordinate
+ * i was using point from framebuffer.h for this, but
+ * i want them to be unsigned
+ */
+struct pixel_coordinate {
+	uint16_t x;
+	uint16_t y;
+};
+
+static struct pixel_coordinate get_random_pixel_coordinate_top(void)
+{
+	struct pixel_coordinate p = {
+		.x = (xorshift(&xorshift_state) % (LCD_XSIZE - 1)),
+		.y = 5,
+	};
+#if DEBUG_LIGHTNING
+	printf("lighting source: %d\n", p.x);
+#endif
+	return p;
+}
+
+static struct pixel_coordinate get_center_of_block(int bx, int by, int origin_x, int origin_y, int spacing, int center_offset)
+{
+	struct pixel_coordinate p;
+	p.x = origin_x + bx * spacing + center_offset;
+	p.y = origin_y + by * spacing + center_offset;
+	return p;
+}
+
+static void reset_lightning_state(void)
+{
+	lightning_count = 0;
+	lightning_active = true;
+	lightning_frames_left = 15;
+}
+#endif
+
 enum {
 	MATCH_LEVEL_NONE = 0,
 	MATCH_LEVEL_PARTICLES = 1,
+	MATCH_LEVEL_LIGHTNING = 6,
 };
 
 static bool check_matches(void)
@@ -479,6 +625,40 @@ static bool check_matches(void)
 			}
 		}
 	}
+
+#if ENABLE_LIGHTNING
+	if (match_count > MATCH_LEVEL_LIGHTNING) {
+		int spacing = BLOCK_SIZE + BLOCK_SPACING;
+		int origin_x = (LCD_XSIZE / 2) - (GRID_COLS * spacing / 2);
+		int origin_y = 1 + 2;
+		int center_offset = (BLOCK_SIZE + 3) / 2;
+
+		reset_lightning_state();
+
+		/*
+		 * we try to target the center of each block
+		 * with not many segments, it will only target a few.
+		 * it's also possible that the lightning bolts
+		 * won't reach their targets (because of the segment limit).
+		 */
+		for (int m = 0; m < match_count; m++) {
+			if (lightning_count >= MAX_LIGHTNING_SEGS)
+				break;
+
+			int bx = match_x[m];
+			int by = match_y[m];
+			struct pixel_coordinate center = get_center_of_block(bx, by, origin_x, origin_y, spacing, center_offset);
+			struct pixel_coordinate p = get_random_pixel_coordinate_top();
+
+			subdivide_lightning(
+				p.x,
+				p.y,
+				center.x,
+				center.y
+			);
+		}
+	}
+#endif
 
 	return (match_count > 0);
 }
@@ -871,6 +1051,17 @@ static void draw_screen(void)
 	draw_score();
 	draw_tick();
 	particle_pool->config.draw_particles(particle_pool);
+
+#if ENABLE_LIGHTNING
+	draw_lightning();
+
+	/* if lightning is active, flicker white for some frames */
+	if (lightning_active && (lightning_frames_left % 4 < 2)) {
+		FbColor(WHITE);
+		FbMove(0, 0);
+		FbFilledRectangle(LCD_XSIZE, LCD_YSIZE);
+	}
+#endif
 }
 
 void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
