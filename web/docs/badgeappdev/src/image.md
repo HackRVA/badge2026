@@ -1,3 +1,0 @@
-# Image Assets
-
-> coming soon
