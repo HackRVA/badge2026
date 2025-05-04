@@ -7824,6 +7824,26 @@ static void sanity_check_aux_cave_entrances_per_world(const struct badgey_world 
 			char c = w->wm[windex(x, y)];
 			if (c == 'c')
 				sanity_check_one_cave_entrance(w, x, y);
+			switch (c) {
+			case '_':
+			case 'A' ... 'Z':
+			case 'c': /* extra cave entrance */
+			case '0' ... '9':
+			case '*':
+			case ' ': /* empty space, no need to draw anything */
+			case '.':
+			case 'w':
+			case 'd':
+			case 'f':
+			case 'm':
+			case '#':
+			case 'b':
+			case '=':
+				break;
+			default:
+				fprintf(stderr, "Bad map char 0x%hhx at %s: (%d, %d)\n", c, w->name, x, y);
+				break;
+			}
 		}
 	}
 }
