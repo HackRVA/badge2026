@@ -7819,6 +7819,7 @@ static void badgey_save_game(void)
 		return;
 	}
 	set_badgey_state(BADGEY_INITIAL_MENU);
+	status_message("\nGAME SAVED\nSUCCESSFULLY\n");
 }
 
 static void badgey_restore_game(void)
