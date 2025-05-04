@@ -11,6 +11,7 @@
  *
  */
 
+#include <pico/types.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -26,6 +27,7 @@
 #include "pinout_rp2040.h"
 #include "nau88c10_rp2040.h"
 #include "badge.h"
+#include "nau88c10_rp2040.h"
 
 #include "audio.h"
 
@@ -61,7 +63,13 @@ void audio_init_gpio(void)
 
 static void audio_out_init(void)
 {
+    /* Make sure logs can be seen. */
+#if PREPRODUCTION_FIRMWARE
+    busy_wait_until(1000 * 1000);
+#endif
+    nau88c10_reset(&m_nau88c10_ctx);
     nau88c10_up(&m_nau88c10_ctx);
+
     // TODO - simple wave table synth for beeps? -PMW
 
     /* Used for beep */

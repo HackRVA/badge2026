@@ -13,7 +13,8 @@
 #include <hardware/i2c.h>
 #include <hardware/pio.h>
 
-#include <i2c_rp2040.h>
+#ifndef NAU88C10_RP2040_H
+#define NAU88C10_RP2040_H
 
 struct nau88c10_cfg {
     /* I2C configuration. */
@@ -33,10 +34,15 @@ struct nau88c10_cfg {
 
 struct nau88c10_ctx {
     const struct nau88c10_cfg *cfg;
-    struct i2c_ctx i2c_ctx;
+    uint16_t reg[0x50U];
 };
 
 void nau88c10_set_cfg(struct nau88c10_ctx *ctx,
                       const struct nau88c10_cfg *cfg);
 void nau88c10_init(struct nau88c10_ctx *ctx);
+void nau88c10_reset(struct nau88c10_ctx *ctx);
 void nau88c10_up(struct nau88c10_ctx *ctx);
+void nau88c10_set_output_muted(struct nau88c10_ctx *ctx, bool muted);
+
+#endif /* NAU88C10_RP2040_H */
+
