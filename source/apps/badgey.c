@@ -324,7 +324,7 @@ static const char borton_map[4096] = {
 	"wwww...www...............................fff.fff.....wwwwwwwwwww"
 	"wwwww...................mmmmmmmmmm........f....fff.......wwwwwww"
 	"wwwww...www......mmmmmmmmmmmww...mmmm............fff.....wwwwwww"
-	"wwww......ww.......ffffm8mm.2.....m............r........wwwwwwww"
+	"wwww......ww.......ffffm8mm.2.....m.....................wwwwwwww"
 	"www.....wwww.........fffffmm......m....................wwwwwwwww"
 	"wwww...wwwww...............mm.fff....................wwwwwwwwwww"
 	"wwwwwwwwwww.................fff......................wwwwwwwwwww"
