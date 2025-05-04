@@ -2875,8 +2875,8 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define SHOP_WEAPONS 3
 #define SHOP_HACKERSPACE 4
 #define SHOP_TEMPLE 5
-#define SHOP_SPECIALTY 6 /* not a real shop type, used for specialty items */
-#define NUMSHOPS 6
+#define SHOP_SPACESHIP_RENTAL 6
+#define SHOP_SPECIALTY 7 /* not a real shop type, used for specialty items */
 
 #define ITEM_TYPE_INTANGIBLE 0
 #define ITEM_TYPE_SUSTENANCE 1
@@ -2900,6 +2900,7 @@ enum item_index {
 	TSHIRT,
 	SACRAMENT,
 	BLESSING,
+	SPACESHIP_RENTAL,
 	COMPASS,
 	POSITION_FINDER,
 	MAPPING_STONE,
@@ -2950,6 +2951,9 @@ static const struct shop_item {
 	{ "SACRAMENT", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 	{ "BLESSING", 200, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 
+	/* SPACE SHIP RENTAL */
+	{ "SPACESHIP", 3000, ITEM_TYPE_USELESS, SHOP_SPACESHIP_RENTAL, 0 },
+
 	/* specialty items */
 	{ "COMPASS", 0, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
@@ -2986,6 +2990,7 @@ static const unsigned char badge_bom[] = {
 };
 
 #define MAX_ITEMS_PER_SHOP 8
+#define NUMSHOPS 7
 static struct shop {
 	int item[MAX_ITEMS_PER_SHOP];
 	int nitems;
@@ -3012,7 +3017,7 @@ static struct treasure_chest {
 static int nchests = 0;
 
 enum clue_type {
-	clue_type_engraving, clue_type_rando, clue_type_hacker, clue_type_pub, clue_type_temple,
+	clue_type_engraving, clue_type_rando, clue_type_hacker, clue_type_pub, clue_type_temple, clue_type_spaceship_rental,
 };
 
 static struct treasure_clue {
@@ -3078,22 +3083,24 @@ static const struct cave_aux_entrance {
 };
 #define NCAVE_AUX_ENTRANCES ARRAY_SIZE(cave_aux_entrance)
 
-const char *proprietor[] = { /* indexed by shop type */
+const char *proprietor[NUMSHOPS] = { /* indexed by shop type */
 	"  INNKEEP",
 	"  BARKEEP",
 	"  ARMOURER",
 	"  ENGINEER",
 	"  HACKER",
 	"  GOOROO",
+	"  RENTAL AGENT",
 };
 
-const char *shopname[] = { /* indexed by shop type */
+const char *shopname[NUMSHOPS] = { /* indexed by shop type */
 	"INN",
 	"PUB",
 	"ARMOURER",
 	"WEAPONS",
 	"HACKERSPACE",
 	"TEMPLE",
+	"SPACESHIPS"
 };
 
 static const char *creature_info[] = {
@@ -3304,7 +3311,7 @@ struct creature {
 #define NUM_MONSTERS 20
 #define NUM_CAVE_MONSTERS 20
 #define MAX_COMBAT_CREATURES 5
-#define GUARDS_PER_TOWN 8
+#define GUARDS_PER_TOWN 4
 #define CITIZENS_PER_TOWN 8
 #define ROBOT1_PER_TOWN 2
 #define ROBOT3_PER_TOWN 2
@@ -5279,6 +5286,7 @@ enum townfeature {
 	town_hackerspace = 1 << 6,
 	town_temple = 1 << 7,
 	town_inn = 1 << 9, /* for saving game progress to flash? */
+	town_spaceship_rental = 1 << 10,
 };
 
 static const struct town_info {
@@ -5299,7 +5307,7 @@ static const struct town_info {
 		town_ponds | town_armoury | town_weapons | town_hackerspace,
 	},
 	{ "ONVAL",
-		town_creek | town_weapons | town_armoury | town_temple | town_hackerspace,
+		town_creek | town_weapons | town_spaceship_rental | town_temple | town_hackerspace,
 	},
 	{ "CAVES OF ZOR", 0 },
 	{ "XANFIR MINES", 0 },
@@ -5343,7 +5351,7 @@ static const struct town_info {
 		town_ponds | town_armoury | town_weapons | town_hackerspace,
 	},
 	{ "NEPHEST",
-		town_creek | town_armoury | town_weapons,
+		town_creek | town_armoury | town_weapons | town_spaceship_rental,
 	},
 	{ "SCORPIO CAVERN", 0 },
 	{ "SMUGGLERS CAVE", 0 },
@@ -5365,7 +5373,7 @@ static const struct town_info {
 		town_ponds | town_armoury | town_temple | town_inn,
 	},
 	{ "MERODOX",
-		town_creek | town_weapons | town_armoury | town_temple,
+		town_creek | town_weapons | town_armoury | town_temple | town_spaceship_rental,
 	},
 	{ "X MINES", 0 },
 	{ "TUNNELS OF DOOM", 0 },
@@ -5387,7 +5395,7 @@ static const struct town_info {
 		town_creek | town_weapons | town_armoury | town_temple,
 	},
 	{ "YARNOW",
-		town_ponds | town_armoury | town_temple | town_inn,
+		town_ponds | town_armoury | town_temple | town_inn | town_spaceship_rental,
 	},
 	{ "EVO MINES", 0 },
 	{ "CARNOWULF CAVERN", 0 },
@@ -5919,7 +5927,8 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 0);
 		if (player.aboard_ship != -1)
 			dynmenu_add_item(&planet_menu, "DISEMBARK SHIP", BADGEY_RUN, 9);
-		dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
+		if (player.carrying[SPACESHIP_RENTAL])
+			dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
 		if (underchar >= '0' && underchar <= '4')
 			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 2);
 		if ((underchar >= '5' && underchar <= '9') || underchar == 'c')
@@ -6643,6 +6652,8 @@ static void generate_town(int town_number)
 		generate_building(armoury_name[town % 5], SHOP_ARMOURY, roadchar, &seed);
 	if (towninfo[town].feature & town_temple)
 		generate_building("TEMPLE", SHOP_TEMPLE, roadchar, &seed);
+	if (towninfo[town].feature & town_spaceship_rental)
+		generate_building("SPACESHIPS", SHOP_SPACESHIP_RENTAL, roadchar, &seed);
 
 	arrange_shop_contents(town);
 
