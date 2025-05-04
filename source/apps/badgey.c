@@ -5702,7 +5702,7 @@ static void badgey_talk_to_shopkeeper(void)
 	} else if (choice == 253) { /* stats */
 		screen_changed = 1;
 		set_badgey_state(BADGEY_STATS);
-	} else if (choice > 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
+	} else if (choice >= 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
 		char *clue_text = "";
 		int shopkeeper = find_shopkeeper(st);
