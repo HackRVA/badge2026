@@ -2886,6 +2886,39 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define ITEM_TYPE_SOFTWARE 5
 #define ITEM_TYPE_USELESS 6
 
+/* Must match shop_item[], below */
+enum item_index {
+	SAVE_GAME = 0,
+	RESTORE_GAME,
+	FOOD,
+	DRINK,
+	LIGHT_ARMOR,
+	HEAVY_ARMOR,
+	LASER_CUTLASS,
+	BLASTER,
+	PLA_DOODAD,
+	TSHIRT,
+	SACRAMENT,
+	BLESSING,
+	COMPASS,
+	POSITION_FINDER,
+	MAPPING_STONE,
+	BADGE_BOM,
+	LED_SCREEN,
+	PLASTIC_DPAD,
+	A_BUTTON,
+	B_BUTTON,
+	RP2040CHIP,
+	CIRCUIT_BOARD,
+	SMALL_SPEAKER,
+	AMP_CHIP,
+	RESET_BUTTON,
+	USB_CONNECTOR,
+	BATTERY,
+	SOLDER,
+	RVASEC_BADGE,
+};
+
 static const struct shop_item {
 	char *name;
 	int price;
@@ -2918,39 +2951,22 @@ static const struct shop_item {
 	{ "BLESSING", 200, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 
 	/* specialty items */
-#define COMPASS_ITEM 12
 	{ "COMPASS", 0, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
-#define POSITION_FINDER 13
 	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define MAPPING_STONE 14
 	{ "MAP GEMSTONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
-#define BADGE_BOM 15
 	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
-#define LED_SCREEN 16
 	{ "LED SCREEN", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define PLASTIC_DPAD 17
 	{ "DPAD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define A_BUTTON 18
 	{ "A-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define B_BUTTON 19
 	{ "B-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define RP2040CHIP 20
 	{ "RP2040 CHIP", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define CIRCUIT_BOARD 21
 	{ "CIRCUIT BOARD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define SMALL_SPEAKER 22
 	{ "SMALL SPEAKER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define AMP_CHIP 23
 	{ "AMPLIFIER CHIP", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define RESET_BUTTON 24
 	{ "RESET BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define USB_CONNECTOR 25
 	{ "USB CONNECTOR", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define BATTERY 26
 	{ "BATTERY", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define SOLDER 27
 	{ "ROLL OF SOLDER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
-#define RVASEC_BADGE 28
 	{ "RVASEC BADGE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 };
 
@@ -3822,7 +3838,7 @@ static void badgey_init(void)
 	memset(player.carrying, 0, sizeof(player.carrying));
 	player.carrying[POSITION_FINDER] = 1;
 	player.carrying[MAPPING_STONE] = 1;
-	player.carrying[COMPASS_ITEM] = 1;
+	player.carrying[COMPASS] = 1;
 	player.carrying_dirty = 1;
 	player.aboard_ship = -1;
 	player.candidate_ship = -1;
@@ -4879,7 +4895,7 @@ static void draw_cave_screen(void)
 		if (x < 0 || x > 63 || y < 0 || y > 63)
 			break;
 	}
-	if (player.carrying[COMPASS_ITEM] > 0) {
+	if (player.carrying[COMPASS] > 0) {
 		const char *dirname[] = {"NORTH", "EAST", "SOUTH", "WEST" };
 		FbColor(WHITE);
 		FbBackgroundColor(BLACK);
