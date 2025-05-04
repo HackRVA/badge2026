@@ -2925,7 +2925,7 @@ static const struct shop_item {
 #define MAPPING_STONE 14
 	{ "MAP GEMSTONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
 #define BADGE_BOM 15
-	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
 #define LED_SCREEN 16
 	{ "LED SCREEN", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define PLASTIC_DPAD 17
@@ -2952,6 +2952,21 @@ static const struct shop_item {
 	{ "ROLL OF SOLDER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 #define RVASEC_BADGE 28
 	{ "RVASEC BADGE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+};
+
+static const unsigned char badge_bom[] = {
+	LED_SCREEN,
+	PLASTIC_DPAD,
+	A_BUTTON,
+	B_BUTTON,
+	RP2040CHIP,
+	CIRCUIT_BOARD,
+	SMALL_SPEAKER,
+	AMP_CHIP,
+	RESET_BUTTON,
+	USB_CONNECTOR,
+	BATTERY,
+	SOLDER,
 };
 
 #define MAX_ITEMS_PER_SHOP 8
@@ -3365,8 +3380,10 @@ enum badgey_state_t {
 	BADGEY_DIG,
 	BADGEY_USE_ITEM,
 	BADGEY_DISPLAY_MAP,
+	BADGEY_USE_BAGE_BOM,
 	BADGEY_MAYBE_BOARD_SHIP,
 	BADGEY_INVENTORY,
+	BADGEY_USE_BADGE_BOM,
 	BADGEY_SAVE_GAME,
 	BADGEY_RESTORE_GAME,
 	BADGEY_EXIT,
@@ -4208,6 +4225,32 @@ static void maybe_board_ship(void)
 		set_badgey_state(BADGEY_RUN);
 		screen_changed = 1;
 		break;
+	}
+}
+
+static void badgey_use_badge_bom(void)
+{
+	if (screen_changed) {
+		char line[21];
+		FbClear();
+		for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++) {
+			if (player.carrying[badge_bom[i]]) {
+				FbColor(GREEN);
+				snprintf(line, sizeof(line), "o %s", shop_item[badge_bom[i]].name);
+			} else {
+				FbColor(RED);
+				snprintf(line, sizeof(line), "x %s", shop_item[badge_bom[i]].name);
+			}
+			FbMove(1, i * 9 + 1);
+			FbWriteString(line);
+		}
+		FbSwapBuffers();
+		screen_changed = 0;
+	}
+	int down_latches = button_down_latches();
+	if (down_latches != 0) {
+		screen_changed = 1;
+		set_badgey_state(previous_badgey_state);
 	}
 }
 
@@ -6973,6 +7016,12 @@ static void badgey_use_item(void)
 			set_badgey_state(BADGEY_DISPLAY_MAP);
 			return;
 		}
+		if (choice == BADGE_BOM) {
+			screen_changed = 1;
+			set_badgey_state(BADGEY_RUN);
+			set_badgey_state(BADGEY_USE_BADGE_BOM);
+			return;
+		}
 	}
 	set_badgey_state(BADGEY_RUN);
 }
@@ -7940,6 +7989,9 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case BADGEY_DISPLAY_MAP:
 		badgey_display_map();
+		break;
+	case BADGEY_USE_BADGE_BOM:
+		badgey_use_badge_bom();
 		break;
 	case BADGEY_MAYBE_BOARD_SHIP:
 		maybe_board_ship();
