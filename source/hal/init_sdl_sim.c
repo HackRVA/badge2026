@@ -50,6 +50,8 @@ static int hot_restart = 0;
 static struct timeval sim_start_time;
 static char **saved_args; /* for hot restarting */
 
+static char *executable_dir;
+
 static struct color_sensor_ui {
 	struct sim_slider_input *input[5];
 	float color_value[5];
@@ -915,6 +917,9 @@ static int start_sdl(void)
         fprintf(stderr, "Unable to initialize SDL (Events):  %s\n", SDL_GetError());
         return 1;
     }
+
+    executable_dir = SDL_GetBasePath();
+
     atexit(SDL_Quit);
     return 0;
 }
@@ -923,14 +928,25 @@ static void load_image(char *filename, char **pixels, int *width, int *height)
 {
 	int w = 0, h = 0, a = 0;
 	char whynot[1024];
+	char path[PATH_MAX];
+	struct stat statbuf;
+
+	snprintf(path, sizeof(path), "%s", filename);
+#ifndef __EMSCRIPTEN__
+	int rc = stat(path, &statbuf);
+	if (rc < 0 && executable_dir) {
+		/* Try relative to the executable dir */
+		snprintf(path, sizeof(path), "%s/../%s", executable_dir, filename);
+	}
+#endif
 
 	if (*pixels)
 		return;
 
-	*pixels = png_utils_read_png_image(filename,
+	*pixels = png_utils_read_png_image(path,
 		0, 0, 0, &w, &h, &a, whynot, sizeof(whynot) - 1);
 	if (!*pixels) {
-		fprintf(stderr, "Failed to load image \"%s\": %s\n", filename, whynot);
+		fprintf(stderr, "Failed to load image \"%s\": %s\n", path, whynot);
 		return;
 	}
 	*width = w;
