@@ -7545,7 +7545,7 @@ static void badgey_initial_menu(void)
 	if (!menu_setup) {
 		dynmenu_clear(&initial_menu);
 		dynmenu_init(&initial_menu, initial_menu_item, ARRAY_SIZE(initial_menu_item));
-		dynmenu_set_title(&initial_menu, "BADGEYS BIG", "ADVENTURE", "");
+		dynmenu_set_title(&initial_menu, "RVASEC QUEST", "", "");
 		dynmenu_add_item(&initial_menu, "INTRO", 0, 0);
 		if (game_in_progress) {
 			dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
@@ -7592,8 +7592,8 @@ static void badgey_intro(void)
 	FbClear();
 	FbColor(WHITE);
 	FbMove(0, 0);
-	FbWriteString("Welcome to BADGEY'S\n");
-	FbWriteString("Big Adventure!\n\n");
+	FbWriteString("Welcome to RVAsec\n");
+	FbWriteString("Quest!\n\n");
 	FbWriteString("You must attend\n");
 	FbWriteString("RVASEC in RICHMOND\n");
 	FbWriteString("You will need to\n");
