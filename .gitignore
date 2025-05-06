@@ -96,3 +96,5 @@ web/docs/badgeappdev/book/
 *.sublime-project
 # END SUBLIME TEXT STUFF
 
+compile_commands.json
+
