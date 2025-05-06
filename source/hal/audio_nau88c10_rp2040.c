@@ -14,20 +14,21 @@
 #include <pico/types.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <pico/time.h>
-#include <hardware/gpio.h>
-#include <hardware/irq.h>
-#include <hardware/dma.h>
 #include <hardware/adc.h>
 #include <hardware/clocks.h>
+#include <hardware/dma.h>
+#include <hardware/gpio.h>
 #include <hardware/i2c.h>
+#include <hardware/irq.h>
 #include <hardware/pio.h>
 
 #include "pinout_rp2040.h"
 #include "nau88c10_rp2040.h"
 #include "badge.h"
-#include "nau88c10_rp2040.h"
 
 #include "audio.h"
 
@@ -41,6 +42,7 @@ static volatile enum audio_out_mode_ {
 } audio_out_mode;
 
 static struct nau88c10_ctx m_nau88c10_ctx;
+static void prv_audio_i2s_dma_handler(void); /* Forward declaration. */
 static const struct nau88c10_cfg NAU88C10_CFG = {
     .i2c_inst = BADGE_I2C_AUDIO_CODEC,
     .i2c_scl_pin = BADGE_GPIO_AUDIO_CODEC_SCL,
@@ -52,7 +54,30 @@ static const struct nau88c10_cfg NAU88C10_CFG = {
     .i2s_dacin_pin = BADGE_GPIO_AUDIO_CODEC_DACIN,
     .i2s_adcout_pin = BADGE_GPIO_AUDIO_CODEC_ADCOUT,
     .i2s_pio = BADGE_PIO_AUDIO_CODEC,
+    .i2s_dma_handler = prv_audio_i2s_dma_handler,
 };
+
+static void prv_audio_i2s_dma_handler(void)
+{
+    struct pio_i2s *p = &m_nau88c10_ctx.pio_i2s;
+    if (*(int32_t**)dma_hw->ch[p->dma_ch_in_ctrl].read_addr == p->input_buffer) {
+        // It is inputting to the second buffer so we can overwrite the first
+        // FIXME - generate 500 Hz square for now. -PMW
+        //printf("\r\nrising edge 500 Hz");
+        for (size_t i = 0; i < STEREO_BUFFER_SIZE; i += 2) {
+            p->output_buffer[i] = INT32_MIN / 4;
+            p->output_buffer[i+1] = 0;
+        }
+    } else {
+        // It is currently inputting the first buffer, so we write to the second
+        memset(p->output_buffer + STEREO_BUFFER_SIZE, 0x00, STEREO_BUFFER_SIZE);
+        for (size_t i = STEREO_BUFFER_SIZE; i < STEREO_BUFFER_SIZE * 2; i += 2) {
+            p->output_buffer[i] = INT32_MAX / 4;
+            p->output_buffer[i+1] = 0;
+        }
+    }
+    dma_hw->ints0 = 1u << p->dma_ch_in_data;  // clear the IRQ
+}
 
 /*- Initialization -----------------------------------------------------------*/
 void audio_init_gpio(void)

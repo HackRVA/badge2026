@@ -4,6 +4,7 @@
 
 #include <hardware/i2c.h>
 #include <pico/time.h>
+#include <stdio.h>
 #include <stdint.h>
 
 #include <sys/cdefs.h>
@@ -104,7 +105,6 @@ static void _init_gpios(void) {
 }
 
 void hal_init(void) {
-
     // reset core 1 in case halted by debugger
     multicore_reset_core1();
     // allow suspend from other core, if we have it run something that needs to do that
@@ -113,8 +113,6 @@ void hal_init(void) {
 
     stdio_init_all();
     _init_gpios();
-
-    sleep_ms(1500);
 
     ir_init();
     display_reset();

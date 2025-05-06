@@ -12,9 +12,12 @@
 #include <stdio.h>
 
 #include <pico.h>
-#include <hardware/i2c.h>
+#include <hardware/dma.h>
 #include <hardware/gpio.h>
+#include <hardware/i2c.h>
+#include <hardware/irq.h>
 #include <hardware/pio.h>
+#include <i2s/rp2040_i2s_example/i2s.h>
 
 #include "utils.h"
 #include "nau88c10_rp2040.h"
@@ -260,11 +263,17 @@ enum nau88c10_adcphs {
     NAU88C10_ADCPHS_RIGHT   = 1U, /**< ADC data appears in the 'right' phase of the frame. */
 };
 
+#define NAU88C10_ADCPHS_POS     (1)
+#define NAU88C10_ADCPHS_MASK    (0x1U << NAU88C10_ADCPHS_POS)
+
 /** DAC data frame phase. */
 enum nau88c10_dacphs {
     NAU88C10_DACPHS_LEFT    = 0U, /**< DAC data appears in the 'left' phase of the frame. */
     NAU88C10_DACPHS_RIGHT   = 1U, /**< DAC data appears in the 'right' phase of the frame. */
 };
+
+#define NAU88C10_DACPHS_POS     (2)
+#define NAU88C10_DACPHS_MASK    (0x1U << NAU88C10_DACPHS_POS)
 
 /** Audio Data Format Select */
 enum nau88c10_aifmt {
@@ -274,6 +283,9 @@ enum nau88c10_aifmt {
     NAU88C10_AIFMT_PCM_A            = 3U,
 };
 
+#define NAU88C10_AIFMT_POS  (3)
+#define NAU88C10_AIFMT_MASK (0x3U << NAU88C10_AIFMT_POS)
+
 /** Word length selection. */
 enum nau88c10_wlen {
     NAU88C10_WLEN_16    = 0U,
@@ -282,11 +294,17 @@ enum nau88c10_wlen {
     NAU88C10_WLEN_32    = 3U,
 };
 
+#define NAU88C10_WLEN_POS   (5)
+#define NAU88C10_WLEN_MASK  (0x3U << NAU88C10_WLEN_POS)
+
 /** Frame clock polarity. */
 enum nau88c10_fsp {
     NAU88C10_FSP_NORMAL     = 0U,
     NAU88C10_FSP_INVERTED   = 1U,
 };
+
+#define NAU88C10_FSP_POS    (7)
+#define NAU88C10_FSP_MASK   (0x1U << NAU88C10_FSP_POS)
 
 /** Bit clock polarity. */
 enum nau88c10_bclkp {
@@ -294,11 +312,17 @@ enum nau88c10_bclkp {
     NAU88C10_BCLKP_INVERTED = 1U,
 };
 
+#define NAU88C10_BCLKP_POS  (8)
+#define NAU88C10_BCLKP_MASK (0x1U << NAU88C10_BCLKP_POS)
+
 /** ADC output data to DAC input data passthrough. */
 enum nau88c10_addap {
     NAU88C10_ADDAP_DISABLE  = 0U,
     NAU88C10_ADDAP_ENABLE   = 1U,
 };
+
+#define NAU88C10_ADDAP_POS  (0)
+#define NAU88C10_ADDAP_MASK (0x1U << NAU88C10_ADDAP_POS)
 
 /** ADC companding selection. */
 enum nau88c10_adccm {
@@ -308,6 +332,9 @@ enum nau88c10_adccm {
     NAU88C10_ADCCM_A_LAW    = 3U,
 };
 
+#define NAU88C10_ADCCM_POS  (1)
+#define NAU88C10_ADCCM_MASK (0x3U << NAU88C10_ADCCM_POS)
+
 /** DAC companding selection. */
 enum nau88c10_daccm {
     NAU88C10_DACCM_DISABLED = 0U,
@@ -316,11 +343,17 @@ enum nau88c10_daccm {
     NAU88C10_DACCM_A_LAW    = 3U,
 };
 
+#define NAU88C10_DACCM_POS  (3)
+#define NAU88C10_DACCM_MASK (0x3U << NAU88C10_DACCM_POS)
+
 /** Frame and BCLK direction. */
 enum nau88c10_clkioen {
     NAU88C10_CLKIOEN_SLAVE  = 0U,
     NAU88C10_CLKIOEN_MASTER = 1U,
 };
+
+#define NAU88C10_CLKIOEN_POS    (0)
+#define NAU88C10_CLKIOEN_MASK   (0x1U << NAU88C10_CLKIOEN_POS)
 
 /** Bit clock divider selection. */
 enum nau88c10_bclksel {
@@ -334,6 +367,9 @@ enum nau88c10_bclksel {
     NAU88C10_BCLKSEL_RES_1  = 7U,
 };
 
+#define NAU88C10_BCLKSEL_POS    (2)
+#define NAU88C10_BCLKSEL_MASK   (0x7U << NAU88C10_BCLKSEL_POS)
+
 /** Master clock selection. */
 enum nau88c10_mclksel {
     NAU88C10_MCLKSEL_DIV_1      = 0U,
@@ -346,11 +382,17 @@ enum nau88c10_mclksel {
     NAU88C10_MCLKSEL_DIV_12     = 7U,
 };
 
+#define NAU88C10_MCLKSEL_POS    (5)
+#define NAU88C10_MCLKSEL_MASK   (0x7U << NAU88C10_MCLKSEL_POS)
+
 /** Source of Internal Clock */
 enum nau88c10_clkm {
     NAU88C10_CLKM_PLL_BYPASSED = 0U,
     NAU88C10_CLKM_PLL_OUTPUT   = 1U,
 };
+
+#define NAU88C10_CLKM_POS   (8)
+#define NAU88C10_CLKM_MASK  (0x1U << NAU88C10_CLKM_POS)
 
 /** Slow clock enable.
  *
@@ -360,6 +402,9 @@ enum nau88c10_sclken {
     NAU88C10_SCLKEN_MCLK       = 0U, /**< Uses MCLK */
     NAU88C10_SCLKEN_PLL_OUTPUT = 1U, /**< Uses PLL output (Period of 2^21 * MCLK). */
 };
+
+#define NAU88C10_SCLKEN_POS     (0)
+#define NAU88C10_SCLKEN_MASK    (0x1U << NAU88C10_SCLKEN_POS)
 
 /** Sample rate selection.
  *
@@ -377,6 +422,9 @@ enum nau88c10_smplr {
     NAU88C10_SMPLR_RESERVED_0   = 6U,
     NAU88C10_SMPLR_RESERVED_1   = 7U,
 };
+
+#define NAU88C10_SMPLR_POS  (1)
+#define NAU88C10_SMPLR_MASK (0x7U << NAU88C10_SMPLR_POS)
 
 /** DAC output polarity. */
 enum nau88c10_dacpl {
@@ -646,6 +694,10 @@ static const char NOTHING[] = "";
 static const char FAILED_TO[] = "failed to ";
 static const char ENABLED[] = "enabled";
 static const char DISABLED[] = "disabled";
+static const char LEFT[] = "left";
+static const char RIGHT[] = "right";
+static const char NORMAL[] = "normal";
+static const char INVERTED[] = "inverted";
 
 /*- Private Methods ----------------------------------------------------------*/
 static int prv_nau_write_reg(struct nau88c10_ctx *ctx, uint8_t reg, uint16_t data)
@@ -795,42 +847,7 @@ static void prv_nau_init_hw(struct nau88c10_ctx *ctx)
     gpio_pull_up(cfg->i2c_scl_pin);
     gpio_pull_up(cfg->i2c_sda_pin);
 
-    /* Configure I2S pins. */
-    gpio_init(cfg->i2s_mclk_pin);
-    gpio_set_input_enabled(cfg->i2s_mclk_pin, false);
-    gpio_set_slew_rate(cfg->i2s_mclk_pin, GPIO_SLEW_RATE_FAST);
-    gpio_set_drive_strength(cfg->i2s_mclk_pin, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_dir(cfg->i2s_mclk_pin, true);
-    pio_gpio_init(cfg->i2s_pio, cfg->i2s_mclk_pin);
-    gpio_disable_pulls(cfg->i2s_mclk_pin);
-
-    gpio_init(cfg->i2s_bclk_pin);
-    gpio_set_input_enabled(cfg->i2s_bclk_pin, true);
-    gpio_set_dir(cfg->i2s_bclk_pin, false);
-    pio_gpio_init(cfg->i2s_pio, cfg->i2s_bclk_pin);
-    gpio_disable_pulls(cfg->i2s_bclk_pin);
-
-    gpio_init(cfg->i2s_fs_pin);
-    gpio_set_input_enabled(cfg->i2s_fs_pin, true);
-    gpio_set_dir(cfg->i2s_fs_pin, false);
-    pio_gpio_init(cfg->i2s_pio, cfg->i2s_fs_pin);
-    gpio_disable_pulls(cfg->i2s_fs_pin);
-
-    gpio_init(cfg->i2s_dacin_pin);
-    gpio_set_input_enabled(cfg->i2s_dacin_pin, false);
-    gpio_set_slew_rate(cfg->i2s_dacin_pin, GPIO_SLEW_RATE_FAST);
-    gpio_set_drive_strength(cfg->i2s_dacin_pin, GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_dir(cfg->i2s_dacin_pin, true);
-    pio_gpio_init(cfg->i2s_pio, cfg->i2s_dacin_pin);
-    gpio_disable_pulls(cfg->i2s_dacin_pin);
-
-    gpio_init(cfg->i2s_adcout_pin);
-    gpio_set_input_enabled(cfg->i2s_adcout_pin, true);
-    gpio_set_dir(cfg->i2s_adcout_pin, false);
-    pio_gpio_init(cfg->i2s_pio, cfg->i2s_adcout_pin);
-    gpio_disable_pulls(cfg->i2s_adcout_pin);
-
-    // TODO configure pio here? -PMW
+    /* I2S pins are configured by PIO code. */
 }
 
 static int prv_nau_set_refimp(struct nau88c10_ctx *ctx,
@@ -1031,6 +1048,238 @@ static int prv_nau_set_mouten(struct nau88c10_ctx *ctx,
     return rc;
 }
 
+static int prv_nau_set_adcphs(struct nau88c10_ctx *ctx,
+                              enum nau88c10_adcphs adcphs)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_AUDIO_INTERFACE];
+    reg &= ~NAU88C10_ADCPHS_MASK;
+    reg |= adcphs << NAU88C10_ADCPHS_POS;
+    ctx->reg[NAU88C10_REG_AUDIO_INTERFACE] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_AUDIO_INTERFACE);
+    LOG("%sset ADCPHS %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_ADCPHS_LEFT == adcphs ? LEFT : RIGHT);
+    return rc;
+}
+
+static int prv_nau_set_dacphs(struct nau88c10_ctx *ctx,
+                              enum nau88c10_dacphs dacphs)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_AUDIO_INTERFACE];
+    reg &= ~NAU88C10_DACPHS_MASK;
+    reg |= dacphs << NAU88C10_DACPHS_POS;
+    ctx->reg[NAU88C10_REG_AUDIO_INTERFACE] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_AUDIO_INTERFACE);
+    LOG("%sset DACPHS %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_DACPHS_LEFT == dacphs ? LEFT : RIGHT);
+    return rc;
+}
+
+static int prv_nau_set_aifmt(struct nau88c10_ctx *ctx,
+                             enum nau88c10_aifmt aifmt)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_AUDIO_INTERFACE];
+    reg &= ~NAU88C10_AIFMT_MASK;
+    reg |= aifmt << NAU88C10_AIFMT_POS;
+    ctx->reg[NAU88C10_REG_AUDIO_INTERFACE] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_AUDIO_INTERFACE);
+    LOG("%sset AIFMT %s", (0 > rc) ? FAILED_TO : NOTHING, 
+        NAU88C10_AIFMT_RIGHT_JUSTIFIED == aifmt ? "right justified" :
+        NAU88C10_AIFMT_LEFT_JUSTIFIED == aifmt ? "left justified" :
+        NAU88C10_AIFMT_I2S == aifmt ? "I2S" :
+        NAU88C10_AIFMT_PCM_A == aifmt ? "PCM A" : "?");
+    return rc;
+}
+
+static int prv_nau_set_wlen(struct nau88c10_ctx *ctx,
+                            enum nau88c10_wlen wlen)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_AUDIO_INTERFACE];
+    reg &= ~NAU88C10_WLEN_MASK;
+    reg |= wlen << NAU88C10_WLEN_POS;
+    ctx->reg[NAU88C10_REG_AUDIO_INTERFACE] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_AUDIO_INTERFACE);
+    LOG("%sset WLEN %d", (0 > rc) ? FAILED_TO : NOTHING, 
+        NAU88C10_WLEN_16 == wlen ? 16 : 
+        NAU88C10_WLEN_20 == wlen ? 20 : 
+        NAU88C10_WLEN_24 == wlen ? 24 : 
+        NAU88C10_WLEN_32 == wlen ? 32 : 
+        -1);
+    return rc;
+}
+
+static int prv_nau_set_fsp(struct nau88c10_ctx *ctx,
+                           enum nau88c10_fsp fsp)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_AUDIO_INTERFACE];
+    reg &= ~NAU88C10_FSP_MASK;
+    reg |= fsp << NAU88C10_FSP_POS;
+    ctx->reg[NAU88C10_REG_AUDIO_INTERFACE] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_AUDIO_INTERFACE);
+    LOG("%sset FSP %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_FSP_NORMAL == fsp ? NORMAL : INVERTED);
+    return rc;
+}
+
+static int prv_nau_set_bclkp(struct nau88c10_ctx *ctx,
+                             enum nau88c10_bclkp bclkp)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_AUDIO_INTERFACE];
+    reg &= ~NAU88C10_BCLKP_MASK;
+    reg |= bclkp << NAU88C10_BCLKP_POS;
+    ctx->reg[NAU88C10_REG_AUDIO_INTERFACE] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_AUDIO_INTERFACE);
+    LOG("%sset BCLKP %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_BCLKP_NORMAL == bclkp ? NORMAL : INVERTED);
+    return rc;
+}
+
+static int prv_nau_set_clkioen(struct nau88c10_ctx *ctx,
+                               enum nau88c10_clkioen clkioen)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1];
+    reg &= ~NAU88C10_CLKIOEN_MASK;
+    reg |= clkioen << NAU88C10_CLKIOEN_POS;
+    ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_CLOCK_CONTROL_1);
+    LOG("%sset CLKIOEN %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_CLKIOEN_MASTER == clkioen ? "master" : "slave");
+    return rc;
+}
+
+static int prv_nau_set_bclksel(struct nau88c10_ctx *ctx,
+                               enum nau88c10_bclksel bclksel)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1];
+    reg &= ~NAU88C10_BCLKSEL_MASK;
+    reg |= bclksel << NAU88C10_BCLKSEL_POS;
+    ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_CLOCK_CONTROL_1);
+    LOG("%sset BCLKSEL %d", (0 > rc) ? FAILED_TO : NOTHING,
+        1 << bclksel);
+    return rc;
+}
+
+static int prv_nau_set_mclksel(struct nau88c10_ctx *ctx,
+                               enum nau88c10_mclksel mclksel)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1];
+    reg &= ~NAU88C10_MCLKSEL_MASK;
+    reg |= mclksel << NAU88C10_MCLKSEL_POS;
+    ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_CLOCK_CONTROL_1);
+    LOG("%sset MCLKSEL %f", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_MCLKSEL_DIV_1 == mclksel ? 1.f :
+        NAU88C10_MCLKSEL_DIV_1_5 == mclksel ? 1.5f :
+        NAU88C10_MCLKSEL_DIV_2 == mclksel ? 2.f :
+        NAU88C10_MCLKSEL_DIV_3 == mclksel ? 3.f :
+        NAU88C10_MCLKSEL_DIV_4 == mclksel ? 4.f :
+        NAU88C10_MCLKSEL_DIV_6 == mclksel ? 6.f :
+        NAU88C10_MCLKSEL_DIV_8 == mclksel ? 8.f :
+        NAU88C10_MCLKSEL_DIV_12 == mclksel ? 12.f : -1);
+    return rc;
+}
+
+static int prv_nau_set_clkm(struct nau88c10_ctx *ctx,
+                            enum nau88c10_clkm clkm)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1];
+    reg &= ~NAU88C10_CLKM_MASK;
+    reg |= clkm << NAU88C10_CLKM_POS;
+    ctx->reg[NAU88C10_REG_CLOCK_CONTROL_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_CLOCK_CONTROL_1);
+    LOG("%sset CLKM %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_CLKM_PLL_OUTPUT == clkm ? "PLL Output" : "PLL Bypassed");
+    return rc;
+}
+
+static int prv_nau_set_sclken(struct nau88c10_ctx *ctx,
+                              enum nau88c10_sclken sclken)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_CLOCK_CONTROL_2];
+    reg &= ~NAU88C10_SCLKEN_MASK;
+    reg |= sclken << NAU88C10_SCLKEN_POS;
+    ctx->reg[NAU88C10_REG_CLOCK_CONTROL_2] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_CLOCK_CONTROL_2);
+    LOG("%sset SCLKEN %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_SCLKEN_PLL_OUTPUT == sclken ? "PLL Output" : "MCLK");
+    return rc;
+}
+
+static int prv_nau_set_smplr(struct nau88c10_ctx *ctx,
+                             enum nau88c10_smplr smplr)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_CLOCK_CONTROL_2];
+    reg &= ~NAU88C10_SMPLR_MASK;
+    reg |= smplr << NAU88C10_SMPLR_POS;
+    ctx->reg[NAU88C10_REG_CLOCK_CONTROL_2] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_CLOCK_CONTROL_2);
+    LOG("%sset SMPLR %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_SMPLR_48_KHZ == smplr ? "48 kHz" : 
+        NAU88C10_SMPLR_32_KHZ == smplr ? "32 kHz" : 
+        NAU88C10_SMPLR_24_KHZ == smplr ? "24 kHz" : 
+        NAU88C10_SMPLR_16_KHZ == smplr ? "16 kHz" : 
+        NAU88C10_SMPLR_12_KHZ == smplr ? "12 kHz" : 
+        NAU88C10_SMPLR_8_KHZ == smplr ? "8 kHz" : 
+        "? kHz");
+    return rc;
+}
+
+static int prv_nau_set_dacpl(struct nau88c10_ctx *ctx,
+                             enum nau88c10_dacpl dacpl)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_CTRL];
+    reg &= ~NAU88C10_DACPL_MASK;
+    reg |= dacpl << NAU88C10_DACPL_POS;
+    ctx->reg[NAU88C10_REG_DAC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
+    LOG("%sset DACPL %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_DACPL_NORMAL == dacpl ? NORMAL : INVERTED);
+    return rc;
+}
+
+static int prv_nau_set_automt(struct nau88c10_ctx *ctx,
+                              enum nau88c10_automt automt)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_CTRL];
+    reg &= ~NAU88C10_PSPKEN_MASK;
+    reg |= automt << NAU88C10_PSPKEN_POS;
+    ctx->reg[NAU88C10_REG_DAC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
+    LOG("%sset PSPKEN %s", (0 > rc) ? FAILED_TO : NOTHING, 
+        automt ? ENABLED : DISABLED);
+    return rc;
+}
+
+static int prv_nau_set_dacos(struct nau88c10_ctx *ctx,
+                             enum nau88c10_dacos dacos)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_CTRL];
+    reg &= ~NAU88C10_DACOS_MASK;
+    reg |= dacos << NAU88C10_DACOS_POS;
+    ctx->reg[NAU88C10_REG_DAC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
+    LOG("%sset DACOS %dX", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_DACOS_64X == dacos ? 64 : 128);
+    return rc;
+}
+
+static int prv_nau_set_deemp(struct nau88c10_ctx *ctx,
+                             enum nau88c10_deemp deemp)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_CTRL];
+    reg &= ~NAU88C10_DEEMP_MASK;
+    reg |= deemp << NAU88C10_DEEMP_POS;
+    ctx->reg[NAU88C10_REG_DAC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
+    LOG("%sset DEEMP %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_DEEMP_48_KHZ == deemp ? "48 kHz" : 
+        NAU88C10_DEEMP_44_1_KHZ == deemp ? "44.1 kHz" : 
+        NAU88C10_DEEMP_32_KHZ == deemp ? "32 kHz" : 
+        NAU88C10_DEEMP_NONE == deemp ? "None" : 
+        "?");
+    return rc;
+}
+
 static int prv_nau_set_dacmt(struct nau88c10_ctx *ctx,
                              enum nau88c10_dacmt dacmt)
 {
@@ -1042,25 +1291,6 @@ static int prv_nau_set_dacmt(struct nau88c10_ctx *ctx,
     LOG("%sset DAC %s", (0 > rc) ? FAILED_TO : NOTHING,
         dacmt ? "muted" : "unmuted");
     return rc;
-}
-
-static int prv_nau_configure_dac(struct nau88c10_ctx *ctx)
-{
-    uint16_t reg;
-    reg = ctx->reg[NAU88C10_REG_DAC_CTRL];
-    reg &= ~(NAU88C10_DACPL_MASK | 0);
-    reg |= (NAU88C10_DACPL_NORMAL << NAU88C10_DACPL_POS);
-    reg |= (NAU88C10_AUTOMT_ENABLE << NAU88C10_AUTOMT_POS);
-    reg |= (NAU88C10_DACOS_64X << NAU88C10_DACOS_POS);
-    reg |= (NAU88C10_DEEMP_NONE << NAU88C10_DEEMP_POS);
-    reg |= (NAU88C10_DACMT_ENABLE << NAU88C10_DACMT_POS);
-    ctx->reg[NAU88C10_REG_DAC_CTRL] = reg;
-    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
-    if (0 > rc) {
-        return rc;
-    }
-    LOG("configured dac");
-    return 0;
 }
 
 /*- API ----------------------------------------------------------------------*/
@@ -1103,30 +1333,52 @@ static int wrap_busy_wait_ms(uint32_t ms)
 void nau88c10_up(struct nau88c10_ctx *ctx)
 {
     bool ok = true;
-    /* Set REFIMP lower for fast start up fill. */
-    if ((0 > prv_nau_set_refimp(ctx, NAU88C10_REFIMP_3K))
+    if (/* Always start with the output muted. */
+        (0 > prv_nau_set_dacmt(ctx, NAU88C10_DACMT_ENABLE))
+        /* Set REFIMP lower for fast start up fill. */
+        || (0 > prv_nau_set_refimp(ctx, NAU88C10_REFIMP_3K))
         /* Wait for 4.7 uF cap to fill. */
-        || (0 > wrap_busy_wait_ms(20))
+        || (0 > wrap_busy_wait_ms(30))
         /* Set REFIMP higher for better PSRR. */
         || (0 > prv_nau_set_refimp(ctx, NAU88C10_REFIMP_80K))
         || (0 > prv_nau_set_abiasen(ctx, NAU88C10_ABIASEN_ENABLE))
         || (0 > prv_nau_set_iobufen(ctx, NAU88C10_IOBUFEN_ENABLE))
-        // TODO: set up clocks/bus -PMW
-        // TODO: configure PLL? -PMW
-        || (0 > prv_nau_set_pllen(ctx, NAU88C10_PLLEN_ENABLE))
+        /* Configure clocks/bus. */
+        || (0 > prv_nau_set_wlen(ctx, NAU88C10_WLEN_32)) // FIXME: verify this should be 32-bits. -PMW
+        || (0 > prv_nau_set_clkioen(ctx, NAU88C10_CLKIOEN_SLAVE))
+        || (0 > prv_nau_set_mclksel(ctx, NAU88C10_MCLKSEL_DIV_1))
+        || (0 > prv_nau_set_clkm(ctx, NAU88C10_CLKM_PLL_BYPASSED))
+        /* Enable ADC/DAC. */
         || (0 > prv_nau_set_dacen(ctx, NAU88C10_DACEN_ENABLE))
         // TODO: enable adc and microphone -PMW
+        /* Enable analog output circuitry. */
         || (0 > prv_nau_set_spkmxen(ctx, NAU88C10_SPKMXEN_ENABLE))
         || (0 > prv_nau_set_moutmxen(ctx, NAU88C10_MOUTMXEN_ENABLE))
         || (0 > prv_nau_set_mouten(ctx, NAU88C10_MOUTEN_ENABLE))
         || (0 > prv_nau_set_nspken(ctx, NAU88C10_NSPKEN_ENABLE))
         || (0 > prv_nau_set_pspken(ctx, NAU88C10_PSPKEN_ENABLE))
-        // TODO: configure dac before unmute -PMW
+        /* Configure the DAC. */
+        || (0 > prv_nau_set_automt(ctx, NAU88C10_AUTOMT_ENABLE))
+        || (0 > prv_nau_set_dacos(ctx, NAU88C10_DACOS_64X))
+        || (0 > prv_nau_set_deemp(ctx, NAU88C10_DEEMP_48_KHZ))
         // TODO: configure eq -PMW
-        || (0 > prv_nau_set_dacmt(ctx, NAU88C10_DACMT_DISABLE))
+        // TODO: configure mixer (if needed?) -PMW
     ) {
         ok = false;
     }
+    struct i2s_config i2s_cfg = {
+        .fs = 48000,
+        .sck_mult = 256,
+        .bit_depth = 32,
+        .sck_pin = ctx->cfg->i2s_mclk_pin,
+        .dout_pin = ctx->cfg->i2s_dacin_pin,
+        .din_pin = ctx->cfg->i2s_adcout_pin,
+        .clock_pin_base = ctx->cfg->i2s_bclk_pin,
+        .sck_enable = true,
+    };
+    i2s_program_start_synched(ctx->cfg->i2s_pio, &i2s_cfg, 
+                              ctx->cfg->i2s_dma_handler, &ctx->pio_i2s);
+    (void) prv_nau_set_dacmt(ctx, NAU88C10_DACMT_DISABLE);
     LOG("%s%s up", !ok ? FAILED_TO : NOTHING, !ok ? "bring" : "brought");
 }
 

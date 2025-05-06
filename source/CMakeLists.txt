@@ -26,7 +26,8 @@ if (${TARGET} STREQUAL "PICO")
             hardware_spi
             hardware_i2c
             nec_transmit_library
-            nec_receive_library)
+            nec_receive_library
+            rp2040_i2s_example)
 
     # enable usb output, disable uart output
     pico_enable_stdio_usb(${PRODUCT} 1)

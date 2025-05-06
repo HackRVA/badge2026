@@ -36,7 +36,6 @@ void recover_from_sleep(uint scb_orig, uint clock0_orig, uint clock1_orig){
 
     //reset clocks
     clocks_init();
-
 }
 
 

@@ -21,6 +21,7 @@ if (${TARGET} STREQUAL "PICO")
 
     target_include_directories(${PRODUCT} PUBLIC ./driver-ST7735S/source)
 
+    add_subdirectory(i2s)
     add_subdirectory(ir_library)
 endif()
 
