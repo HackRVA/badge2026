@@ -14,4 +14,4 @@ github-repo-icon = "fa-github"
 github-repo-url = "https://github.com/hackrva/badge2025/"
 hide-sidebar = false
 site-url = ""
-additional-js= ["wasm-simulator.js"]
+additional-js= ["wasm-simulator.js", "badge-history.js"]
