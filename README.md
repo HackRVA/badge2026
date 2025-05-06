@@ -130,7 +130,7 @@ will typically appear at `/media/*username*/RPI-RP2`. Copy the firmware to this
 location:
 
 ```bash
-cp source/badge2025_c.uf2 /media/*username*/RPI-RP2/
+cp source/badge2025_c.uf2 /media/$USER/RPI-RP2/
 ```
 
 > note: on Windows WSL, you can run `explorer.exe .` from within linux to launch a file explorer with your linux dir opened. From here, you can copy the uf2 file to the mounted RPI-RP2 external media.
