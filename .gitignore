@@ -72,6 +72,7 @@ zscan_build/*
 
 # Visual Studio Code project files
 *.code-workspace
+.vscode
 
 # Simulator flash storage
 simulator_flash_storage.bin
