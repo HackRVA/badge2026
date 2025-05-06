@@ -248,6 +248,7 @@ static inline uint8_t get_removal_progress(int x, int y)
 
 #define BLOCK_SIZE 8
 #define BLOCK_SPACING 4
+#define MATCH_EVAL_DELAY 4
 #define REMOVE_BLOCK_ANIMATION_END 7
 #define CURSOR_OUTLINE_SIZE 1
 #define CURSOR_COLOR WHITE
@@ -270,7 +271,6 @@ static int score = 0;
 static int tick = 0;
 static uint64_t last_tick_time = 0;
 static unsigned int xorshift_state = 0;
-static int hang_time = 4;
 
 #define NUM_MENU_ITEMS 4
 #define MENU_ITEM_SPACING 30
@@ -715,13 +715,6 @@ static void update_remove_animations(void)
 		}
 }
 
-static void check_matches_and_collapse(void)
-{
-	collapse_grid();
-	check_matches();
-	register_blocks_for_removal();
-}
-
 /*
  * swaps should be blocked if an removal animation is
  * playing.
@@ -756,9 +749,11 @@ static void puzzle_attack_update(void)
 	static int last_count = -1;
 	if (count != last_count) {
 		last_count = count;
+		collapse_grid();
 		if (--tick <= 0) {
-			check_matches_and_collapse();
-			tick = hang_time;
+			check_matches();
+			register_blocks_for_removal();
+			tick = MATCH_EVAL_DELAY;
 		}
 		if (count % 5 == 0) {
 			shift_grid_up();
@@ -804,7 +799,7 @@ static void puzzle_attack_init(void)
 	selected_outline_color = palette_color_from_index(default_palette, 7);
 	init_grid();
 	last_tick_time = rtc_get_ms_since_boot();
-	tick = hang_time;
+	tick = MATCH_EVAL_DELAY;
 	score = 0;
 }
 
