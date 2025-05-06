@@ -30,6 +30,8 @@ typedef int16_t audio_sample_t;
 #define AUDIO_BEEP_DUR_MS_MIN   (1)
 #define AUDIO_BEEP_DUR_MS_MAX   (30000)
 
+#define AUDIO_FS    (48000) /**< Audio driver sample rate. */
+
 /*!
  *  @brief  Initialize and configure audio gpio
  *
@@ -46,6 +48,10 @@ void audio_init(void);
 /*!
  *  @brief  Play an old fashioned beep on the speaker.
  *
+ *  @note   To play a rest, provide a callback and a frequency of zero with a 
+ *          valid duration.
+ *  @note   To stop playing beeps, provide a duration and frequency of zero.
+ *
  *  @param  frequency   Frequency in Hertz
  *  @param  duration    Duration in milliseconds
  */
@@ -53,6 +59,10 @@ int audio_out_beep(uint16_t freq, uint16_t duration);
 
 /*!
  *  @brief  Play an old fashioned beep on the speaker.
+ *
+ *  @note   To play a rest, provide a callback and a frequency of zero with a 
+ *          valid duration.
+ *  @note   To stop playing beeps, provide a duration and frequency of zero.
  *
  *  @param  frequency      Frequency in Hertz
  *  @param  duration       Duration in milliseconds

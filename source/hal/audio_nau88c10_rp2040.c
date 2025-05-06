@@ -25,6 +25,7 @@
 #include <hardware/i2c.h>
 #include <hardware/irq.h>
 #include <hardware/pio.h>
+#include <hardware/sync.h>
 
 #include "pinout_rp2040.h"
 #include "nau88c10_rp2040.h"
@@ -32,14 +33,29 @@
 
 #include "audio.h"
 
+/* TODO: add logging system? -PMW */
+#ifndef LOG
+#define LOG(...) printf("\r\n[audio] " __VA_ARGS__)
+#endif /* LOG */
+
 /*! @addtogroup BADGE_AUDIO Audio Driver
  *  @{
  */
 
+#define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX / 4)
+
 static volatile enum audio_out_mode_ {
     AUDIO_OUT_MODE_OFF = 0,
     AUDIO_OUT_MODE_BEEP,
-} audio_out_mode;
+} m_audio_out_mode;
+
+static struct audio_out_beep {
+    uint16_t duration_ms;   /**< Duration in ms. */
+    uint16_t elapsed_ms;    /**< Elapsed beep duration in ms. */
+    uint32_t period;        /**< Period in samples. */
+    uint32_t samples;       /**< Sample counter. */
+    void (*cb)(void);       /**< Callback on beep completion. */
+} m_audio_out_beep;
 
 static struct nau88c10_ctx m_nau88c10_ctx;
 static void prv_audio_i2s_dma_handler(void); /* Forward declaration. */
@@ -57,25 +73,73 @@ static const struct nau88c10_cfg NAU88C10_CFG = {
     .i2s_dma_handler = prv_audio_i2s_dma_handler,
 };
 
+static int32_t prv_audio_out_beep_get_next_sample(struct audio_out_beep *beep)
+{
+    if (UINT32_MAX == beep->period) {
+        return 0;
+    } else {
+        int32_t sample;
+        uint32_t samples = beep->samples;
+        uint32_t period = beep->period;
+        if (samples < (period / 2)) {
+            sample = AUDIO_OUT_BEEP_AMPLITUDE;
+        } else {
+            sample = -AUDIO_OUT_BEEP_AMPLITUDE;
+        }
+        if (++samples == period) {
+            samples = 0;
+        }
+        beep->samples = samples;
+        return sample;
+    }
+}
+
+static void prv_audio_out_beep_complete(struct audio_out_beep *beep)
+{
+    LOG("finished playing beep");
+    m_audio_out_mode = AUDIO_OUT_MODE_OFF;
+    audio_stby_ctl(true);
+    if (NULL != beep->cb) {
+        beep->cb();
+    }
+}
+
+static void prv_audio_i2s_process(int32_t *in, int32_t *out, size_t n)
+{
+    // TODO: use input samples when mic is working. -PMW
+    (void) in;
+        
+    /* Output samples. */
+    if (AUDIO_OUT_MODE_BEEP == m_audio_out_mode) {
+        struct audio_out_beep *beep = &m_audio_out_beep;
+        if (beep->elapsed_ms < beep->duration_ms) {
+            for (size_t i = 0; i < n; i += 2) {
+                out[i] = prv_audio_out_beep_get_next_sample(beep);
+            }
+            if (++(beep->elapsed_ms) == beep->duration_ms) {
+                prv_audio_out_beep_complete(beep);
+            }
+        }
+    } else {
+        /* Nothing is playing. */
+        memset(out, 0x00, n * sizeof(*out));
+    };
+}
+
 static void prv_audio_i2s_dma_handler(void)
 {
     struct pio_i2s *p = &m_nau88c10_ctx.pio_i2s;
+    size_t offset;
     if (*(int32_t**)dma_hw->ch[p->dma_ch_in_ctrl].read_addr == p->input_buffer) {
         // It is inputting to the second buffer so we can overwrite the first
-        // FIXME - generate 500 Hz square for now. -PMW
-        //printf("\r\nrising edge 500 Hz");
-        for (size_t i = 0; i < STEREO_BUFFER_SIZE; i += 2) {
-            p->output_buffer[i] = INT32_MIN / 4;
-            p->output_buffer[i+1] = 0;
-        }
+        offset = 0;
     } else {
         // It is currently inputting the first buffer, so we write to the second
-        memset(p->output_buffer + STEREO_BUFFER_SIZE, 0x00, STEREO_BUFFER_SIZE);
-        for (size_t i = STEREO_BUFFER_SIZE; i < STEREO_BUFFER_SIZE * 2; i += 2) {
-            p->output_buffer[i] = INT32_MAX / 4;
-            p->output_buffer[i+1] = 0;
-        }
+        offset = STEREO_BUFFER_SIZE;
     }
+    prv_audio_i2s_process(p->input_buffer + offset, 
+                          p->output_buffer + offset, 
+                          STEREO_BUFFER_SIZE);
     dma_hw->ints0 = 1u << p->dma_ch_in_data;  // clear the IRQ
 }
 
@@ -88,17 +152,14 @@ void audio_init_gpio(void)
 
 static void audio_out_init(void)
 {
-    /* Make sure logs can be seen. */
 #if PREPRODUCTION_FIRMWARE
+    /* Make sure logs can be seen. */
     busy_wait_until(1000 * 1000);
 #endif
     nau88c10_reset(&m_nau88c10_ctx);
     nau88c10_up(&m_nau88c10_ctx);
 
     // TODO - simple wave table synth for beeps? -PMW
-
-    /* Used for beep */
-    alarm_pool_init_default();
 }
 
 void audio_init(void)
@@ -115,68 +176,43 @@ void audio_stby_ctl(bool enable)
 	// TODO - bring the codec out of sleep. -PMW
     }
     /* Only put the opamp into standby if nothing is using it */
-    else if (enable && (audio_out_mode == AUDIO_OUT_MODE_OFF))
+    else if (enable && (m_audio_out_mode == AUDIO_OUT_MODE_OFF))
     {
 	// TODO - put the codec into sleep. -PMW
     }
 }
 
 /*- Output -------------------------------------------------------------------*/
-static int64_t audio_out_beep_alarm(__attribute__((unused)) alarm_id_t id,
-                                    void* user_data)
+int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
 {
-    void (*beep_finished)(void) = user_data;
-
-    if (audio_out_mode != AUDIO_OUT_MODE_BEEP)
-    {
-	if (beep_finished)
-		beep_finished();
-        return 0;
-    }
-
-    // TODO - stop playing beep -PMW
-    audio_out_mode = AUDIO_OUT_MODE_OFF;
-    audio_stby_ctl(true);
-    if (beep_finished)
-        beep_finished();
-    return 0;
-}
-
-int audio_out_beep_with_cb(uint16_t freqHz, uint16_t durMs, void (*beep_finished)(void))
-{
-    static alarm_id_t prev_alarm;
-    if (freqHz == 0 && beep_finished != NULL) { /* we're being asked to play a rest?  Ok. */
-	// TODO - stop playing beep -PMW
-        audio_out_mode = AUDIO_OUT_MODE_OFF;
-        audio_stby_ctl(true);
-        prev_alarm = alarm_pool_add_alarm_in_ms(alarm_pool_get_default(),
-                                            durMs,
-                                            audio_out_beep_alarm,
-                                            beep_finished,
-                                            true);
-        return 0;
-    }
-
-    if ((freqHz < AUDIO_BEEP_FREQ_HZ_MIN)
-        || (freqHz > AUDIO_BEEP_FREQ_HZ_MAX)
-        || (durMs < AUDIO_BEEP_DUR_MS_MIN)
-        || (durMs > AUDIO_BEEP_DUR_MS_MAX))
+    uint32_t period;
+    if ((freq_hz == 0) && (dur_ms == 0)) {
+        /* Cancel the current beep. */
+        period = UINT16_MAX;
+    } else if (freq_hz == 0 && cb != NULL) { 
+        /* We're being asked to play a rest. */
+        period = UINT32_MAX;
+    } else if ((freq_hz < AUDIO_BEEP_FREQ_HZ_MIN)
+               || (freq_hz > AUDIO_BEEP_FREQ_HZ_MAX)
+               || (dur_ms < AUDIO_BEEP_DUR_MS_MIN)
+               || (dur_ms > AUDIO_BEEP_DUR_MS_MAX))
     {
         return -1;
+    } else {
+       period = AUDIO_FS / freq_hz;
     }
 
-    if (AUDIO_OUT_MODE_BEEP == audio_out_mode)
-    {
-        alarm_pool_cancel_alarm(alarm_pool_get_default(), prev_alarm);
-    }
-    // TODO - Start playing beep. -PMW
-    audio_out_mode = AUDIO_OUT_MODE_BEEP;
     audio_stby_ctl(false);
-    prev_alarm = alarm_pool_add_alarm_in_ms(alarm_pool_get_default(),
-                                            durMs,
-                                            audio_out_beep_alarm,
-                                            beep_finished,
-                                            true);
+    uint32_t irqs = save_and_disable_interrupts(); // FIXME: irq locking insufficient with multiple cores. -PMW
+    m_audio_out_mode = AUDIO_OUT_MODE_BEEP;
+    m_audio_out_beep.duration_ms = dur_ms;
+    m_audio_out_beep.elapsed_ms = 0;
+    m_audio_out_beep.period = period;
+    m_audio_out_beep.samples = 0;
+    m_audio_out_beep.cb = cb;
+    restore_interrupts(irqs);
+    LOG("playing beep (freq: %d, period: %u, duration: %u)", 
+         freq_hz, period, dur_ms);
     return 0;
 }
 
@@ -186,7 +222,7 @@ int audio_out_beep(uint16_t freqHz, uint16_t durMs)
 }
 
 bool audio_is_playing(void) {
-    return audio_out_mode == AUDIO_OUT_MODE_BEEP;
+    return m_audio_out_mode == AUDIO_OUT_MODE_BEEP;
 }
 
 /*! @} */ // BADGE_AUDIO
