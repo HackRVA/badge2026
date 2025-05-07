@@ -754,6 +754,7 @@ static void puzzle_attack_update(void)
 			check_matches();
 			register_blocks_for_removal();
 			tick = MATCH_EVAL_DELAY;
+			last_tick_time = now;
 		}
 		if (count % 5 == 0) {
 			shift_grid_up();
@@ -932,6 +933,26 @@ static void draw_score(void)
 
 static void draw_tick(void)
 {
+	unsigned int now = rtc_get_ms_since_boot();
+	unsigned int elapsed = now - last_tick_time;
+	unsigned int period  = (unsigned int)MATCH_EVAL_DELAY * 1000;
+	if (elapsed > period) elapsed = period;
+	int fill_percent = (int)((elapsed * 100) / period);
+
+	struct ui_progress_bar pb = {
+		.x = 1,
+		.y = 18,
+		.width = 40,
+		.height = 12,
+		.outline_size = 2,
+		.fill_color = palette_color_from_index(default_palette,12),
+		.empty_color = palette_color_from_index(default_palette,0),
+		.outline_color = palette_color_from_index(default_palette,13),
+		.fill = ui_progress_bar_calculate_fill_percentage(fill_percent),
+	};
+	ui_progress_bar_draw(pb);
+	/* palette_draw_grid(default_palette, 0, 0, 8); */
+#if 0
 	char buf[8];
 	snprintf(buf, sizeof(buf), "%3d", tick);
 	FbMove(10, 20);
@@ -939,6 +960,7 @@ static void draw_tick(void)
 		default_palette, SCORE_COLOR_INDEX + 1));
 	FbWriteString(buf);
 	has_screen_changed = 1;
+#endif
 }
 
 static void draw_game_over_screen(char *msg)
