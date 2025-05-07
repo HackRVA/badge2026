@@ -102,26 +102,25 @@ void ui_button_draw(struct ui_button button)
 
 static void draw_progress_bar_fill(struct ui_progress_bar bar)
 {
-	if (bar.fill_percentage < 0) {
-		bar.fill_percentage = 0;
-	}
-	if (bar.fill_percentage > 1.0) {
-		bar.fill_percentage = 1.0;
-	}
-	int fill_width =
-		(int)((bar.width - bar.outline_size * 2) * bar.fill_percentage);
+	if (bar.fill < 0)   bar.fill = 0;
+	if (bar.fill > 256) bar.fill = 256;
+
+	int inner_w = bar.width  - bar.outline_size * 2;
+	int inner_h = bar.height - bar.outline_size * 2;
+
+	int fill_px = (inner_w * bar.fill) / 256;
 
 	FbColor(bar.fill_color);
-	FbMove(bar.x + bar.outline_size, bar.y + bar.outline_size);
-	FbFilledRectangle(fill_width, bar.height - bar.outline_size * 2);
+	FbMove(bar.x + bar.outline_size,
+	       bar.y + bar.outline_size);
+	FbFilledRectangle(fill_px, inner_h);
 
-	if (fill_width < bar.width - bar.outline_size * 2) {
+	if (fill_px < inner_w) {
 		FbColor(bar.empty_color);
-		FbMove(bar.x + bar.outline_size + fill_width,
+		FbMove(bar.x + bar.outline_size + fill_px,
 			bar.y + bar.outline_size);
-		FbFilledRectangle(bar.width - bar.outline_size * 2 - fill_width,
-			bar.height - bar.outline_size * 2);
-	}
+		FbFilledRectangle(inner_w - fill_px, inner_h);
+    }
 }
 
 static void draw_progress_bar_outline(struct ui_progress_bar bar)
@@ -129,6 +128,13 @@ static void draw_progress_bar_outline(struct ui_progress_bar bar)
 	FbColor(bar.outline_color);
 	FbMove(bar.x, bar.y);
 	FbRoundedRect(bar.width, bar.height, bar.outline_size);
+}
+
+int ui_progress_bar_calculate_fill_percentage(int percent)
+{
+	if (percent < 0)   percent = 0;
+	if (percent > 100) percent = 100;
+	return (percent * 256 + 50) / 100;
 }
 
 void ui_progress_bar_draw_fill(struct ui_progress_bar bar)

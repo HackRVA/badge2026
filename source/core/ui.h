@@ -20,7 +20,7 @@ struct ui_progress_bar {
 	unsigned short fill_color;
 	unsigned short empty_color;
 	unsigned short outline_color;
-	float fill_percentage;
+	int fill;
 };
 
 struct ui_spinner {
@@ -58,6 +58,16 @@ void ui_button_draw_outline(struct ui_button button, unsigned short color);
 void ui_button_draw_label(struct ui_button button, unsigned short color);
 void ui_button_draw_outline(struct ui_button button, unsigned short color);
 void ui_button_draw(struct ui_button button);
+
+/**
+ * ui_progress_bar_calculate_fill_percentage takes an int between 0-100
+ * it returns the proper value that should be set in ui_progress_bar.fill
+ * ... basically this handles the fixed point math for you.
+ *
+ * If the argument passed in is something above 100, the progress bar will
+ * be entirely filled.
+ */
+int ui_progress_bar_calculate_fill_percentage(int percent);
 void ui_progress_bar_draw_fill(struct ui_progress_bar bar);
 void ui_progress_bar_draw_outline(struct ui_progress_bar bar);
 void ui_progress_bar_draw(struct ui_progress_bar bar);
