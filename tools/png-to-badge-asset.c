@@ -7,8 +7,8 @@
 
 #include "../source/hal/png_utils.h"
 
-#define LCD_XSIZE 128
-#define LCD_YSIZE 160
+#define LCD_XSIZE 160
+#define LCD_YSIZE 128
 
 #define TRANSPARENT_INDEX 255
 #define ALPHA_THRESHOLD 128
