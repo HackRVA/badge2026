@@ -108,6 +108,7 @@ static const struct menu_t settings_m[] = {
    {"Clear NVRAM", VERT_ITEM, FUNCTION, { .func = clear_nvram_cb }, &clear_nvram_icon, },
    {"Default menu", VERT_ITEM, FUNCTION, { .func = use_default_menu_cb }, NULL },
    {"Carousel menu", VERT_ITEM, FUNCTION, { .func = use_carousel_menu_cb }, NULL },
+   {"Tape Deck menu", VERT_ITEM, FUNCTION, { .func = use_tape_deck_menu_cb }, NULL },
    {"Back",         VERT_ITEM|LAST_ITEM, BACK, {NULL}, NULL, },
 };
 

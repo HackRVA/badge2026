@@ -30,6 +30,7 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/aagunner.c
 	${CMAKE_CURRENT_LIST_DIR}/default_menu_app.c
 	${CMAKE_CURRENT_LIST_DIR}/carousel_menu_app.c
+	${CMAKE_CURRENT_LIST_DIR}/menu_2025.c
 	${CMAKE_CURRENT_LIST_DIR}/screensaver_app.c
         )
 add_subdirectory(clue_assets)

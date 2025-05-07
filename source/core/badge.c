@@ -16,6 +16,7 @@
 #include "xorshift.h"
 #include "default_menu_app.h"
 #include "carousel_menu_app.h"
+#include "menu_2025.h"
 #include "screensaver_app.h"
 
 /*
@@ -108,7 +109,7 @@ void push_app(struct badge_app app)
 	exec_app(app);
 }
 
-static int current_menu_app = 0;
+static int current_menu_app = 2;
 
 void use_default_menu_cb(__attribute__((unused)) struct badge_app *app)
 {
@@ -120,6 +121,12 @@ void use_carousel_menu_cb(__attribute__((unused)) struct badge_app *app)
 {
 	current_menu_app = 1;
 	exec_app(carousel_menu_app);
+}
+
+void use_tape_deck_menu_cb(__attribute__((unused)) struct badge_app *app)
+{
+	current_menu_app = 2;
+	exec_app(tape_deck_menu_app);
 }
 
 static void maybe_start_screensaver(void)
@@ -153,7 +160,7 @@ uint64_t ProcessIO(void)
 {
     static const uint64_t frame_interval_us_default = 1000000/BADGE_FRAME_RATE_FPS;
     static struct default_menu_app_context menu_context;
-    struct badge_app *menu_app[] = { &default_menu_app, &carousel_menu_app, };
+    struct badge_app *menu_app[] = { &default_menu_app, &carousel_menu_app, &tape_deck_menu_app };
 
     if (app_stack_idx == -1) { /* No apps at all yet? */
 
@@ -163,6 +170,7 @@ uint64_t ProcessIO(void)
 	init_default_menu_app_context(&menu_context, (void *) &main_m[0]);
 	default_menu_app.app_context = &menu_context;
 	carousel_menu_app.app_context = &menu_context;
+	tape_deck_menu_app.app_context = &menu_context;
 	push_app(*menu_app[current_menu_app]);
 	push_app((struct badge_app) { .app_func = INITIAL_BADGE_APP, .app_context = 0, .wake_up = 1 });
     }

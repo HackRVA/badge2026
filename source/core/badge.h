@@ -26,6 +26,7 @@ void pop_app(void);
 void exec_app(struct badge_app app);
 void use_carousel_menu_cb(struct badge_app *app);
 void use_default_menu_cb(struct badge_app *app);
+void use_tape_deck_menu_cb(struct badge_app *app);
 
 typedef struct {
     char name[16];
