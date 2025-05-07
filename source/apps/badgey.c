@@ -7542,6 +7542,8 @@ static void badgey_initial_menu(void)
 {
 	static int menu_setup = 0;
 
+	FbColor(WHITE);
+	FbBackgroundColor(BLACK);
 	if (!menu_setup) {
 		dynmenu_clear(&initial_menu);
 		dynmenu_init(&initial_menu, initial_menu_item, ARRAY_SIZE(initial_menu_item));
