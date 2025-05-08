@@ -207,8 +207,10 @@ int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
     m_audio_out_mode = AUDIO_OUT_MODE_BEEP;
     m_audio_out_beep.duration_ms = dur_ms;
     m_audio_out_beep.elapsed_ms = 0;
-    m_audio_out_beep.period = period;
-    m_audio_out_beep.samples = 0;
+    if (m_audio_out_beep.period != period) {
+        m_audio_out_beep.period = period;
+        m_audio_out_beep.samples = 0;
+    }
     m_audio_out_beep.cb = cb;
     restore_interrupts(irqs);
     LOG("playing beep (freq: %d, period: %u, duration: %u)", 
