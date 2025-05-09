@@ -55,6 +55,7 @@
 #include "2048.h"
 #include "puzzle-attack.h"
 #include "microban.h"
+#include "drum_machine.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -85,6 +86,7 @@ static const struct menu_t games_m[] = {
 	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
 	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, &hacker_sim_icon, },
 	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, &game_of_life_icon, },
+	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
 #ifdef BUILD_IMAGE_TEST_PROGRAM
 	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
 #endif
