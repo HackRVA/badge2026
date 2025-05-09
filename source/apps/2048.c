@@ -73,7 +73,13 @@ static int grid_y;
 
 static int screen_changed = 0;
 
-static int tile_scale[GRID_SIZE][GRID_SIZE] = {{100}};
+static int tile_scale[GRID_SIZE][GRID_SIZE] = {
+	{100,100,100,100},
+	{100,100,100,100},
+	{100,100,100,100},
+	{100,100,100,100},
+};
+
 static bool moved_tiles[GRID_SIZE][GRID_SIZE] = {false};
 static int animation_step = 0;
 static const int animation_duration = 5;
