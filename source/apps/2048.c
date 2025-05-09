@@ -358,7 +358,7 @@ static void check_buttons(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_EXIT;
+		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	}
 	prev_board = board;
 }
