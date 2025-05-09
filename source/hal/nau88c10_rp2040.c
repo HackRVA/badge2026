@@ -491,11 +491,17 @@ enum nau88c10_adcpl {
     NAU88C10_ADCPL_INVERTED = 1U,
 };
 
+#define NAU88C10_ADCPL_POS  (1)
+#define NAU88C10_ADCPL_MASK (0x1U << NAU88C10_ADCPL_POS)
+
 /** ADC over sample rate */
 enum nau88c10_adcos {
     NAU88C10_ADCOS_64X  = 0U, /**< 64X oversampling for lower power. */
     NAU88C10_ADCOS_128X = 1U, /**< 128X oversampling for better SNR. */
 };
+
+#define NAU88C10_ADCOS_POS  (4)
+#define NAU88C10_ADCOS_MASK (0x1U << NAU88C10_ADCOS_POS)
 
 /** ADC input high pass filter frequency.
  *
@@ -584,6 +590,26 @@ enum nau88c10_hpf {
     NAU88C10_HPF_FS_48K_612_HZ = 0x7U,
 };
 
+#define NAU88C10_HPF_POS    (5)
+#define NAU88C10_HPF_MASK   (0x7U << NAU88C10_HPF_POS)
+
+/** HPF Audio or Application Mode. */
+enum nau88c10_hpfam {
+    NAU88C10_HPFAM_AUDIO        = 0U,   /**< Fixed first order HPF w/fc @ 3.7 kHz. */
+    NAU88C10_HPFAM_APPLICATION  = 1U,   /**< Second order HPF w/fc selected by HFP. */
+};
+
+#define NAU88C10_HPFAM_POS  (7)
+#define NAU88C10_HPFAM_MASK (0x1U << NAU88C10_HPFAM_POS)
+
+enum nau88c10_hpfen {
+    NAU88C10_HPFEN_DISABLED = 0U,
+    NAU88C10_HPFEN_ENABLED  = 1U,
+};
+
+#define NAU88C10_HPFEN_POS  (8)
+#define NAU88C10_HPFEN_MASK (0x1U << NAU88C10_HPFEN_POS)
+
 /** ADC Gain. */
 enum nau88c10_adcgain {
     NAU88C10_ADCGAIN_UNUSED         = 0x00U,
@@ -591,6 +617,8 @@ enum nau88c10_adcgain {
     NAU88C10_ADCGAIN_0_DBFS         = 0xFFU,
 };
 
+#define NAU88C10_ADCGAIN_POS  (0)
+#define NAU88C10_ADCGAIN_MASK (0xFFU << NAU88C10_ADCGAIN_POS)
 #define NAU88C10_ADCGAIN_NEG_DBFS(NDBFS) \
     MIN(MAX((NAU88C10_ADCGAIN_LSB_PER_0_5_DB * 2U * (NDBFS)), \
             NAU88C10_ADCGAIN_UNUSED + 1U), \
@@ -688,6 +716,15 @@ struct nau88c10_eq_cfg {
     enum nau88c10_eqxgc eq5gc;
     enum nau88c10_eqxcf eq5cf;
 };
+
+/* ADC Input Boost (from PGA) */
+enum nau88c10_pgabst {
+    NAU88C10_PGABST_0_DB    = 0U,   /**< +0 dB from PGA to ADC. */
+    NAU88C10_PGABST_20_DB   = 1U,   /**< +20 dB from PGA to ADC. */
+};
+
+#define NAU88C10_PGABST_POS     (5)
+#define NAU88C10_PGABST_MASK    (0x7U << NAU88C10_HPF_POS)
 
 /*- Private Variables --------------------------------------------------------*/
 static const char NOTHING[] = "";
@@ -1241,11 +1278,11 @@ static int prv_nau_set_automt(struct nau88c10_ctx *ctx,
                               enum nau88c10_automt automt)
 {
     uint16_t reg = ctx->reg[NAU88C10_REG_DAC_CTRL];
-    reg &= ~NAU88C10_PSPKEN_MASK;
-    reg |= automt << NAU88C10_PSPKEN_POS;
+    reg &= ~NAU88C10_AUTOMT_MASK;
+    reg |= automt << NAU88C10_AUTOMT_POS;
     ctx->reg[NAU88C10_REG_DAC_CTRL] = reg;
     int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
-    LOG("%sset PSPKEN %s", (0 > rc) ? FAILED_TO : NOTHING, 
+    LOG("%sset AUTOMT %s", (0 > rc) ? FAILED_TO : NOTHING, 
         automt ? ENABLED : DISABLED);
     return rc;
 }
@@ -1290,6 +1327,92 @@ static int prv_nau_set_dacmt(struct nau88c10_ctx *ctx,
     int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_CTRL);
     LOG("%sset DAC %s", (0 > rc) ? FAILED_TO : NOTHING,
         dacmt ? "muted" : "unmuted");
+    return rc;
+}
+
+static int prv_nau_set_adcpl(struct nau88c10_ctx *ctx,
+                             enum nau88c10_adcpl adcpl)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_ADC_CTRL];
+    reg &= ~NAU88C10_ADCPL_MASK;
+    reg |= adcpl << NAU88C10_ADCPL_POS;
+    ctx->reg[NAU88C10_REG_ADC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_CTRL);
+    LOG("%sset ADCPL %s", (0 > rc) ? FAILED_TO : NOTHING, 
+        NAU88C10_ADCPL_NORMAL == adcpl ? NORMAL : INVERTED);
+    return rc;
+}
+
+static int prv_nau_set_adcos(struct nau88c10_ctx *ctx,
+                             enum nau88c10_adcos adcos)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_ADC_CTRL];
+    reg &= ~NAU88C10_ADCOS_MASK;
+    reg |= adcos << NAU88C10_ADCOS_POS;
+    ctx->reg[NAU88C10_REG_ADC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_CTRL);
+    LOG("%sset ADCOS %dX", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_ADCOS_64X == adcos ? 64 : 128);
+    return rc;
+}
+
+static int prv_nau_set_hpf(struct nau88c10_ctx *ctx,
+                             enum nau88c10_hpf hpf)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_ADC_CTRL];
+    reg &= ~NAU88C10_HPF_MASK;
+    reg |= hpf << NAU88C10_HPF_POS;
+    ctx->reg[NAU88C10_REG_ADC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_CTRL);
+    LOG("%sset HPF %d (@fs = 48 kHz)", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_HPF_FS_48K_112_HZ == hpf ? "112 Hz" : 
+        NAU88C10_HPF_FS_48K_153_HZ == hpf ? "153 Hz" : 
+        NAU88C10_HPF_FS_48K_156_HZ == hpf ? "156 Hz" : 
+        NAU88C10_HPF_FS_48K_245_HZ == hpf ? "245 Hz" : 
+        NAU88C10_HPF_FS_48K_306_HZ == hpf ? "306 Hz" : 
+        NAU88C10_HPF_FS_48K_392_HZ == hpf ? "392 Hz" : 
+        NAU88C10_HPF_FS_48K_490_HZ == hpf ? "490 Hz" : 
+        NAU88C10_HPF_FS_48K_612_HZ == hpf ? "612 Hz" : 
+        "?");
+    return rc;
+}
+
+static int prv_nau_set_hpfam(struct nau88c10_ctx *ctx,
+                             enum nau88c10_hpfam hpfam)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_ADC_CTRL];
+    reg &= ~NAU88C10_HPFAM_MASK;
+    reg |= hpfam << NAU88C10_HPFAM_POS;
+    ctx->reg[NAU88C10_REG_ADC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_CTRL);
+    LOG("%sset HPFAM %s", (0 > rc) ? FAILED_TO : NOTHING,
+        NAU88C10_HPFAM_AUDIO == hpfam ? "AUDIO" : "APPLICATION");
+    return rc;
+}
+
+static int prv_nau_set_hpfen(struct nau88c10_ctx *ctx,
+                             enum nau88c10_hpfen hpfen)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_ADC_CTRL];
+    reg &= ~NAU88C10_HPFEN_MASK;
+    reg |= hpfen << NAU88C10_HPFEN_POS;
+    ctx->reg[NAU88C10_REG_ADC_CTRL] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_CTRL);
+    LOG("%sset HPFEN %s", (0 > rc) ? FAILED_TO : NOTHING, 
+        hpfen ? ENABLED : DISABLED);
+    return rc;
+}
+
+static int prv_nau_set_pgabst(struct nau88c10_ctx *ctx,
+                              enum nau88c10_pgabst pgabst)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_ADC_BOOST];
+    reg &= ~NAU88C10_PGABST_MASK;
+    reg |= pgabst << NAU88C10_PGABST_POS;
+    ctx->reg[NAU88C10_REG_ADC_BOOST] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_BOOST);
+    LOG("%sset PGABST +%d", (0 > rc) ? FAILED_TO : NOTHING, 
+        pgabst ? 20 : 0);
     return rc;
 }
 
@@ -1348,15 +1471,28 @@ void nau88c10_up(struct nau88c10_ctx *ctx)
         || (0 > prv_nau_set_clkioen(ctx, NAU88C10_CLKIOEN_SLAVE))
         || (0 > prv_nau_set_mclksel(ctx, NAU88C10_MCLKSEL_DIV_1))
         || (0 > prv_nau_set_clkm(ctx, NAU88C10_CLKM_PLL_BYPASSED))
+        || (0 > prv_nau_set_sclken(ctx, NAU88C10_SCLKEN_PLL_OUTPUT))
+        || (0 > prv_nau_set_smplr(ctx, NAU88C10_SMPLR_48_KHZ))
         /* Enable ADC/DAC. */
+        || (0 > prv_nau_set_adcen(ctx, NAU88C10_ADCEN_DISABLE))
         || (0 > prv_nau_set_dacen(ctx, NAU88C10_DACEN_ENABLE))
-        // TODO: enable adc and microphone -PMW
+        /* Enable analog input circuitry. */
+        || (0 > prv_nau_set_pgaen(ctx, NAU88C10_PGAEN_DISABLE))
+        || (0 > prv_nau_set_bsten(ctx, NAU88C10_BSTEN_STAGE_DISABLE))
+        || (0 > prv_nau_set_micbiasen(ctx, NAU88C10_MICBIASEN_DISABLE))
         /* Enable analog output circuitry. */
         || (0 > prv_nau_set_spkmxen(ctx, NAU88C10_SPKMXEN_ENABLE))
         || (0 > prv_nau_set_moutmxen(ctx, NAU88C10_MOUTMXEN_ENABLE))
         || (0 > prv_nau_set_mouten(ctx, NAU88C10_MOUTEN_ENABLE))
         || (0 > prv_nau_set_nspken(ctx, NAU88C10_NSPKEN_ENABLE))
         || (0 > prv_nau_set_pspken(ctx, NAU88C10_PSPKEN_ENABLE))
+        /* Configure the ADC. */
+        || (0 > prv_nau_set_adcos(ctx, NAU88C10_ADCOS_64X))
+        || (0 > prv_nau_set_hpf(ctx, NAU88C10_HPF_FS_48K_245_HZ))
+        || (0 > prv_nau_set_hpfam(ctx, NAU88C10_HPFAM_APPLICATION))
+        || (0 > prv_nau_set_hpfen(ctx, NAU88C10_HPFEN_ENABLED))
+        /* Configure the input path. */
+        || (0 > prv_nau_set_pgabst(ctx, NAU88C10_PGABST_0_DB))
         /* Configure the DAC. */
         || (0 > prv_nau_set_automt(ctx, NAU88C10_AUTOMT_ENABLE))
         || (0 > prv_nau_set_dacos(ctx, NAU88C10_DACOS_64X))

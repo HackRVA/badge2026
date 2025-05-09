@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <errno.h>
 
 /*! @defgroup   BADGE_AUDIO Audio Driver
  *  @{
@@ -32,6 +33,8 @@ typedef int16_t audio_sample_t;
 
 #define AUDIO_FS    (48000) /**< Audio driver sample rate. */
 
+#define AUDIO_INPUT_CALLBACKS_MAX (4) /*!< Maximum number of audio input callbacks simultaneously active. */
+
 /*!
  *  @brief  Initialize and configure audio gpio
  *
@@ -44,6 +47,39 @@ void audio_init_gpio(void);
  *  @brief  Intialize audio driver
  */
 void audio_init(void);
+
+/** Audio input callback.
+ *
+ *  @param  samples Input samples to be processed.
+ *  @param  len     Number of input samples to be processed.
+ */
+typedef void (*audio_input_callback_t)(const audio_sample_t *samples, size_t len);
+
+/** Add audio input callback.
+ *
+ *  @param  cb  Callback to add.
+ *
+ *  @retval 0       The callback was added successfully.
+ *  @retval -EINVAL The callback pointer was NULL.
+ *  @retval -ENOMEM There is no space left in the table.
+ */
+int audio_in_add_cb(audio_input_callback_t cb);
+
+/** Remove audio input callback.
+ *
+ *  @param  i   Index provided by audio_in_add_cb().
+ *
+ *  @retval 0       The callback was removed successfully.
+ *  @retval -EINVAL The index is invalid.
+ *  @retval -ENOENT The provided index is empty.
+ */
+int audio_in_remove_cb(int i);
+
+/** Number of audio input callbacks registered.
+ *
+ *  @return Number of audio input callbacks registered.
+ */
+int audio_in_cb_count(void);
 
 /*!
  *  @brief  Play an old fashioned beep on the speaker.

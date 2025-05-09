@@ -32,6 +32,7 @@
 #include "badge.h"
 
 #include "audio.h"
+#include "utils.h"
 
 /* TODO: add logging system? -PMW */
 #ifndef LOG
@@ -48,6 +49,10 @@ static volatile enum audio_out_mode_ {
     AUDIO_OUT_MODE_OFF = 0,
     AUDIO_OUT_MODE_BEEP,
 } m_audio_out_mode;
+
+// FIXME: move this to audio_common.c. -PMW
+static audio_input_callback_t m_audio_in_cb[AUDIO_INPUT_CALLBACKS_MAX];
+static int m_audio_in_cb_count;
 
 static struct audio_out_beep {
     uint16_t duration_ms;   /**< Duration in ms. */
@@ -101,10 +106,20 @@ static int32_t prv_audio_out_beep_get_next_sample(struct audio_out_beep *beep)
     return sample;
 }
 
-static void prv_audio_i2s_process(int32_t *in, int32_t *out, size_t n)
+static void prv_audio_i2s_process(int32_t *in, int32_t *out)
 {
-    // TODO: use input samples when mic is working. -PMW
-    (void) in;
+    /* Input samples. */
+    if (0 < m_audio_in_cb_count) {
+        audio_sample_t samples[AUDIO_BUFFER_FRAMES];
+        for (size_t i = 0; i < AUDIO_BUFFER_FRAMES; i++) {
+            samples[i] = in[1 + i * 2U];
+        }
+        for (unsigned i = 0; i < ARRAY_SIZE(m_audio_in_cb); i++) {
+            if (NULL != m_audio_in_cb[i]) {
+                m_audio_in_cb[i](samples, AUDIO_BUFFER_FRAMES);
+            }
+        }
+    }
         
     /* Output samples. */
     if (AUDIO_OUT_MODE_BEEP == m_audio_out_mode) {
@@ -113,21 +128,26 @@ static void prv_audio_i2s_process(int32_t *in, int32_t *out, size_t n)
             unsigned period = beep->period;
             if (UINT16_MAX != period) {
                 /* Play the note. */
-                for (size_t i = 0; i < n; i += 2) {
+                for (size_t i = 0; i < STEREO_BUFFER_SIZE; i += 2) {
                     out[i] = prv_audio_out_beep_get_next_sample(beep);
                 }
             } else {
                 /* This is a rest. */
-                memset(out, 0x00, n * sizeof(*out));
+                for (size_t i = 0; i < STEREO_BUFFER_SIZE; i += 2) {
+                    out[i] = 0U;
+                }
             }
 
+            /* Check if beep is finished. */
             if (++(beep->elapsed_ms) == beep->duration_ms) {
                 prv_audio_out_beep_complete(beep);
             }
         }
     } else {
         /* Nothing is playing. */
-        memset(out, 0x00, n * sizeof(*out));
+        for (size_t i = 0; i < STEREO_BUFFER_SIZE; i += 2) {
+            out[i] = 0U;
+        }
     };
 }
 
@@ -142,10 +162,8 @@ static void prv_audio_i2s_dma_handler(void)
         // It is currently inputting the first buffer, so we write to the second
         offset = STEREO_BUFFER_SIZE;
     }
-    prv_audio_i2s_process(p->input_buffer + offset, 
-                          p->output_buffer + offset, 
-                          STEREO_BUFFER_SIZE);
-    dma_hw->ints0 = 1u << p->dma_ch_in_data;  // clear the IRQ
+    prv_audio_i2s_process(p->input_buffer + offset, p->output_buffer + offset);
+    dma_hw->ints0 = 1U << p->dma_ch_in_data;  // clear the IRQ
 }
 
 /*- Initialization -----------------------------------------------------------*/
@@ -186,6 +204,53 @@ void audio_stby_ctl(bool enable)
 	// TODO - put the codec into sleep. -PMW
     }
 }
+
+/*- Input --------------------------------------------------------------------*/
+// FIXME: move this to audio_common.c. -PMW
+int audio_in_add_cb(audio_input_callback_t cb)
+{
+    if (NULL == cb) {
+        LOG("Cannot add NULL input callback.");
+        return -EINVAL;
+    } else if (ARRAY_SIZE(m_audio_in_cb) <= (unsigned) m_audio_in_cb_count) {
+        LOG("No space to add input callback.");
+        return -ENOMEM;
+    } else {
+        for (int i = 0; i < (int) ARRAY_SIZE(m_audio_in_cb); i++) {
+            if (NULL == m_audio_in_cb[i]) {
+                m_audio_in_cb_count++;
+                m_audio_in_cb[i] = cb;
+                LOG("Added input callback. (i: %d, count: %d)",
+                    i, m_audio_in_cb_count);
+                return i;
+            }
+        }
+        LOG("Did not find space to add input callback.");
+        return -ENOMEM;
+    }
+}
+
+int audio_in_remove_cb(int i)
+{
+    if (((int) ARRAY_SIZE(m_audio_in_cb) <= i) || (i < 0)) {
+        LOG("Input entry index out of range.");
+        return -EINVAL;
+    } else if (NULL == m_audio_in_cb[i]) {
+        LOG("Input entry already empty.");
+        return -ENOENT;
+    } else {
+        m_audio_in_cb[i] = NULL;
+        m_audio_in_cb_count--;
+        LOG("Removed input callback. (i: %d, count: %d)", i, m_audio_in_cb_count);
+        return 0;
+    }
+}
+
+int audio_in_cb_count()
+{
+    return m_audio_in_cb_count;
+}
+
 
 /*- Output -------------------------------------------------------------------*/
 int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))

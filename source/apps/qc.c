@@ -162,7 +162,6 @@ bool qc_analog(void)
     return true;
 }
 
-#if 0 /* Keep this for later... */
 static int8_t qc_dB;
 static uint8_t long_average_idx;
 static audio_sample_t long_average[16];
@@ -186,11 +185,11 @@ bool qc_mic(void)
 
     return true;
 }
-#endif
 
 void QC_cb(__attribute__((unused)) struct badge_app *app)
 {
     //static unsigned char call_count = 0;
+    static int qc_audio_in_cb_idx=-1;
     static int QC_state=0;
     static int button_hold_count = 0;
     unsigned char redraw = 0;
@@ -205,6 +204,7 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
     {
         case INIT:
             ir_add_callback(ir_callback, IR_APP0);
+            qc_audio_in_cb_idx = audio_in_add_cb(qc_mic_cb);
             FbTransparentIndex(0);
             FbBackgroundColor(BLACK);
             FbColor(GREEN);
@@ -237,6 +237,8 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
             if(button_hold_count > 20){
 		/* Exit */
                 ir_remove_callback(ir_callback, IR_APP0);
+                (void) audio_in_remove_cb(qc_audio_in_cb_idx);
+                qc_audio_in_cb_idx = -1;
 		led_pwm_disable(BADGE_LED_RGB_RED);
 		led_pwm_disable(BADGE_LED_RGB_GREEN);
 		led_pwm_disable(BADGE_LED_RGB_BLUE);
@@ -249,6 +251,11 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
             }
 
             if (qc_analog())
+            {
+                redraw = 1;
+            }
+
+            if (qc_mic())
             {
                 redraw = 1;
             }
