@@ -117,6 +117,8 @@ void FbImage1bit2(const struct asset2 *asset, unsigned char seqNum);
 /* Draw an entire 16bit asset. doesn't support G_Fb.pos or seqNum. */
 void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color);
 /* Draw a portion of a 16bit asset, with wrapping. doesn't support G_Fb.pos or seqNum. */
+void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
+void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 
 /* FbDrawObject() draws an object at x, y.  The coordinates of drawing[] should be centered at

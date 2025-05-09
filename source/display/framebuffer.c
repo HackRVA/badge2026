@@ -9,6 +9,7 @@
 #include "colors.h"
 #include "trig.h"
 #include "delay.h"
+#include "stacktrace.h"
 
 #define uCHAR (unsigned char *)
 struct framebuffer_t G_Fb;
@@ -224,19 +225,22 @@ void FbImage16bit2(const struct asset2 *asset, unsigned char seqNum) {
 // void FbImageSeq(const struct asset2 *asset, int seqNum) {
 //     FbImageRect(asset, G_Fb.pos.x, G_Fb.pos.y, seqNum * asset->x, 0, asset->x, asset->y, G_Fb.transIndex);
 // }
-void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color) {
+void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color)
+{
     FbImageRect(asset, x_pos, y_pos, 0, 0, asset->x, asset->y, key_color);
 }
 //todo: Multiply asset width by asset seqNum field of asset
 //optimization: remove modulus ops
 //optimization: bitmasking for powers of two
-void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color) {
+void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
+{
     int y_min, y_max, x_min, x_max;
     int y, x, texture_row, texture_x, buffer_row;
     unsigned short *pixdata;
     unsigned short pixel;
 
-    if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;    //wrap texture coords. can be skipped if x_source and y_source are always positive
+    /* wrap texture coords. can be skipped if x_source and y_source are always positive */
+    if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
     if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
 
     y_min = y_pos < 0 ? 0 : y_pos;
@@ -259,9 +263,74 @@ void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source,
     G_Fb.changed = 1;
 }
 
+void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
+{
+    unsigned char y, yEnd, x;
+    unsigned char pixbyte, ci;
+    unsigned short pixel;
+    const int row_padding = asset->x % 2;
+    const int bytes_per_row = (asset->x >> 1) + row_padding;
 
+    /* clip to end of LCD buffer */
+    yEnd = y_pos + height;
+    if (yEnd >= LCD_YSIZE) yEnd = LCD_YSIZE-1;
 
+    for (y = y_pos; y < yEnd; y++) {
 
+	/* Texture y coord */
+	int ty = (y - y_pos + y_source) % asset->y;
+
+        for (x = 0; x < width; /* manual inc */ ) {
+            int tx = (x + x_source) % asset->x;
+            pixbyte = asset->pixel[ty * bytes_per_row + (tx >> 1)];
+
+            /* 1st pixel */
+            if ((x + x_pos) > (LCD_XSIZE-1))
+		break; /* clip x */
+
+            ci = ((pixbyte >> 4) & 0xF);
+            // if (ci != (G_Fb.transIndex & 0xf)) { /* transparent? */
+            pixel = asset->colormap[ci];
+            if (pixel != key_color) {
+                fb_mark_row_changed(x + x_pos, y);
+                BUFFER(y * LCD_XSIZE + x + x_pos) = pixel;
+            }
+            x++;
+
+            /* 2nd pixel */
+            if ((x + x_pos) > (LCD_XSIZE-1))
+		break; /* clip x */
+
+            ci = pixbyte & 0xF;
+            // if (ci != (G_Fb.transIndex & 0xf)) { /* transparent? */
+	    pixel = asset->colormap[ci];
+            if (pixel != key_color) {
+                fb_mark_row_changed(x + x_pos, y);
+                BUFFER(y * LCD_XSIZE + x + x_pos) = pixel;
+            }
+            x++;
+        }
+    }
+    G_Fb.changed = 1;
+}
+
+/* Only supports 4 bit and 16 bit images for now */
+void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
+{
+	switch (asset->type) {
+	case PICTURE16BIT:
+		FbImageRect16bit(asset, x_pos, y_pos, x_source, y_source, width, height, key_color);
+		break;
+	case PICTURE4BIT:
+		FbImageRect4bit(asset, x_pos, y_pos, x_source, y_source, width, height, key_color);
+		break;
+	default:
+#if TARGET_SIMULATOR
+		stacktrace("FbImageRect() called with unsupported color bit depth\n");
+#endif
+		break;
+	}
+}
 
 void FbImage8bit(const struct asset* asset, unsigned char seqNum)
 {
