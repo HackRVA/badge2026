@@ -762,15 +762,19 @@ static void move_down(void)
 static void check_buttons(void)
 {
     int down_latches = button_down_latches();
-	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
 		move_left();
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_FASTFORWARD, down_latches)) {
 		move_right();
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
 		go_back();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		move_down();
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_PLAY, down_latches)) {
 		do_selection();
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		go_back();
