@@ -206,6 +206,7 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
         case INIT:
             ir_add_callback(ir_callback, IR_APP0);
             FbTransparentIndex(0);
+            FbBackgroundColor(BLACK);
             FbColor(GREEN);
             FbClear();
 
