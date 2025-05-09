@@ -567,6 +567,13 @@ enum tape_deck_menu_app_state_t {
 };
 
 static enum tape_deck_menu_app_state_t tape_deck_menu_app_state = TAPE_DECK_MENU_APP_INIT;
+static int animation_step = 5;
+static enum tape_deck_animation_direction  {
+	anim_up,
+	anim_right,
+	anim_down,
+	anim_left,
+} anim_direction = anim_right;
 
 static void tape_deck_menu_app_init(void)
 {
@@ -597,6 +604,8 @@ static int menu_has_icons(struct menu_t *m)
 
 static void move_left(void)
 {
+	anim_direction = anim_left;
+	animation_step = 0;
 	if (current_context->current_item > 0) {
 		current_context->current_item--;
 		/* skip "back" items */
@@ -617,6 +626,8 @@ static void move_left(void)
 static void move_right(void)
 {
 	int nitems = count_menu_items(current_context->menu);
+	anim_direction = anim_right;
+	animation_step = 0;
 	if (current_context->current_item < nitems - 1) {
 		current_context->current_item++;
 
@@ -645,6 +656,8 @@ static void go_back(void)
 	if (current_menu_stack_idx > -1) {
 		current_menu_stack_idx--;
 		pop_app();
+		anim_direction = anim_up;
+		animation_step = 0;
 		if (current_menu_stack_idx >= 0)
 			current_context = &context_stack[current_menu_stack_idx];
 		else
@@ -690,6 +703,8 @@ static void do_selection(void)
 
 	switch (t) {
 	case MENU:
+		anim_direction = anim_down;
+		animation_step = 0;
 		if (current_menu_stack_idx < MAX_APP_STACK_DEPTH - 1) {
 			struct menu_t *submenu = (struct menu_t *)
 				&m[current_context->current_item].data.menu[0];
@@ -707,6 +722,8 @@ static void do_selection(void)
 		}
 		break;
 	case BACK:
+		anim_direction = anim_up;
+		animation_step = 0;
 		go_back();
 		break;
 	case FUNCTION:
@@ -767,6 +784,7 @@ static void draw_screen(void)
 {
 	struct menu_t *m = current_context->menu;
 	struct menu_t *item = &m[current_context->current_item];
+	int source_x, source_y;
 
 	//if (!current_context->screen_changed)
 	//	return;
@@ -775,12 +793,35 @@ static void draw_screen(void)
 	FbBackgroundColor(TAPE_DECK_MENU_BG_COLOR);
 	FbClear();
 
-	FbMove(0, 0);
-	FbImage2(&tape_image, 0);
+	if (animation_step == 5) {
+		FbMove(0, 0);
+		FbImage2(&tape_image, 0);
 
-	int len = strlen(item->name);
-	FbMove((LCD_XSIZE - 8 * len) / 2, 16);
-	FbWriteString(item->name);
+		int len = strlen(item->name);
+		FbMove((LCD_XSIZE - 8 * len) / 2, 16);
+		FbWriteString(item->name);
+	} else {
+		switch (anim_direction) {
+		case anim_up: /* camera moving up, tape moving down */
+			source_x = 0;
+			source_y = (5 - animation_step) * (LCD_YSIZE / 5);
+			break;
+		case anim_right: /* camera moving right, tape moving left */
+			source_x = (animation_step) * (LCD_XSIZE / 5);
+			source_y = 0;
+			break;
+		case anim_down: /* camera moving down, tape moving up */
+			source_x = 0;
+			source_y = (animation_step) * (LCD_YSIZE / 5);
+			break;
+		case anim_left: /* camera moving left, tape moving right */
+			source_x = (5 - animation_step) * (LCD_XSIZE / 5);
+			source_y = 0;
+			break;
+		}
+		FbImageRect(&tape_image, 0, 0, source_x, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+		animation_step++;
+	}
 
 	FbSwapBuffers();
 	current_context->screen_changed = 0;
