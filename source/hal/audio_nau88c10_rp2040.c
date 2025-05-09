@@ -51,9 +51,10 @@ static volatile enum audio_out_mode_ {
 
 static struct audio_out_beep {
     uint16_t duration_ms;   /**< Duration in ms. */
+    uint16_t period;        /**< Period in samples. */
+    uint16_t samples_high;  /**< Samples high. */
     uint16_t elapsed_ms;    /**< Elapsed beep duration in ms. */
-    uint32_t period;        /**< Period in samples. */
-    uint32_t samples;       /**< Sample counter. */
+    uint16_t samples;       /**< Sample counter. */
     void (*cb)(void);       /**< Callback on beep completion. */
 } m_audio_out_beep;
 
@@ -73,27 +74,6 @@ static const struct nau88c10_cfg NAU88C10_CFG = {
     .i2s_dma_handler = prv_audio_i2s_dma_handler,
 };
 
-static int32_t prv_audio_out_beep_get_next_sample(struct audio_out_beep *beep)
-{
-    if (UINT32_MAX == beep->period) {
-        return 0;
-    } else {
-        int32_t sample;
-        uint32_t samples = beep->samples;
-        uint32_t period = beep->period;
-        if (samples < (period / 2)) {
-            sample = AUDIO_OUT_BEEP_AMPLITUDE;
-        } else {
-            sample = -AUDIO_OUT_BEEP_AMPLITUDE;
-        }
-        if (++samples == period) {
-            samples = 0;
-        }
-        beep->samples = samples;
-        return sample;
-    }
-}
-
 static void prv_audio_out_beep_complete(struct audio_out_beep *beep)
 {
     LOG("finished playing beep");
@@ -102,6 +82,23 @@ static void prv_audio_out_beep_complete(struct audio_out_beep *beep)
     if (NULL != beep->cb) {
         beep->cb();
     }
+}
+
+static int32_t prv_audio_out_beep_get_next_sample(struct audio_out_beep *beep)
+{
+    int32_t sample;
+    uint32_t samples = beep->samples;
+    uint32_t period = beep->period;
+    if (samples < beep->samples_high) {
+        sample = AUDIO_OUT_BEEP_AMPLITUDE;
+    } else {
+        sample = -AUDIO_OUT_BEEP_AMPLITUDE;
+    }
+    if (++samples >= period) {
+        samples = 0;
+    }
+    beep->samples = samples;
+    return sample;
 }
 
 static void prv_audio_i2s_process(int32_t *in, int32_t *out, size_t n)
@@ -113,9 +110,17 @@ static void prv_audio_i2s_process(int32_t *in, int32_t *out, size_t n)
     if (AUDIO_OUT_MODE_BEEP == m_audio_out_mode) {
         struct audio_out_beep *beep = &m_audio_out_beep;
         if (beep->elapsed_ms < beep->duration_ms) {
-            for (size_t i = 0; i < n; i += 2) {
-                out[i] = prv_audio_out_beep_get_next_sample(beep);
+            unsigned period = beep->period;
+            if (UINT16_MAX != period) {
+                /* Play the note. */
+                for (size_t i = 0; i < n; i += 2) {
+                    out[i] = prv_audio_out_beep_get_next_sample(beep);
+                }
+            } else {
+                /* This is a rest. */
+                memset(out, 0x00, n * sizeof(*out));
             }
+
             if (++(beep->elapsed_ms) == beep->duration_ms) {
                 prv_audio_out_beep_complete(beep);
             }
@@ -191,7 +196,7 @@ int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
         period = UINT16_MAX;
     } else if (freq_hz == 0 && cb != NULL) { 
         /* We're being asked to play a rest. */
-        period = UINT32_MAX;
+        period = UINT16_MAX;
     } else if ((freq_hz < AUDIO_BEEP_FREQ_HZ_MIN)
                || (freq_hz > AUDIO_BEEP_FREQ_HZ_MAX)
                || (dur_ms < AUDIO_BEEP_DUR_MS_MIN)
@@ -209,6 +214,7 @@ int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
     m_audio_out_beep.elapsed_ms = 0;
     if (m_audio_out_beep.period != period) {
         m_audio_out_beep.period = period;
+        m_audio_out_beep.samples_high = period / 2;
         m_audio_out_beep.samples = 0;
     }
     m_audio_out_beep.cb = cb;
@@ -220,7 +226,7 @@ int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
 
 int audio_out_beep(uint16_t freqHz, uint16_t durMs)
 {
-	return audio_out_beep_with_cb(freqHz, durMs, NULL);
+    return audio_out_beep_with_cb(freqHz, durMs, NULL);
 }
 
 bool audio_is_playing(void) {
