@@ -57,6 +57,7 @@ void FbColor(unsigned short color);
 void FbBackgroundColor(unsigned short color);
 // void FbPicture(unsigned char assetId, unsigned char seqNum);
 void FbTransparency(unsigned short transparencyMask);
+unsigned short FbGetTransparentIndex(void);
 void FbTransparentIndex(unsigned short color);
 // void FbSprite(unsigned char picId, unsigned char imageNo);
 void FbCharacter(unsigned char charin);

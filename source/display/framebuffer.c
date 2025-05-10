@@ -881,6 +881,11 @@ void FbImage1bit2(const struct asset2 *asset, unsigned char seqNum)
 }
 
 
+unsigned short FbGetTransparentIndex(void)
+{
+	return G_Fb.transIndex;
+}
+
 /*
    FbTransparentIndex, also sometimes called key/chromakey color AKA bluescreen/greenscreen
    using this Index in an image means to use what is already in the scanline[] buffer
