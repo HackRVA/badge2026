@@ -6,11 +6,17 @@
 #include "button.h"
 #include "framebuffer.h"
 #include "badge.h"
+#include "dynmenu.h"
+#include "utils.h"
+#include "key_value_storage.h"
 
 /* Program states.  Initial state is DRUM_MACHINE_INIT */
 enum drum_machine_state_t {
 	DRUM_MACHINE_INIT,
 	DRUM_MACHINE_RUN,
+	DRUM_MACHINE_SAVE,
+	DRUM_MACHINE_LOAD,
+	DRUM_MACHINE_ERROR,
 	DRUM_MACHINE_EXIT,
 };
 
@@ -28,6 +34,8 @@ static struct drum_song {
 	unsigned char measure[MAX_DRUM_PATTERNS_PER_SONG];
 	int nmeasures;
 } drum_song = { 0 };
+
+static char drum_machine_err_msg[100];
 
 #define DRUM_CRASH (1 << 0)
 #define DRUM_RIDE (1 << 1)
@@ -319,10 +327,12 @@ static void check_buttons(void)
 			} else {
 				switch (current_song_button) {
 				case 0: /* save */
-					/* TODO: implement this */
+					drum_machine_state = DRUM_MACHINE_SAVE;
+					screen_changed = 1;
 					break;
 				case 1: /* load */
-					/* TODO: implement this */
+					drum_machine_state = DRUM_MACHINE_LOAD;
+					screen_changed = 1;
 					break;
 				case 2: /* pattern */
 					drum_mode = pattern_mode;
@@ -510,6 +520,102 @@ static void drum_machine_exit(void)
 	pop_app();
 }
 
+static struct dynmenu dm_saveload_menu;
+static struct dynmenu_item dm_saveload_menu_item[6];
+
+static void drum_machine_setup_saveload_menu(void)
+{
+	static char menu_setup = 0;
+
+	if (!menu_setup) {
+		dynmenu_clear(&dm_saveload_menu);
+		dynmenu_init(&dm_saveload_menu, dm_saveload_menu_item, ARRAY_SIZE(dm_saveload_menu_item));
+		dynmenu_set_title(&dm_saveload_menu, "CHOOSE STORAGE", "SLOT:", "");
+		dynmenu_add_item(&dm_saveload_menu, "SLOT 1", 0, 0);
+		dynmenu_add_item(&dm_saveload_menu, "SLOT 2", 1, 1);
+		dynmenu_add_item(&dm_saveload_menu, "SLOT 3", 1, 2);
+		dynmenu_add_item(&dm_saveload_menu, "SLOT 4", 1, 3);
+		dynmenu_add_item(&dm_saveload_menu, "SLOT 5", 1, 4);
+		dynmenu_add_item(&dm_saveload_menu, "EXIT", 1, 255);
+		menu_setup = 1;
+	}
+#if 0
+	if (!dynmenu_let_user_choose(&board_ship_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&board_ship_menu)) {
+	default:
+#endif
+}
+
+enum dm_save_or_load { dm_save, dm_load };
+
+static void drum_machine_do_save_load(int slot, enum dm_save_or_load action)
+{
+	char key[20];
+	bool ok;
+
+	snprintf(key, sizeof(key), "DRUM_SONG%d", slot);
+	if (action == dm_load)
+		ok = flash_kv_get_binary(key, &drum_song, sizeof(drum_song));
+	else
+		ok = flash_kv_store_binary(key, &drum_song, sizeof(drum_song));
+	if (!ok) {
+		snprintf(drum_machine_err_msg, sizeof(drum_machine_err_msg),
+				"ERROR %s\nSONG FROM\nFLASH", action == dm_load ? "LOADING" : "SAVING");
+		drum_machine_state = DRUM_MACHINE_ERROR;
+		screen_changed = 1;
+		return;
+	}
+	current_pattern = 0;
+	current_measure = 0;
+	drum_machine_state = DRUM_MACHINE_RUN;
+	screen_changed = 1;
+	return;
+}
+
+static void drum_machine_save_load(enum dm_save_or_load action)
+{
+	drum_machine_setup_saveload_menu();
+
+	if (!dynmenu_let_user_choose(&dm_saveload_menu))
+		return;
+
+	int choice = dynmenu_get_user_choice(&dm_saveload_menu);
+	switch (choice) {
+	case 255:
+		drum_machine_state = DRUM_MACHINE_RUN;
+		screen_changed = 1;
+		break;
+	case 0 ... 4:
+		if (action == dm_save)
+			drum_machine_do_save_load(choice, dm_save);
+		else
+			drum_machine_do_save_load(choice, dm_load);
+		break;
+	}
+	return;
+}
+
+static void drum_machine_error(void)
+{
+	if (screen_changed) {
+		FbClear();
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		FbMove(0, 0);
+		FbWriteString(drum_machine_err_msg);
+		FbSwapBuffers();
+	}
+
+	int down_latches = button_down_latches();
+
+	if (down_latches) {
+		drum_machine_state = DRUM_MACHINE_RUN;
+		screen_changed = 0;
+	}
+}
+
 void drum_machine_cb(__attribute__((unused)) struct badge_app *app)
 {
 	switch (drum_machine_state) {
@@ -521,6 +627,15 @@ void drum_machine_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case DRUM_MACHINE_EXIT:
 		drum_machine_exit();
+		break;
+	case DRUM_MACHINE_LOAD:
+		drum_machine_save_load(dm_load);
+		break;
+	case DRUM_MACHINE_SAVE:
+		drum_machine_save_load(dm_save);
+		break;
+	case DRUM_MACHINE_ERROR:
+		drum_machine_error();
 		break;
 	default:
 		break;
