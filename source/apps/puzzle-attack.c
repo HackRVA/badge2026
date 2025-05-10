@@ -6,62 +6,6 @@
  * i think the board is too small and it would be
  * too difficultif you lose when the top row is populated.
  *
- *
- *
- * data optimization notes:
- *
- * original implementation was based around blocks being
- *struct block {
- *	enum BLOCK_TYPE type;
- *	bool remove_animation_active;
- *	int remove_animation_progress;
- *};
- * Size: 12 bytes, alignment 4 bytes
- *
- * #define GRID_COLS 6
- * #define GRID_ROWS 10
- *
- * 720 bytes for the entire board?
- *
- * each cell can be in one of 6 states
- *	EMPTY_BLOCK = -1,
- *	CIRCLE_BLOCK,
- *	SQUARE_BLOCK,
- *	TRIANGLE_BLOCK,
- *	HEART_BLOCK,
- *	STAR_BLOCK,
- *
- * we can represent that as 3 bits
- * e.g.
- * enum BLOCK_TYPE {
- *	CIRCLE_BLOCK = 0,   // 000
- *	SQUARE_BLOCK = 1,   // 001
- *	TRIANGLE_BLOCK = 2, // 010
- *	HEART_BLOCK = 3,    // 011
- *	STAR_BLOCK = 4,	    // 100
- *  // some unused
- *	EMPTY_BLOCK = 7	    // 111
- *};
- *
- * i guess if we got rid of 2 block types it would fit nicely into 2 bits.
- * ... but that might make the gameplay more boring.
- * maybe we could add 2 block types
- *
- *
- * since we have need 3 bits to represent the type and we know the grid size
- * is 6*10
- * 3*6*10 = 180
- * we can represent the grid as 180 bits.
- * 3*64=192 -- so we have some extra space
- *
- * we can track any removal/is_hovering/animation state separately.
- *
- * - type bits (pack into uint64_t types[3];  3×64=192 bits)
- * - remove mask (uint64_t)
- * - animation_progress bits (uint64_t progress[3];)
- *
- *   ~56 bytes for the entire board
- *
  * --
  *  Dustin Firebaugh
  */
@@ -130,12 +74,12 @@ static struct palette default_palette = {
 };
 
 enum BLOCK_TYPE {
-	CIRCLE_BLOCK = 0,   /* 000 */
-	SQUARE_BLOCK = 1,   /* 001 */
-	TRIANGLE_BLOCK = 2, /* 010 */
-	HEART_BLOCK = 3,    /* 011 */
-	STAR_BLOCK = 4,	    /* 100 */
-	EMPTY_BLOCK = 7	    /* 111 */
+	CIRCLE_BLOCK = 0,	/* 000 */
+	SQUARE_BLOCK = 1,	/* 001 */
+	TRIANGLE_BLOCK = 2,	/* 010 */
+	HEART_BLOCK = 3,	/* 011 */
+	STAR_BLOCK = 4,	/* 100 */
+	EMPTY_BLOCK = 7	/* 111 */
 };
 
 static const uint8_t circle_bitmap[] = {
@@ -191,66 +135,35 @@ static const uint8_t star_bitmap[] = {
 #define GRID_ROWS 10
 #define CELL_COUNT (GRID_COLS * GRID_ROWS)
 
-static uint64_t grid[3];
-static uint64_t blocks_to_be_removed;
-static uint64_t removal_animation_state[3];
+static uint8_t block_type[CELL_COUNT];
+static bool removal_state[CELL_COUNT];
+static uint8_t removal_progress[CELL_COUNT];
 
 static struct particle_pool *particle_pool = NULL;
 #define PARTICLE_GRAVITY 16
 #define PARTICLE_MAX_INITIAL_VELOCITY 800
 
-/*
- * since grid and removal_animation_state are both 3*64
- * we can use the same functions to manipulate them
- */
-static inline void bit_set(uint64_t *arr, int bit, uint64_t v)
-{
-	int idx = bit >> 6;
-	int ofs = bit & 63;
-	uint64_t mask = ((uint64_t)1) << ofs;
-
-	arr[idx] = (arr[idx] & ~mask) | ((v & 1) << ofs);
-}
-static inline uint64_t bit_get(const uint64_t *arr, int bit)
-{
-	int idx = bit >> 6;
-	int ofs = bit & 63;
-	uint64_t mask = ((uint64_t)1) << ofs;
-
-	return (arr[idx] & mask) ? 1 : 0;
-}
-static inline void field_set(uint64_t *arr, int base, uint8_t v)
-{
-	for (int i = 0; i < 3; i++)
-		bit_set(arr, base + i, (v >> i) & 1);
-}
-static inline uint8_t field_get(const uint64_t *arr, int base)
-{
-	uint8_t v = 0;
-	for (int i = 0; i < 3; i++)
-		v |= bit_get(arr, base + i) << i;
-	return v;
-}
-static inline void set_cell(
-	int x, int y, enum BLOCK_TYPE block_type, bool r, uint8_t p)
-{
+static inline enum BLOCK_TYPE block_get_type(int x, int y) {
 	int idx = y * GRID_COLS + x;
-	field_set(grid, idx * 3, (uint8_t)block_type);
-	bit_set(&blocks_to_be_removed, idx, r);
-	field_set(removal_animation_state, idx * 3, p);
+	return (enum BLOCK_TYPE)block_type[idx];
+}
+
+static inline bool is_marked_for_removal(int x, int y) {
+	int idx = y * GRID_COLS + x;
+	return removal_state[idx];
+}
+
+static inline uint8_t get_removal_progress(int x, int y) {
+	int idx = y * GRID_COLS + x;
+	return removal_progress[idx];
+}
+
+static inline void set_cell(int x, int y, enum BLOCK_TYPE t, bool r, uint8_t p) {
+	int idx = y * GRID_COLS + x;
+	block_type[idx] = t;
+	removal_state[idx] = r;
+	removal_progress[idx] = p;
 	has_grid_changed = 1;
-}
-static inline enum BLOCK_TYPE block_get_type(int x, int y)
-{
-	return (enum BLOCK_TYPE)field_get(grid, (y * GRID_COLS + x) * 3);
-}
-static inline bool get_remove_state(int x, int y)
-{
-	return bit_get(&blocks_to_be_removed, y * GRID_COLS + x);
-}
-static inline uint8_t get_removal_progress(int x, int y)
-{
-	return field_get(removal_animation_state, (y * GRID_COLS + x) * 3);
 }
 
 #define BLOCK_SIZE 8
@@ -297,14 +210,11 @@ static void insert_row(void)
 }
 static void init_grid(void)
 {
-	for (int i = 0; i < 3; i++) {
-		grid[i] = 0;
-		removal_animation_state[i] = 0;
+	for (int i = 0; i < CELL_COUNT; i++) {
+		block_type[i] = EMPTY_BLOCK;
+		removal_state[i] = false;
+		removal_progress[i] = 0;
 	}
-	blocks_to_be_removed = 0;
-	for (int y = 0; y < GRID_ROWS; y++)
-		for (int x = 0; x < GRID_COLS; x++)
-			set_cell(x, y, EMPTY_BLOCK, false, 0);
 	insert_row();
 }
 
@@ -313,7 +223,7 @@ static void shift_grid_up(void)
 	for (int y = 1; y < GRID_ROWS; y++)
 		for (int x = 0; x < GRID_COLS; x++) {
 			enum BLOCK_TYPE t = block_get_type(x, y);
-			bool r = get_remove_state(x, y);
+			bool r = is_marked_for_removal(x, y);
 			uint8_t p = get_removal_progress(x, y);
 			set_cell(x, y - 1, t, r, p);
 		}
@@ -684,7 +594,7 @@ static bool collapse_grid(void)
 						EMPTY_BLOCK)
 					d++;
 				if (d > 0) {
-					bool r = get_remove_state(x, y);
+					bool r = is_marked_for_removal(x, y);
 					uint8_t p = get_removal_progress(x, y);
 					set_cell(x, y + d, t, r, p);
 					set_cell(x, y, EMPTY_BLOCK, false, 0);
@@ -710,7 +620,7 @@ static void update_remove_animations(void)
 		for (int x = 0; x < GRID_COLS; x++) {
 			if (block_get_type(x, y) == EMPTY_BLOCK)
 				continue;
-			if (get_remove_state(x, y)) {
+			if (is_marked_for_removal(x, y)) {
 				uint8_t p = get_removal_progress(x, y) + 1;
 				if (p > REMOVE_BLOCK_ANIMATION_END)
 					set_cell(x, y, EMPTY_BLOCK, false, 0);
@@ -851,7 +761,7 @@ static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
 		block.outline_color =
 			palette_color_from_index(default_palette, 9);
 
-	if (get_remove_state(grid_x, grid_y))
+	if (is_marked_for_removal(grid_x, grid_y))
 		block.fill_color = palette_color_from_index(default_palette,
 			2 + get_removal_progress(grid_x, grid_y));
 
