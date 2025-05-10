@@ -61,8 +61,12 @@ static void draw_button_label(struct ui_button button, unsigned short color)
 
 	FbMove(text_x, text_y);
 	FbColor(color);
-  FbTransparentIndex(0);
+	int prev_transparent_index = FbGetTransparentIndex();
+	/* get the current tranparent index */
+	FbTransparentIndex(0);
 	FbWriteString(button.text);
+	/* reset the transparent index to what it was before we changed it */
+	FbTransparentIndex(prev_transparent_index);
 }
 
 static void draw_button_outline(struct ui_button button, unsigned short color)
