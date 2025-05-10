@@ -66,6 +66,7 @@ static int current_inst = 7;
 static int current_hit = 0;
 static int current_measure = 0;
 static enum drum_mode { pattern_mode, song_mode } drum_mode = pattern_mode;
+static int copied_pattern = -1;
 
 static enum drum_machine_state_t drum_machine_state = DRUM_MACHINE_INIT;
 static int screen_changed = 0;
@@ -77,16 +78,18 @@ struct drum_button {
 
 static const struct drum_button_list {
 	int nbuttons;
-	struct drum_button btn[6];
+	struct drum_button btn[8];
 } pattern_buttons = {
-	6,
+	8,
 	{
 		{ 10, 100, "PREV" },
 		{ 60, 100, "NEXT" },
 		{ 10, 110, "STOP" },
 		{ 60, 110, "PLAY" },
-		{ 110, 110, "SONG" },
-		{ 10, 120, "QUIT" },
+		{ 110, 110, "COPY" },
+		{ 10, 120, "PASTE" },
+		{ 60, 120, "SONG" },
+		{ 110, 120, "QUIT" },
 	},
 };
 int current_pattern_button = -1;
@@ -307,11 +310,20 @@ static void check_buttons(void)
 				case 3: /* play */
 					/* TODO: implement this */
 					break;
-				case 4: /* song */
+				case 4: /* copy */
+					copied_pattern = current_pattern;
+					break;
+				case 5: /* paste */
+					if (copied_pattern != -1 && current_pattern != copied_pattern) {
+						drum_song.pattern[current_pattern] = drum_song.pattern[copied_pattern];
+						screen_changed = 1;
+					}
+					break;
+				case 6: /* song */
 					drum_mode = song_mode;
 					screen_changed = 1;
 					break;
-				case 5: /* quit */
+				case 7: /* quit */
 					drum_machine_state = DRUM_MACHINE_EXIT;
 					screen_changed = 1;
 					break;
