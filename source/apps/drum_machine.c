@@ -24,8 +24,8 @@ static struct drum_pattern {
 
 #define MAX_DRUM_PATTERNS_PER_SONG 100
 static struct drum_song {
-	unsigned char pattern[MAX_DRUM_PATTERNS_PER_SONG];
-	int npatterns;
+	unsigned char measure[MAX_DRUM_PATTERNS_PER_SONG];
+	int nmeasures;
 } drum_song = { 0 };
 
 #define DRUM_CRASH (1 << 0)
@@ -141,7 +141,7 @@ static void drum_machine_init(void)
 	FbClear();
 	drum_machine_state = DRUM_MACHINE_RUN;
 	screen_changed = 1;
-	memset(drum_song.pattern, 255, sizeof(drum_song.pattern));
+	memset(drum_song.measure, 255, sizeof(drum_song.measure));
 }
 
 static void check_buttons(void)
@@ -311,10 +311,10 @@ static void check_buttons(void)
 			screen_changed = 1;
 		} else if (drum_mode == song_mode) {
 			if (current_song_button == -1) {
-				if (drum_song.pattern[current_measure] == current_pattern)
-					drum_song.pattern[current_measure] = 255; /* Nothing played this measure */
+				if (drum_song.measure[current_measure] == current_pattern)
+					drum_song.measure[current_measure] = 255; /* Nothing played this measure */
 				else
-					drum_song.pattern[current_measure] = current_pattern;
+					drum_song.measure[current_measure] = current_pattern;
 			} else {
 				switch (current_song_button) {
 				case 0: /* save */
@@ -452,7 +452,7 @@ static void draw_song_screen(void)
 				continue;
 			FbColor(WHITE);
 			FbPoint(sx + 4, sy + 4);
-			if (drum_song.pattern[j] == i) {
+			if (drum_song.measure[j] == i) {
 				FbMove(sx, sy);
 				FbRectangle(7, 7);
 			}
