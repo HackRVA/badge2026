@@ -18,12 +18,13 @@ enum drum_machine_state_t {
 #define HITS_PER_MEASURE 16
 /* you can't really change NINSTS, as it's 8 because there are 8 bits in a byte */
 #define NINSTS 8
-static struct drum_pattern {
+struct drum_pattern {
 	unsigned char hit[HITS_PER_MEASURE]; /* each bit is 1 instrument */
-} drum_pattern[MAX_DRUM_PATTERNS];
+};
 
 #define MAX_DRUM_PATTERNS_PER_SONG 100
 static struct drum_song {
+	struct drum_pattern pattern[MAX_DRUM_PATTERNS];
 	unsigned char measure[MAX_DRUM_PATTERNS_PER_SONG];
 	int nmeasures;
 } drum_song = { 0 };
@@ -276,11 +277,11 @@ static void check_buttons(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		if (drum_mode == pattern_mode) {
 			if (current_pattern_button == -1) {
-				int v = drum_pattern[current_pattern].hit[current_hit] & (1 << current_inst);
+				int v = drum_song.pattern[current_pattern].hit[current_hit] & (1 << current_inst);
 				if (v)
-					drum_pattern[current_pattern].hit[current_hit] &= ~(1 << current_inst);
+					drum_song.pattern[current_pattern].hit[current_hit] &= ~(1 << current_inst);
 				else
-					drum_pattern[current_pattern].hit[current_hit] |= (1 << current_inst);
+					drum_song.pattern[current_pattern].hit[current_hit] |= (1 << current_inst);
 				screen_changed = 1;
 			} else {
 				switch (current_pattern_button) {
@@ -400,7 +401,7 @@ static void draw_pattern_screen(void)
 		y = y + 4;
 		for (int j = 0; j < HITS_PER_MEASURE; j++) {
 			int x = 8 * (j + 4);
-			if (drum_pattern[current_pattern].hit[j] & (1 << i)) {
+			if (drum_song.pattern[current_pattern].hit[j] & (1 << i)) {
 				FbColor(WHITE);
 				FbMove(x - 3, y - 3);
 				FbRectangle(7, 7);
