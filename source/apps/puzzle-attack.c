@@ -89,9 +89,9 @@
 #define EVAL_CYCLE_MS 5000
 #define GRID_SHIFT_MS 6000
 #define COLLAPSE_GRID_MS 1000
-uint64_t collapse_cooldown;
-uint64_t cycle_cooldown;
-uint64_t grid_shift_cooldown;
+static uint64_t collapse_cooldown;
+static uint64_t cycle_cooldown;
+static uint64_t grid_shift_cooldown;
 
 static int has_screen_changed = 0;
 static int has_grid_changed = 1;
