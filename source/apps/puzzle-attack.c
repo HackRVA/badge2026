@@ -86,6 +86,13 @@
 #define ENABLE_LIGHTNING 1
 #define DEBUG_LIGHTNING 0
 
+#define EVAL_CYCLE_MS 5000
+#define GRID_SHIFT_MS 6000
+#define COLLAPSE_GRID_MS 1000
+uint64_t collapse_cooldown;
+uint64_t cycle_cooldown;
+uint64_t grid_shift_cooldown;
+
 static int has_screen_changed = 0;
 static int has_grid_changed = 1;
 
@@ -248,7 +255,6 @@ static inline uint8_t get_removal_progress(int x, int y)
 
 #define BLOCK_SIZE 8
 #define BLOCK_SPACING 4
-#define MATCH_EVAL_DELAY 4
 #define REMOVE_BLOCK_ANIMATION_END 7
 #define CURSOR_OUTLINE_SIZE 1
 #define CURSOR_COLOR WHITE
@@ -745,22 +751,22 @@ static void swap_blocks_at_cursor(void)
 static void puzzle_attack_update(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
-	int count = (now / 1000) % 60;
-	static int last_count = -1;
-	if (count != last_count) {
-		last_count = count;
+	if (now > collapse_cooldown) {
 		collapse_grid();
-		if (--tick <= 0) {
-			check_matches();
-			register_blocks_for_removal();
-			tick = MATCH_EVAL_DELAY;
-			last_tick_time = now;
-		}
-		if (count % 5 == 0) {
-			shift_grid_up();
-			insert_row();
-			shift_cursor_up();
-		}
+		collapse_cooldown = rtc_get_ms_since_boot()+COLLAPSE_GRID_MS;
+		tick = (tick + 1) % 60;
+		last_tick_time = now;
+	}
+	if (now > cycle_cooldown) {
+		cycle_cooldown = rtc_get_ms_since_boot()+EVAL_CYCLE_MS;
+		check_matches();
+		register_blocks_for_removal();
+	}
+	if (now > grid_shift_cooldown) {
+		grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
+		shift_grid_up();
+		insert_row();
+		shift_cursor_up();
 	}
 
 	particle_pool->config.move_particles(particle_pool);
@@ -799,9 +805,10 @@ static void puzzle_attack_init(void)
 	FbClear();
 	selected_outline_color = palette_color_from_index(default_palette, 7);
 	init_grid();
-	last_tick_time = rtc_get_ms_since_boot();
-	tick = MATCH_EVAL_DELAY;
 	score = 0;
+	cycle_cooldown = rtc_get_ms_since_boot()+EVAL_CYCLE_MS;
+	grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
+	collapse_cooldown = rtc_get_ms_since_boot()+COLLAPSE_GRID_MS;
 }
 
 static void draw_bitmap(
@@ -934,10 +941,10 @@ static void draw_score(void)
 static void draw_tick(void)
 {
 	unsigned int now = rtc_get_ms_since_boot();
-	unsigned int elapsed = now - last_tick_time;
-	unsigned int period  = (unsigned int)MATCH_EVAL_DELAY * 1000;
-	if (elapsed > period) elapsed = period;
-	int fill_percent = (int)((elapsed * 100) / period);
+	unsigned int elapsed = now - (cycle_cooldown - EVAL_CYCLE_MS);
+	if (elapsed > EVAL_CYCLE_MS) elapsed = EVAL_CYCLE_MS;
+
+	int fill_percent = (int)((elapsed * 100) / EVAL_CYCLE_MS);
 
 	struct ui_progress_bar pb = {
 		.x = 1,
@@ -951,7 +958,6 @@ static void draw_tick(void)
 		.fill = ui_progress_bar_calculate_fill_percentage(fill_percent),
 	};
 	ui_progress_bar_draw(pb);
-	/* palette_draw_grid(default_palette, 0, 0, 8); */
 #if 0
 	char buf[8];
 	snprintf(buf, sizeof(buf), "%3d", tick);
