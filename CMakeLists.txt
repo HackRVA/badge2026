@@ -8,6 +8,7 @@ set(PRODUCT "badge2025_c")
 set(SIMULATOR_AUDIO "yes") # change to "no" to avoid compiling audio code in simulator
 set(BADGE_HAS_ROTARY_SWITCHES "no")
 set(BUILD_IMAGE_TEST_PROGRAM "no") # change to "yes" to build image test app
+set(ENABLE_PROFILING_SIMULATOR "no")
 
 if (DEFINED ENV{PICO_SDK_VERSION})
     set(PICO_SDK_VERSION $ENV{PICO_SDK_VERSION})
@@ -62,6 +63,12 @@ endif()
 if (${TARGET} STREQUAL "SIMULATOR" OR ${TARGET} STREQUAL "SDL_SIMULATOR")
     # Note: cmake doesn't know about pthreads, so we cram -lm -lpthread in here
     add_compile_options(-fsanitize=address -fsanitize=undefined -Wstrict-prototypes)
+    if (${ENABLE_PROFILING_SIMULATOR} STREQUAL "yes")
+	# enable profiling with gprof... will this work on Windows?
+        add_compile_options(-pg)
+	add_link_options(-pg)
+    endif()
+    add_compile_options(-pg)
     if (${SIMULATOR_AUDIO} STREQUAL "yes")
 	    add_link_options(-fsanitize=address -fsanitize=undefined -lm -lpthread -rdynamic)
     else()
