@@ -7934,8 +7934,11 @@ static void sanity_check_aux_cave_entrances(void)
 }
 
 /* You will need to rename badgey_cb() something else. */
-void badgey_cb(__attribute__((unused)) struct badge_app *app)
+void badgey_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	sanity_check_aux_cave_entrances();
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:

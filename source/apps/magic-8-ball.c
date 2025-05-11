@@ -237,8 +237,11 @@ static void magic_8_ball_exit(void)
 	pop_app();
 }
 
-void magic_8_ball_cb(__attribute__((unused)) struct badge_app *app)
+void magic_8_ball_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (magic_8_ball_state) {
 	case MAGIC8BALL_INIT:
 		magic_8_ball_init();

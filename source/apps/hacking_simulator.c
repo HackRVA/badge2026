@@ -1089,8 +1089,11 @@ static void hackingsimulator_quit_confirm(void)
 	}
 }
 
-void hacking_simulator_cb(__attribute__((unused)) struct badge_app *app)
+void hacking_simulator_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (hacking_simulator_state)
 	{
 	case HACKINGSIMULATOR_INIT:

@@ -862,8 +862,11 @@ static void microban_exit(void)
     pop_app();
 }
 
-void microban_cb(__attribute__((unused)) struct badge_app *app)
+void microban_cb(struct badge_app *app)
 {
+    if (app->wake_up)
+        screen_changed = 1;
+
     switch (microban_state) {
     case MICROBAN_INIT:
         microban_init();

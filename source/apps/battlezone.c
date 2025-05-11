@@ -487,7 +487,6 @@ enum battlezone_state_t {
 };
 
 static enum battlezone_state_t battlezone_state = BATTLEZONE_INIT;
-static int screen_changed = 0;
 
 static int add_object(int x, int y, int z, int orientation, uint8_t model, uint16_t color)
 {
@@ -569,7 +568,6 @@ static void battlezone_init(void)
 	FbInit();
 	FbClear();
 	battlezone_state = BATTLEZONE_SETUP;
-	screen_changed = 1;
 }
 
 static void battlezone_setup(void)

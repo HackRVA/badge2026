@@ -64,8 +64,11 @@ static void about_badge_exit(void)
 	pop_app();
 }
 
-void about_badge_cb(__attribute__((unused)) struct badge_app *app)
+void about_badge_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (about_badge_state) {
 	case ABOUT_BADGE_INIT:
 		about_badge_init();

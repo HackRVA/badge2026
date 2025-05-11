@@ -997,8 +997,11 @@ static void draw_screen(void)
 #endif
 }
 
-void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
+void puzzle_attack_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		has_screen_changed = 1;
+
 #define PUZZLE_ATTACK_POOL_SIG 0xC111456
 	if (particle_pool == NULL){
 		particle_pool = get_common_particle_pool();
