@@ -471,17 +471,17 @@ A note about the screen saver
 -----------------------------
 
 If the badge is idle (no button presses) for some period of time, the screen
-saver may be activated, which will draw some things to the screen.  When a button
-is pressed, an app may be called after the screen saver has disturbed the screen.
-The app needs a way to know that the screen has been disturbed and must be redrawn.
-For this, in badge.h, the following functions is provided:
+saver may be activated, which will draw some things to the screen.  An app may
+be called after the screen saver has disturbed the screen and the app needs a way
+to know that the screen has been disturbed and must be redrawn.  For this, in
+badge.h, the following functions are provided:
 
 ```
 	/* returns true if the screensaver has run, false otherwise */
-	bool screensaver_was_activated(void);
+	bool screensaver_was_active(void);
 
 	/* App should call this after redrawing the screen */
-	void screensaver_reset_activity(void);
+	void screensaver_activity_reset(void);
 ```
 
 Many apps do not redraw the entire screen every time their callback function
