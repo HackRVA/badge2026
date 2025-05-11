@@ -42,7 +42,7 @@ struct sim_button_status {
 };
 
 struct sim_button_status get_sim_button_status(void);
-void sim_button_status_countdown(void);
+void sim_button_status_countdown(int *event_occurred);
 int sim_get_rotary_angle(int which_rotary);
 
 /* Functions in init_sdl_sim.c called from button_sim.c */

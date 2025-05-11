@@ -32,10 +32,13 @@ struct sim_button_status get_sim_button_status(void)
 	return sim_button_status;
 }
 
-static void countdown_to_zero(int *x)
+static void countdown_to_zero(int *x, int *event_occurred)
 {
-	if (*x > 0)
+	if (*x > 0) {
 		(*x)--;
+		if (*x == 0)
+			*event_occurred = 1;
+	}
 }
 
 #if BADGE_HAS_ROTARY_SWITCHES
@@ -50,23 +53,23 @@ static void rotary_angle_delta(int which_rotary, int amount)
 }
 #endif
 
-void sim_button_status_countdown(void)
+void sim_button_status_countdown(int *event_occurred)
 {
-	countdown_to_zero(&sim_button_status.button_a);
-	countdown_to_zero(&sim_button_status.button_b);
+	countdown_to_zero(&sim_button_status.button_a, event_occurred);
+	countdown_to_zero(&sim_button_status.button_b, event_occurred);
 #if BADGE_HAS_ROTARY_SWITCHES
-	countdown_to_zero(&sim_button_status.left_rotary_button);
-	countdown_to_zero(&sim_button_status.right_rotary_button);
+	countdown_to_zero(&sim_button_status.left_rotary_button, event_occurred);
+	countdown_to_zero(&sim_button_status.right_rotary_button, event_occurred);
 #endif
-	countdown_to_zero(&sim_button_status.dpad_up);
-	countdown_to_zero(&sim_button_status.dpad_down);
-	countdown_to_zero(&sim_button_status.dpad_right);
-	countdown_to_zero(&sim_button_status.dpad_left);
-	countdown_to_zero(&sim_button_status.record);
-	countdown_to_zero(&sim_button_status.play);
-	countdown_to_zero(&sim_button_status.fastforward);
-	countdown_to_zero(&sim_button_status.stop_eject);
-	countdown_to_zero(&sim_button_status.rewind);
+	countdown_to_zero(&sim_button_status.dpad_up, event_occurred);
+	countdown_to_zero(&sim_button_status.dpad_down, event_occurred);
+	countdown_to_zero(&sim_button_status.dpad_right, event_occurred);
+	countdown_to_zero(&sim_button_status.dpad_left, event_occurred);
+	countdown_to_zero(&sim_button_status.record, event_occurred);
+	countdown_to_zero(&sim_button_status.play, event_occurred);
+	countdown_to_zero(&sim_button_status.fastforward, event_occurred);
+	countdown_to_zero(&sim_button_status.stop_eject, event_occurred);
+	countdown_to_zero(&sim_button_status.rewind, event_occurred);
 }
 
 void simulator_zoom_ui(float factor)

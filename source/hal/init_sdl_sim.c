@@ -49,6 +49,7 @@ static int initial_zoom_count = 0; /* set by '-z' flag */
 static int hot_restart = 0;
 static struct timeval sim_start_time;
 static char **saved_args; /* for hot restarting */
+static int must_redraw_window = 1;
 
 static char *executable_dir;
 
@@ -556,7 +557,6 @@ static void draw_button_inputs(struct sim_lcd_params *slp)
 		draw_button_press(&bcl.stop_eject);
 	if (button_status.rewind)
 		draw_button_press(&bcl.rewind);
-	sim_button_status_countdown();
 }
 
 static void draw_flare_led(struct sim_lcd_params *slp)
@@ -784,6 +784,43 @@ static void draw_badge_orientation_indicator(SDL_Renderer *renderer, float x, fl
 static int draw_window(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Texture *landscape_texture)
 {
     extern uint8_t display_array[LCD_YSIZE][LCD_XSIZE][3];
+
+#define ECONOMIZE_DRAWING 1
+#if ECONOMIZE_DRAWING
+    static uint8_t prev_display_array[LCD_YSIZE][LCD_XSIZE][3];
+    static int first_time = 1;
+#endif
+
+#define COUNT_DRAW_CALLS 0
+#if COUNT_DRAW_CALLS
+    static int total_calls = 0;
+    static int total_draw_calls = 0;
+
+    total_calls++;
+    if ((total_calls % 0x100) == 0)
+	fprintf(stderr, "total calls = %d, draw calls = %d\n", total_calls, total_draw_calls);
+#endif
+
+#if ECONOMIZE_DRAWING
+    if (first_time) {
+	memcpy(prev_display_array, display_array, sizeof(prev_display_array));
+	first_time = 0;
+    }
+
+    /* If the display hasn't changed, and no events, then no need to draw the exact
+     * same thing again.
+     */
+    if (!must_redraw_window &&
+	memcmp(prev_display_array, display_array, sizeof(prev_display_array)) == 0)
+	return 0;
+    memcpy(prev_display_array, display_array, sizeof(prev_display_array));
+    must_redraw_window = 0;
+#endif
+
+#if COUNT_DRAW_CALLS
+    total_draw_calls++;
+#endif
+
     struct sim_lcd_params slp = get_sim_lcd_params();
 
     SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
@@ -1112,16 +1149,20 @@ static void process_events(SDL_Window *window)
         switch (event.type) {
         case SDL_KEYDOWN:
             key_press_cb(&event.key.keysym);
+	    must_redraw_window = 1;
             break;
         case SDL_KEYUP:
             key_release_cb(&event.key.keysym);
+	    must_redraw_window = 1;
             break;
         case SDL_QUIT:
             /* Handle quit requests (like Ctrl-c). */
             time_to_quit = 1;
+	    must_redraw_window = 1;
             break;
         case SDL_WINDOWEVENT:
             handle_window_event(window, event);
+	    must_redraw_window = 1;
             break;
         case SDL_MOUSEBUTTONDOWN:
             slp = get_sim_lcd_params();
@@ -1135,9 +1176,11 @@ static void process_events(SDL_Window *window)
             bcl = get_button_coords(&slp, w, h);
             mouse_button_down_cb(&event.button, &bcl);
             sensor_ui_mouse_input(window, &event.button);
+	    must_redraw_window = 1;
             break;
         case SDL_MOUSEBUTTONUP:
             mouse_button_up_cb(&event.button);
+	    must_redraw_window = 1;
             break;
         case SDL_MOUSEMOTION:
             if (!event.motion.state) /* button held? */
@@ -1172,6 +1215,7 @@ static void process_events(SDL_Window *window)
 	    quat_mul(&new_orientation, &q, &badge_orientation);
             quat_normalize_self(&new_orientation);
             badge_orientation = new_orientation;
+	    must_redraw_window = 1;
 #endif
             break;
         case SDL_MOUSEWHEEL:
@@ -1185,6 +1229,7 @@ static void process_events(SDL_Window *window)
             }
             bcl = get_button_coords(&slp, w, h);
             mouse_scroll_cb(&event.wheel, &bcl);
+	    must_redraw_window = 1;
             break;
         case SDL_JOYAXISMOTION:
         case SDL_JOYBALLMOTION:
@@ -1192,6 +1237,7 @@ static void process_events(SDL_Window *window)
         case SDL_JOYBUTTONUP:
         case SDL_JOYHATMOTION:
             joystick_event_cb(window, event);
+	    must_redraw_window = 1;
             break;
         }
     }
@@ -1312,6 +1358,7 @@ void hal_start_sdl(UNUSED int *argc, UNUSED char ***argv)
 		}
             }
 	}
+	sim_button_status_countdown(&must_redraw_window);
 	draw_window(renderer, pix_buf, landscape_pix_buf);
 
 	if (first_time) {
