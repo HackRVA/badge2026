@@ -129,18 +129,6 @@ void use_tape_deck_menu_cb(__attribute__((unused)) struct badge_app *app)
 	exec_app(tape_deck_menu_app);
 }
 
-static bool screensaver_was_active_flag = false;
-
-bool screensaver_was_active(void)
-{
-	return screensaver_was_active_flag;
-}
-
-void screensaver_activity_reset(void)
-{
-	screensaver_was_active_flag = false;
-}
-
 static void maybe_start_screensaver(void)
 {
 	if (app_stack[app_stack_idx].app_func == screensaver_cb) /* screensaver already running? */
@@ -159,7 +147,6 @@ static void maybe_start_screensaver(void)
 		app.app_func = screensaver_cb;
 		app.app_context = 0;
 		app.wake_up = 1;
-		screensaver_was_active_flag = true;
 		push_app(app); /* start screensaver */
 	}
 }

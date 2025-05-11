@@ -9,7 +9,6 @@
 #include "dynmenu.h"
 #include "utils.h"
 #include "key_value_storage.h"
-#include "badge.h"
 
 /* Program states.  Initial state is DRUM_MACHINE_INIT */
 enum drum_machine_state_t {
@@ -500,9 +499,8 @@ static void draw_song_screen(void)
 
 static void draw_screen(void)
 {
-	if (!screen_changed && !screensaver_was_active())
+	if (!screen_changed)
 		return;
-	screensaver_activity_reset();
 
 	FbColor(WHITE);
 	FbBackgroundColor(BLACK);
@@ -631,6 +629,9 @@ static void drum_machine_error(void)
 
 void drum_machine_cb(__attribute__((unused)) struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (drum_machine_state) {
 	case DRUM_MACHINE_INIT:
 		drum_machine_init();

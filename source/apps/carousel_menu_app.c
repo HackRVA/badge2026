@@ -7,7 +7,6 @@
 #include "carousel_menu_app.h"
 #include "default_menu_app.h"
 #include "menu_icon.h"
-#include "badge.h"
 
 #define CAROUSEL_MENU_FG_COLOR GREEN
 #define CAROUSEL_MENU_BG_COLOR BLACK
@@ -237,9 +236,8 @@ static void draw_screen(void)
 	struct menu_t *item = &m[current_context->current_item];
 	struct menu_icon *icon = item->icon;
 
-	if (!current_context->screen_changed && !screensaver_was_active())
+	if (!current_context->screen_changed)
 		return;
-	screensaver_activity_reset();
 
 	FbColor(CAROUSEL_MENU_FG_COLOR);
 	FbBackgroundColor(CAROUSEL_MENU_BG_COLOR);

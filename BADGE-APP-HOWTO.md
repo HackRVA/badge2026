@@ -77,8 +77,10 @@ static enum my_badge_app_state_t {
 	/* ... whatever other states your badge app might have go here ... */
 } my_badge_app_state = MY_BADGE_APP_INIT;
 
-int my_badge_app_cb(void)
+int my_badge_app_cb(struct badge_app *app)
 {
+	if (app->wake_up) /* some other app has run since the last time we were called? */
+		screen_changed = 1; /* maybe the other app disturbed the screen (screen saver) */
 	switch (my_badge_app_state) {
 	case MY_BADGE_APP_INIT:
 		init_badge_app();	/* you write this function */
@@ -426,7 +428,7 @@ Typical usage of the particle system:
 	/* In the badge app's callback, get the pointer to the particle pool */
 	static struct particle_pool *sparkpool = NULL;
 
-	int badge_app_callback(void)
+	int badge_app_callback(struct badge_app *app)
 	{
 		if (sparkpool == NULL) {
 			/* Get pointer to the common particle pool */
@@ -473,30 +475,25 @@ A note about the screen saver
 If the badge is idle (no button presses) for some period of time, the screen
 saver may be activated, which will draw some things to the screen.  An app may
 be called after the screen saver has disturbed the screen and the app needs a way
-to know that the screen has been disturbed and must be redrawn.  For this, in
-badge.h, the following functions are provided:
-
-```
-	/* returns true if the screensaver has run, false otherwise */
-	bool screensaver_was_active(void);
-
-	/* App should call this after redrawing the screen */
-	void screensaver_activity_reset(void);
-```
+to know that the screen has been disturbed and must be redrawn.  The badge app's
+callback function takes a parameter, struct badge_app, defined in badge.h. There
+is a wake_up field which will be true if some other app has run since the last
+time we were called (i.e. the screen saver is a likely one).
 
 Many apps do not redraw the entire screen every time their callback function
 is called, but only draw on the screen when something in the app has changed.
 A common pattern in such apps is something like this:
 
 ```
-	static void draw_screen(void) /* Draw the apps screen */
+	static int badge_app_callback(struct badge_app *app)
 	{
-		if (!screen_changed && !screensaver_was_active())
-			return;
-		screensaver_activity_reset();
+		/* if some other app may have disturbed the screen, we need to redraw
+		 * even if our app hasn't changed anything on the screen itself. */
 
-		/* Code to draw the app's screen goes here */
-	}
+		if (app->wake_up)
+			screen_changed = true;
+
+		...
 ```
 
 Buttons, Directional-Pad Inputs and Rotary Encoders

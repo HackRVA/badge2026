@@ -4,7 +4,6 @@
 #include "colors.h"
 #include "button.h"
 #include "framebuffer.h"
-#include "badge.h"
 
 #define DEFAULT_MENU_FG_COLOR WHITE
 #define DEFAULT_MENU_BG_COLOR BLACK
@@ -208,9 +207,8 @@ static void draw_screen(void)
 {
 	struct menu_t *m = current_context->menu;
 
-	if (!current_context->screen_changed && !screensaver_was_active())
+	if (!current_context->screen_changed)
 		return;
-	screensaver_activity_reset();
 
 	FbColor(DEFAULT_MENU_FG_COLOR);
 	FbBackgroundColor(DEFAULT_MENU_BG_COLOR);
