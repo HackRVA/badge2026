@@ -28,6 +28,16 @@ void use_carousel_menu_cb(struct badge_app *app);
 void use_default_menu_cb(struct badge_app *app);
 void use_tape_deck_menu_cb(struct badge_app *app);
 
+/* Apps can call this to know whether the screensaver was active since the
+ * app was last called, and if so, know that they must redraw the whole screen.
+ */
+bool screensaver_was_active(void);
+
+/* Apps can call this when they know they have redrawn their whole screen since
+ * the screensaver was last active.
+ */
+void screensaver_activity_reset(void);
+
 typedef struct {
     char name[16];
     uint64_t badgeId;

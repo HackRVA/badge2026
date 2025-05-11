@@ -467,6 +467,38 @@ You can see some examples of using the particle system in various badge apps, li
 * [moon-patrol.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/moon-patrol.c#L1442) (has a custom function for drawing sparks)
 * [smashout.c](https://github.com/HackRVA/badge2025/blob/main/source/apps/smashout.c#L439) (uses custom spark movement and drawing)
 
+A note about the screen saver
+-----------------------------
+
+If the badge is idle (no button presses) for some period of time, the screen
+saver may be activated, which will draw some things to the screen.  When a button
+is pressed, an app may be called after the screen saver has disturbed the screen.
+The app needs a way to know that the screen has been disturbed and must be redrawn.
+For this, in badge.h, the following functions is provided:
+
+```
+	/* returns true if the screensaver has run, false otherwise */
+	bool screensaver_was_activated(void);
+
+	/* App should call this after redrawing the screen */
+	void screensaver_reset_activity(void);
+```
+
+Many apps do not redraw the entire screen every time their callback function
+is called, but only draw on the screen when something in the app has changed.
+A common pattern in such apps is something like this:
+
+```
+	static void draw_screen(void) /* Draw the apps screen */
+	{
+		if (!screen_changed && !screensaver_was_active())
+			return;
+		screensaver_activity_reset();
+
+		/* Code to draw the app's screen goes here */
+	}
+```
+
 Buttons, Directional-Pad Inputs and Rotary Encoders
 ---------------------------------------------------
 
