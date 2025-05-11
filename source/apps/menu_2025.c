@@ -7,6 +7,7 @@
 #include "menu_2025.h"
 #include "default_menu_app.h"
 #include "menu_icon.h"
+#include "badge.h"
 
 #define TAPE_DECK_MENU_FG_COLOR BLACK
 #define TAPE_DECK_MENU_BG_COLOR WHITE
@@ -790,8 +791,10 @@ static void draw_screen(void)
 	struct menu_t *item = &m[current_context->current_item];
 	int source_x, source_y;
 
-	//if (!current_context->screen_changed)
-	//	return;
+	if (!current_context->screen_changed && !screensaver_was_active())
+		return;
+
+	screensaver_activity_reset();
 
 	FbColor(TAPE_DECK_MENU_FG_COLOR);
 	FbBackgroundColor(TAPE_DECK_MENU_BG_COLOR);
