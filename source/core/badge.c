@@ -156,11 +156,16 @@ extern void QC_cb(struct badge_app *app);
 extern void rvasec_splash_cb(struct badge_app *app);
 #define INITIAL_BADGE_APP rvasec_splash_cb
 
+static const struct badge_app *menu_app[] = {
+	&default_menu_app,
+	&carousel_menu_app,
+	&tape_deck_menu_app
+};
+
 uint64_t ProcessIO(void)
 {
     static const uint64_t frame_interval_us_default = 1000000/BADGE_FRAME_RATE_FPS;
     static struct default_menu_app_context menu_context;
-    struct badge_app *menu_app[] = { &default_menu_app, &carousel_menu_app, &tape_deck_menu_app };
 
     if (app_stack_idx == -1) { /* No apps at all yet? */
 
