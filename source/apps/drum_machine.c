@@ -446,9 +446,6 @@ static void draw_pattern_screen(void)
 static void draw_song_screen(void)
 {
 	char buffer[20];
-	FbColor(WHITE);
-	FbBackgroundColor(BLACK);
-	FbClear();
 	int sx, sy;
 
 	sy = 16;
@@ -504,8 +501,10 @@ static void draw_screen(void)
 {
 	if (!screen_changed)
 		return;
+
 	FbColor(WHITE);
 	FbBackgroundColor(BLACK);
+	FbClear();
 
 	switch (drum_mode) {
 	case pattern_mode:
