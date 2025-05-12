@@ -287,6 +287,7 @@ static void twenty_forty_eight_init(void)
 {
 	FbInit();
 	FbClear();
+	current_menu_item = 0;
 
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	screen_changed = 1;
