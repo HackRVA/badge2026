@@ -333,6 +333,28 @@ static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
 
+	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_SHOW_HELP) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		}
+		return;
+	}
 	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_MENU) {
 		current_menu_item_selected = false;
 		if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
