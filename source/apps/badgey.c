@@ -6,6 +6,13 @@
 #include <errno.h>
 #endif
 
+#if TARGET_SIMULATOR
+#define DEV_CHEATS_ENABLED 1
+#else
+#define DEV_CHEATS_ENABLED 0
+#endif
+
+
 /*
  *
  *	Partial list of things remaining to do
@@ -3396,6 +3403,9 @@ enum badgey_state_t {
 	BADGEY_SAVE_GAME,
 	BADGEY_RESTORE_GAME,
 	BADGEY_EXIT,
+#if DEV_CHEATS_ENABLED
+	BADGEY_DEV_CHEATS,
+#endif
 };
 
 static enum badgey_state_t badgey_state = BADGEY_INITIAL_MENU;
@@ -5926,6 +5936,9 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "INVENTORY", BADGEY_INVENTORY, 10);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
 		dynmenu_add_item(&planet_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 8);
+#if DEV_CHEATS_ENABLED
+		dynmenu_add_item(&planet_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
+#endif
 		menu_setup = 1;
 	}
 
@@ -6000,6 +6013,11 @@ static void badgey_planet_menu(void)
 	case 10: /* inventory */
 		set_badgey_state(BADGEY_INVENTORY);
 		break;
+#if DEV_CHEATS_ENABLED
+	case 254:
+		set_badgey_state(BADGEY_DEV_CHEATS);
+		break;
+#endif
 	}
 }
 
@@ -7933,6 +7951,176 @@ static void sanity_check_aux_cave_entrances(void)
 #endif
 }
 
+#if DEV_CHEATS_ENABLED
+static void cheat_teleport(char *cmd)
+{
+	int d;
+	char townchar;
+
+	if (strlen(cmd) < 3) {
+		fprintf(stderr, "Bad teleport command '%s'\n", cmd);
+		return;
+	}
+	fprintf(stderr, "%s\n", cmd);
+	int rc = sscanf(cmd, "t %d", &d);
+
+	if (rc == 1) {
+		if (d < 0 || d > 49) {
+			fprintf(stderr, "Bad town or cave number %d\n", d);
+			return;
+		}
+		goto teleport;
+	}
+
+	if (rc != 1) {
+		int i;
+		for (i = 1; (cmd[i] == ' ' || cmd[i] == '\t') && cmd[i] != '\0'; i++)
+			/* empty loop body */ ;
+		char *b = &cmd[i];
+		for (int i = 0; i < (int) ARRAY_SIZE(towninfo); i++) {
+			if (strcasecmp(b, towninfo[i].name) == 0) {
+				d = i;
+				goto teleport;
+			}
+		}
+		fprintf(stderr, "No such town/cave: '%s'\n", b);
+		return;
+	}
+teleport:
+
+	/* set player up on the right planet */
+	player.world_level = 1;
+	player.old_world[1] = &space;
+	player.old_world[0] = NULL;
+	player.wx[0] = 55; /* this is wrong, should be coords of the right planet, not ossaria */
+	player.wy[0] = 4;
+	player.in_town = 0;
+	player.in_cave = 0;
+	player.town_or_cave_num = 0;
+	player.seedx = 0;
+	player.seedy = 0;
+	player.dir = 0;
+	player.moving = 0;
+	player.in_shop = 0;
+
+	/* find which planet */
+	switch (d) {
+	case 0 ... 9:
+		player.world = &ossaria;
+		break;
+	case 10 ... 19:
+		player.world = &NW42;
+		break;
+	case 20 ... 29:
+		player.world = &borton;
+		break;
+	case 30 ... 39:
+		player.world = &skang;
+		break;
+	case 40 ... 49:
+		player.world = &gnarg;
+		break;
+	}
+
+	/* find the coords of the town/cave */
+
+	fprintf(stderr, "Teleporting to planet %s, %s\n", player.world->name, towninfo[d].name);
+	townchar = (d % 10) + '0';
+
+	for (int y = 0; y < 64; y++) {
+		for (int x = 0; x < 64; x++) {
+			if (player.world->wm[windex(x, y)] == townchar) {
+				player.x = x;
+				player.y = y;
+				fprintf(stderr, "Coords = %d, %d\n", x, y);
+				set_badgey_state(BADGEY_RUN);
+				return;
+			}
+		}
+	}
+	fprintf(stderr, "Didn't find the town or cave, possible bug?\n");
+	return;
+}
+
+static void cheat_move(char *cmd)
+{
+	int x, y;
+
+	int rc = sscanf(cmd, "%*c %d %d", &x, &y);
+	if (rc == 2) {
+		player.x = x;
+		player.y = y;
+		set_badgey_state(BADGEY_RUN);
+	} else {
+		printf("Bad cmd: %s\n", cmd);
+	}
+}
+
+static void cheat_planets(void)
+{
+	fprintf(stderr, "PLANETS\n");
+	for (int i = 0; i < (int) ARRAY_SIZE(world_list) - 1; i++) {
+		fprintf(stderr, "%d planet %s\n", i, world_list[i]->name);
+	}
+}
+
+static void cheat_caves_and_towns(void)
+{
+	fprintf(stderr, "TOWNS AND CAVES:\n");
+	for (int i = 0; i < (int) ARRAY_SIZE(towninfo); i++) {
+		fprintf(stderr, "%d %20s (%s)\n", i, towninfo[i].name,
+				(i % 10) < 5 ? "town" : "cave");
+	}
+}
+
+static void cheat_help(void)
+{
+	fprintf(stderr, "\n");
+	fprintf(stderr, "? help\n");
+	fprintf(stderr, "p list planets\n");
+	fprintf(stderr, "c list caves/towns\n");
+	fprintf(stderr, "m move x, y\n");
+	fprintf(stderr, "t teleports to town or cave, by name or number\n");
+	fprintf(stderr, "t teleport town-name|cave-name\n");
+	fprintf(stderr, "q quit\n\n");
+}
+
+static void badgey_dev_cheats(void)
+{
+	char input[255];
+	char *x;
+
+	fprintf(stderr, "badgey cheat: ");
+	x = fgets(input, sizeof(input), stdin);
+	if (x != NULL) {
+		input[sizeof(input) - 1] = '\0';
+		int n = strlen(input);
+		if (n >= 1 && (input[n - 1] == '\n' || input[n - 1] == '\r'))
+			input[n - 1] = '\0'; /* cut off trailing newline */
+		switch (input[0]) {
+		case '?':
+			cheat_help();
+			break;
+		case 'c':
+			cheat_caves_and_towns();
+			break;
+		case 'p':
+			cheat_planets();
+			break;
+		case 'm':
+			cheat_move(input);
+			break;
+		case 't':
+			cheat_teleport(input);
+			break;
+		case 'q':
+			set_badgey_state(BADGEY_RUN);
+			break;
+		}
+	}
+}
+#endif
+
 /* You will need to rename badgey_cb() something else. */
 void badgey_cb(struct badge_app *app)
 {
@@ -8027,6 +8215,11 @@ void badgey_cb(struct badge_app *app)
 	case BADGEY_RESTORE_GAME:
 		badgey_restore_game();
 		break;
+#if DEV_CHEATS_ENABLED
+	case BADGEY_DEV_CHEATS:
+		badgey_dev_cheats();
+		break;
+#endif
 	default:
 		break;
 	}
