@@ -6101,11 +6101,26 @@ const char *pubname[] = {
 	"PLANETFALL",
 	"BAR_ZERO",
 
+	/* blank ones are the "pubs" for each cave (they don't exist,
+	 * but make the indexing work)
+	 */
+	"",
+	"",
+	"",
+	"",
+	"",
+
 	"CANTINA_X",
 	"SCOOTERS",
 	"RED_DWARF",
 	"SCOTTYS",
 	"GOLDEN_HART",
+
+	"",
+	"",
+	"",
+	"",
+	"",
 
 	"KRYTENS",
 	"TECH_NOIR",
@@ -6113,17 +6128,35 @@ const char *pubname[] = {
 	"MILLIWAYS",
 	"QUARKS",
 
+	"",
+	"",
+	"",
+	"",
+	"",
+
 	"TRIBBLES",
 	"EMOHAWK_PUB",
 	"NOSTROMO_BAR",
 	"MAGRATHEA",
 	"SOLOS_SUDS",
 
+	"",
+	"",
+	"",
+	"",
+	"",
+
 	"DAGOBAH",
 	"SERENITY",
 	"PAN_GALACTIC",
 	"TEN_FOUR",
 	"MOES_BAR",
+
+	"",
+	"",
+	"",
+	"",
+	"",
 };
 
 static int paint_town(int x, int y, void *cookie)
