@@ -448,25 +448,25 @@ static const char gnarg_map[4096] = {
 	"wwwwwwww....fffmm...m..........fffff.....ww.ffm...........wwwwww"
 	"wwwwwww......fffm..............fffff........ff7mm.........wwwwww"
 	"wwwww........fffm.............fffff..........ff.mmww......wwwwww"
-	"ww....ww2.....ffm...............fffff.........f...www.....wwwwww"
+	"ww....ww......ffm...............fffff.........f...www.....wwwwww"
 	"www....w......f................fffff...............www..wwwwwwww"
 	"wwwwwwww.........................fffff..............wwwwwwwwwwww"
 	"wwwwwwwww..........................ff.................w..wwwwwww"
 	"wwwwwwwwww...www....................ff....................wwwwww"
-	"wwwwwwwwwwwwww..............................ffff...........wwwww"
-	"wwwwwwww.....................................ffff..........wwwww"
-	"wwwwwwww...................................f..ffff..........wwww"
-	"wwwwww.........................................ffff...........ww"
-	"wwwwww........................................f.f.........w...ww"
-	"wwwww...............fffff........................ffff....www..ww"
-	"wwww.............ffff...ffff......................ffff..wwww..ww"
-	"wwww............ff.........fff....................f.....wwwwwwww"
-	"wwww.........ffff............ffff.............f.ffff.....wwwwwww"
-	"wwwww.......ff..................ff...............ffff....wwwwwww"
-	"wwwwww...........................ff...............ffff...wwwwwww"
-	"wwwwwww..........................m8f......................wwwwww"
-	"wwwwwwww.........................mmff........fff..........wwwwww"
-	"wwwwwwww.........................3m...........fff..........wwwww"
+	"wwwwwwwwwwwwwwww............................ffff...........wwwww"
+	"wwwwwwww..f...w..............................ffff..........wwwww"
+	"wwwwwwww......ww...........................f..ffff..........wwww"
+	"wwwwww....f...ww...............................ffff...........ww"
+	"wwwwww..f.....ww..............................f.f.........w...ww"
+	"wwwww.mff.f...ww....fffff........................ffff....www..ww"
+	"wwww...mmff..ww..ffff...ffff......................ffff..wwww..ww"
+	"wwww....mffwww..ff.........fff....................f.....wwwwwwww"
+	"wwww..2.mffwwffff............ffff.............f.ffff.....wwwwwww"
+	"wwwww...mffwff..................ff...............ffff....wwwwwww"
+	"wwwwww...ffww....................ff...............ffff...wwwwwww"
+	"wwwwwww..wwww....................m8f......................wwwwww"
+	"wwwwwwwwwwww.....................mmff........fff..........wwwwww"
+	"wwwwwwwww........................3m...........fff..........wwwww"
 	"wwwwwwww..........................mff.............m........wwwww"
 	"wwwwww............................mff..........fffmm.......wwwww"
 	"www................................mff..........ff9mm......wwwww"
@@ -2994,7 +2994,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 7
+#define NUM_STATIC_CHESTS 13
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -3020,6 +3020,9 @@ static struct treasure_clue {
 	int x, y;
 	enum clue_type type;
 } clue[] = {
+	/* clues in ossaria, dorvo, town 2 */
+	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, 2, 2, 62, clue_type_pub },
+	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, 2, 2, 62, clue_type_rando },
 	/* clues in BALF (ossaria, town 3) */
 	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, 3, -1, -1, clue_type_rando },
 	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, 3, -1, -1, clue_type_hacker },
@@ -3045,8 +3048,27 @@ static struct treasure_clue {
 	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_rando },
 	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_pub },
 	/* clues in, (BORTON, town 22 KORVIN) */
-	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_rando },
-	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_pub },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, 22, -1, -1, clue_type_rando },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, 22, -1, -1, clue_type_pub },
+	/* clues in gnarg, jalta */
+	{ "\nEXPLORE\nEVO MINES\nDIG AT 44,36\n", &gnarg, 40, -1, -1, clue_type_rando },
+	{ "\nSEEK WITHIN\nEVO MINES\nDIG AT 44,36\n", &gnarg, 40, -1, -1, clue_type_pub },
+	/* clues in gnarg, yarnow */
+	{ "\nDELVE INTO\nSPIDER CAVE\nEXCAVATE x, y\n", &gnarg, 44, -1, -1, clue_type_rando },
+	{ "\nSPELUNK IN\nSPIDER CAVE\nDIG AT x, y\n", &gnarg, 44, -1, -1, clue_type_pub },
+	/* clues in gnarg, ilati */
+	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_rando },
+	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_pub },
+	/* clues in skang, spevo */
+	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_rando },
+	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_pub },
+	/* clues in gnarg, fruntz */
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 36,62\n", &gnarg, 43, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 36,62\n", &gnarg, 43, -1, -1, clue_type_pub },
+	/* clues in skang, jalta */
+	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_pub },
+
 };
 
 #define NCLUES (ARRAY_SIZE(clue))
@@ -3810,11 +3832,17 @@ static void setup_static_treasures(void)
 	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
 	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
+	add_static_treasure(&gnarg, 7, 5, 44, 200, SOLDER, CHEST_STATUS_BURIED); /* ossaria, klon caverns */
 	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
 	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
 	add_static_treasure(&NW42, 12, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* NW42, NORJIG, SIGTRAP */
 	add_static_treasure(&borton, 13, 24, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
 	add_static_treasure(&borton, 26, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED); /* borton, smuggler's cave, */
+	add_static_treasure(&skang, 36, 1, 42, 200, A_BUTTON, CHEST_STATUS_BURIED); /* skang, tunnels/doom, */
+	add_static_treasure(&skang, 32, 45, 42, 200, RESET_BUTTON, CHEST_STATUS_BURIED); /* skang, torxun */
+	add_static_treasure(&gnarg, 49, 36, 62, 200, B_BUTTON, CHEST_STATUS_BURIED); /* gnarg, spider cave */
+	add_static_treasure(&gnarg, 44, 34, 40, 200, USB_CONNECTOR, CHEST_STATUS_BURIED); /* gnarg, yarnow */
+	add_static_treasure(&gnarg, 45, 44, 36, 200, BATTERY, CHEST_STATUS_BURIED); /* gnarg, evo mines */
 }
 
 static void badgey_init(void)
@@ -5381,7 +5409,7 @@ static const struct town_info {
 	{ "JALTA",
 		town_creek | town_armoury | town_weapons,
 	},
-	{ "SPINU",
+	{ "RICHMOND",
 		town_ponds | town_armoury | town_weapons | town_hackerspace,
 	},
 	{ "ILATI",
@@ -6060,10 +6088,10 @@ const char *hackerspacename[] = {
 	"GROKHAUS",
 
 	"KAOSDORF",
-	"HACKRVA",
+	"REZISTOR",
 	"SIGTRAP",
 	"PAGEFAULT",
-	"CPU_THREEPIO",
+	"CPU_3PO",
 
 	"TXRXLABS",
 	"FORKBOMB",
@@ -6072,7 +6100,7 @@ const char *hackerspacename[] = {
 	"NULLPTR",
 
 	"VOIDSTAR",
-	"REZISTOR",
+	"HACKRVA",
 	"NERDCLUB",
 	"SIGSEGV",
 	"OHMS_LAW",
