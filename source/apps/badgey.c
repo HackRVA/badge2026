@@ -6741,14 +6741,30 @@ static void print_cave(char *map)
 {
 #if TARGET_SIMULATOR
 	for (int i = 0; i < 64; i++) {
+		if ((i % 5) == 0)
+			printf("%3d ", i);
+		else
+			printf("    ");
 		for (int j = 0; j < 64; j++) {
-			if (j == 32 && i == 62)
+			if (j == 32 && i == 62) {
 				printf("X");
-			else
-				printf("%c", map[windex(j, i)]);
+			} else {
+				if (map[windex(j, i)] == '#' && (j % 10) == 0)
+					printf("|");
+				else
+					printf("%c", map[windex(j, i)]);
+			}
 		}
 		printf("\n");
 	}
+	printf("    ");
+	for (int i = 0; i < 64; i++) {
+		if ((i % 5) == 0)
+			printf("%02d", i);
+		else if ((i % 5) != 1)
+			printf(" ");
+	}
+	printf("\n");
 #endif
 }
 
