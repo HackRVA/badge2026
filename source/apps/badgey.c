@@ -3892,6 +3892,27 @@ static void badgey_continue(void)
 	screen_changed = 1;
 }
 
+static const struct note treasure_tune_notes[] = {
+	/* harmonic minor scale run */
+	{ NOTE_C4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_C5, 100 },
+};
+
+static const struct tune treasure_tune = {
+	ARRAY_SIZE(treasure_tune_notes),
+	treasure_tune_notes,
+};
+
 static void badgey_collect_treasure(int treasure)
 {
 	static int gp = 0;
@@ -3929,6 +3950,7 @@ static void badgey_collect_treasure(int treasure)
 		FbMove(8, 8);
 		FbWriteString(buf);
 		FbSwapBuffers();
+		play_tune(&treasure_tune, NULL, NULL);
 		return;
 	}
 	/* Not first time through, just consume a button press ... */
@@ -3962,15 +3984,17 @@ static void badgey_dig(void)
 	static int got_treasure = 0;
 	static enum badgey_state_t prev;
 
-	for (int i = 0; i < nchests; i++) {
-		if (player.x == chest[i].x && player.y == chest[i].y &&
-			chest[i].status == CHEST_STATUS_BURIED) {
-			if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
-				continue; /* chest is in another world, not the current world */
-			prev = previous_badgey_state; /* this is a little hacky... oh well. */
-			badgey_collect_treasure(i);
-			got_treasure = 1;
-			return;
+	if (!got_treasure) {
+		for (int i = 0; i < nchests; i++) {
+			if (player.x == chest[i].x && player.y == chest[i].y &&
+				chest[i].status == CHEST_STATUS_BURIED) {
+				if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
+					continue; /* chest is in another world, not the current world */
+				prev = previous_badgey_state; /* this is a little hacky... oh well. */
+				badgey_collect_treasure(i);
+				got_treasure = 1;
+				return;
+			}
 		}
 	}
 
