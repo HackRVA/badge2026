@@ -8196,7 +8196,29 @@ static void badgey_review_clues(void)
 			"UNFORTUNATELY\nIT APPEARS THAT\nYOU DO NOT\nHAVE A CLUE\n");
 		current_clue = 0;
 	} else {
-		snprintf(buffer, sizeof(buffer), "CLUE %d\n\n%s\n", current_clue,
+		char *who_told;
+
+		switch (clue[current_clue].type) {
+		case clue_type_engraving:
+			who_told = "FROM AN ENGRAVING:";
+			break;
+		case clue_type_rando:
+			who_told = "SOMEONE TOLD ME:";
+			break;
+		case clue_type_hacker:
+			who_told = "A HACKER TOLD ME:";
+			break;
+		case clue_type_pub:
+			who_told = "A BARKEEPER TOLD ME:";
+			break;
+		case clue_type_temple:
+			who_told = "A GOOROO TOLD ME:";
+			break;
+		case clue_type_spaceship_rental:
+			who_told = "RENTAL AGENT TOLD\nME:";
+			break;
+		}
+		snprintf(buffer, sizeof(buffer), "%s\n\n%s\n", who_told,
 				clue[current_clue].clue_text);
 	}
 
@@ -8205,6 +8227,16 @@ static void badgey_review_clues(void)
 		FbColor(WHITE);
 		FbBackgroundColor(BLACK);
 		FbMove(3, 3);
+		FbWriteString(buffer);
+
+		int clue_count = 0;
+		for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++) {
+			if (player.known_clues[i])
+				clue_count++;
+		}
+
+		snprintf(buffer, sizeof(buffer), "TOTAL CLUES: %d\n", clue_count);
+		FbMove(3, LCD_YSIZE - 8);
 		FbWriteString(buffer);
 		FbSwapBuffers();
 		last_clue = current_clue;
