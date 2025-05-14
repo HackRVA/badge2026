@@ -54,11 +54,11 @@ static const int xoff[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 static const int yoff[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 
 static struct dynmenu planet_menu;
-static struct dynmenu_item planet_menu_item[10];
+static struct dynmenu_item planet_menu_item[12];
 static struct dynmenu cave_menu;
-static struct dynmenu_item cave_menu_item[10];
+static struct dynmenu_item cave_menu_item[12];
 static struct dynmenu town_menu;
-static struct dynmenu_item town_menu_item[11];
+static struct dynmenu_item town_menu_item[12];
 static struct dynmenu board_ship_menu;
 static struct dynmenu_item board_ship_menu_item[2];
 static struct dynmenu initial_menu;
@@ -3070,7 +3070,6 @@ static struct treasure_clue {
 	/* clues in skang, jalta */
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_rando },
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_pub },
-
 };
 
 #define NCLUES (ARRAY_SIZE(clue))
@@ -3375,6 +3374,7 @@ static struct player {
 	int last_boarded_ship; /* to keep your ship from sailing off without you */
 #define EQUIPPED_NONE 255
 	int stop_automatic_motion; /* stops automatic motion in caves */
+	uint8_t known_clues[ARRAY_SIZE(clue)];
 } player = {
 	.world = &space,
 	.x = 32,
@@ -3426,6 +3426,7 @@ enum badgey_state_t {
 	BADGEY_SAVE_GAME,
 	BADGEY_RESTORE_GAME,
 	BADGEY_ASSEMBLE_BADGE,
+	BADGEY_REVIEW_CLUES,
 	BADGEY_EXIT,
 #if DEV_CHEATS_ENABLED
 	BADGEY_DEV_CHEATS,
@@ -3869,6 +3870,7 @@ static void badgey_init(void)
 	player.in_shop = 0;
 	player.money = 500;
 	memset(player.carrying, 0, sizeof(player.carrying));
+	memset(player.known_clues, 0, sizeof(player.known_clues));
 	player.carrying[POSITION_FINDER] = 1;
 	player.carrying[MAPPING_STONE] = 1;
 	player.carrying[COMPASS] = 1;
@@ -4978,6 +4980,7 @@ static void draw_cave_screen(void)
 		FbMove(5, 5);
 		FbWriteString("ENGRAVED STELA:\n\n");
 		FbWriteString(clue[clue_no].clue_text);
+		player.known_clues[clue_no] = 1;
 		FbColor(WHITE);
 	}
 	maybe_draw_player_coords();
@@ -5617,11 +5620,12 @@ static void badgey_cave_menu(void)
 		dynmenu_clear(&cave_menu);
 		dynmenu_init(&cave_menu, cave_menu_item, ARRAY_SIZE(cave_menu_item));
 		dynmenu_set_title(&cave_menu, "", "", "");
+		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
 		if (ladder_is_here(player.x, player.y))
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
 		dynmenu_add_item(&cave_menu, "DIG", BADGEY_USE_ITEM, 4);
-		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
+		dynmenu_add_item(&cave_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 5);
 		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
 #if DEV_CHEATS_ENABLED
 		dynmenu_add_item(&cave_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
@@ -5674,6 +5678,11 @@ static void badgey_cave_menu(void)
 		screen_changed = 1;
 		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
+		break;
+	case 5: /* review clues */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_REVIEW_CLUES);
 		break;
 #if DEV_CHEATS_ENABLED
 	case 254:
@@ -5813,8 +5822,10 @@ static void badgey_talk_to_shopkeeper(void)
 		char message[255];
 		char *clue_text = "";
 		int shopkeeper = find_shopkeeper(st);
-		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE)
+		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE) {
 			clue_text = clue[creature[shopkeeper].clue].clue_text;
+			player.known_clues[creature[shopkeeper].clue] = 1;
+		}
 
 		if (player.money < shop_item[shop[st].item[choice]].price) {
 			snprintf(message, sizeof(message), "\n\n"
@@ -5888,8 +5899,10 @@ static void badgey_talk_to_citizen(void)
 				creature_name[creature[c].name], creature_info[i]);
 		FbMove(0, 0);
 		FbWriteString(buf);
-		if (creature[c].clue != NO_CLUE)
+		if (creature[c].clue != NO_CLUE) {
 			FbWriteString(clue[creature[c].clue].clue_text);
+			player.known_clues[creature[c].clue] = 1;
+		}
 		FbSwapBuffers();
 		screen_changed = 0;
 	}
@@ -5938,6 +5951,7 @@ static void badgey_town_menu(void)
 		dynmenu_add_item(&town_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
 		dynmenu_add_item(&town_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
 		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 8);
+		dynmenu_add_item(&town_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 10);
 		dynmenu_add_item(&town_menu, "INVENTORY", BADGEY_INVENTORY, 9);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 4);
@@ -5978,6 +5992,9 @@ static void badgey_town_menu(void)
 		break;
 	case 9: /* inventory */
 		set_badgey_state(BADGEY_INVENTORY);
+		break;
+	case 10: /* clues */
+		set_badgey_state(BADGEY_REVIEW_CLUES);
 		break;
 #if DEV_CHEATS_ENABLED
 	case 254:
@@ -6044,6 +6061,7 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 4);
 		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 5);
 		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 6);
+		dynmenu_add_item(&planet_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 11);
 		dynmenu_add_item(&planet_menu, "INVENTORY", BADGEY_INVENTORY, 10);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
 		dynmenu_add_item(&planet_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 8);
@@ -6123,6 +6141,9 @@ static void badgey_planet_menu(void)
 		break;
 	case 10: /* inventory */
 		set_badgey_state(BADGEY_INVENTORY);
+		break;
+	case 11: /* review clues */
+		set_badgey_state(BADGEY_REVIEW_CLUES);
 		break;
 #if DEV_CHEATS_ENABLED
 	case 254:
@@ -7841,6 +7862,7 @@ struct badgey_state {
 	int last_boarded_ship_y;
 
 	int8_t chest_status[NUM_STATIC_CHESTS];
+	uint8_t known_clues[ARRAY_SIZE(clue)];
 };
 
 static const struct badgey_world *world_list[] = {
@@ -7906,6 +7928,9 @@ static void badgey_serialize_state(struct badgey_state *state)
 
 	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
 		state->chest_status[i] = (int8_t) chest[i].status;
+
+	for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++)
+		state->known_clues[i] = player.known_clues[i];
 
 	unsigned char *x = (unsigned char *) state;
 	uint32_t checksum = 0;
@@ -7984,6 +8009,9 @@ static void badgey_deserialize_state(struct badgey_state *state)
 
 	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
 		chest[i].status = state->chest_status[i];
+
+	for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++)
+		player.known_clues[i] = state->known_clues[i];
 }
 
 static void badgey_save_game(void)
@@ -8130,6 +8158,72 @@ static void badgey_assemble_badge(void)
 		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		set_badgey_state(previous_badgey_state);
+	}
+}
+
+static int find_next_known_clue(int c, int dir)
+{
+	int current_clue = -1;
+	int count = 0;
+	for (int i = c + dir; ; i += dir) {
+		if (i >= (int) ARRAY_SIZE(player.known_clues))
+			i = 0;
+		if (i < 0)
+			i = ARRAY_SIZE(player.known_clues) - 1;
+		if (player.known_clues[i]) {
+			current_clue = i;
+			break;
+		}
+		count++;
+		if (count > (int) ARRAY_SIZE(player.known_clues)) {
+			current_clue = -1;
+			break;
+		}
+	}
+	return current_clue;
+}
+
+static void badgey_review_clues(void)
+{
+	static int current_clue = 0;
+	static int last_clue = -2;
+	char buffer[256];
+
+	if (!player.known_clues[current_clue])
+		current_clue = find_next_known_clue(current_clue, 1);
+	if (current_clue == -1 || !player.known_clues[current_clue]) {
+		snprintf(buffer, sizeof(buffer),
+			"UNFORTUNATELY\nIT APPEARS THAT\nYOU DO NOT\nHAVE A CLUE\n");
+		current_clue = 0;
+	} else {
+		snprintf(buffer, sizeof(buffer), "CLUE %d\n\n%s\n", current_clue,
+				clue[current_clue].clue_text);
+	}
+
+	if (current_clue != last_clue) {
+		FbClear();
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		FbMove(3, 3);
+		FbWriteString(buffer);
+		FbSwapBuffers();
+		last_clue = current_clue;
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+		current_clue = find_next_known_clue(current_clue, -1);
+		return;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+		current_clue = find_next_known_clue(current_clue, 1);
+		return;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		set_badgey_state(BADGEY_RUN);
+		last_clue = -2;
 	}
 }
 
@@ -8463,6 +8557,9 @@ void badgey_cb(struct badge_app *app)
 		break;
 	case BADGEY_ASSEMBLE_BADGE:
 		badgey_assemble_badge();
+		break;
+	case BADGEY_REVIEW_CLUES:
+		badgey_review_clues();
 		break;
 #if DEV_CHEATS_ENABLED
 	case BADGEY_DEV_CHEATS:
