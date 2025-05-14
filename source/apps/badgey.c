@@ -7704,8 +7704,8 @@ static void badgey_initial_menu(void)
 		dynmenu_init(&initial_menu, initial_menu_item, ARRAY_SIZE(initial_menu_item));
 		dynmenu_set_title(&initial_menu, "RVASEC QUEST", "", "");
 		dynmenu_add_item(&initial_menu, "INTRO", 0, 0);
+		dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
 		if (game_in_progress) {
-			dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
 			dynmenu_add_item(&initial_menu, "RESUME GAME", 1, 2);
 			dynmenu_add_item(&initial_menu, "SAVE GAME", 1, 4);
 		}
