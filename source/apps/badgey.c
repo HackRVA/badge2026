@@ -3950,6 +3950,8 @@ static void badgey_collect_treasure(int treasure)
 
 		FbMove(8, 8);
 		FbWriteString(buf);
+		FbMove(8, 72);
+		FbWriteString("NOTE: YOU CAN DIG\nWITH THE REWIND\nBUTTON\n");
 		FbSwapBuffers();
 		play_tune(&treasure_tune, NULL, NULL);
 		return;
@@ -4011,6 +4013,8 @@ static void badgey_dig(void)
 		FbBackgroundColor(BLACK);
 		FbMove(8, 8);
 		FbWriteString("DIGGITY DIG\n\nYOU DID NOT\nFIND ANYTHING\n");
+		FbMove(8, 72);
+		FbWriteString("NOTE: YOU CAN DIG\nWITH THE REWIND\nBUTTON\n");
 		FbSwapBuffers();
 		screen_changed = 0;
 	}
@@ -4102,6 +4106,9 @@ static void cave_check_buttons(void)
 			set_badgey_state(BADGEY_CAVE_MENU);
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		/* Maybe B-button can do something in the caves ... */
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
+		set_badgey_state(BADGEY_DIG);
+		last_move_dir = NO_MOVE;
 	} else {
 		if (player.stop_automatic_motion)
 			last_move_dir = NO_MOVE;
@@ -4440,6 +4447,12 @@ static void check_buttons(int tick)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		/* maybe B button can do something? */
 		newmoving = 0;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
+		if (player.world->type == WORLD_TYPE_PLANET ||
+			player.world->type == WORLD_TYPE_TOWN) {
+				set_badgey_state(BADGEY_DIG);
+				newmoving = 0;
+		}
 	}
 
 	player.dir = newdir;
