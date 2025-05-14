@@ -7690,6 +7690,7 @@ static void badgey_abandon_confirm(void)
 static void badgey_exit(void)
 {
 	set_badgey_state(BADGEY_INITIAL_MENU); /* So that when we start again, we do not immediately exit */
+	stop_tune();
 	pop_app();
 }
 
@@ -7717,11 +7718,14 @@ static void badgey_initial_menu(void)
 	if (!dynmenu_let_user_choose(&initial_menu))
 		return;
 
+	stop_tune();
+
 	switch (dynmenu_get_user_choice(&initial_menu)) {
 	case 0: /* intro */
 		set_badgey_state(BADGEY_INTRO);
 		break;
 	case 1: /* pause game */
+		stop_tune();
 		pop_app();
 		break;
 	case 2: /* resume game */
@@ -7742,6 +7746,41 @@ static void badgey_initial_menu(void)
 		menu_setup = 0;
 		break;
 	}
+}
+
+static const struct note theme_tune_notes[] = {
+	/* harmonic minor scale run */
+	{ NOTE_A3, 400 },
+	{ 0, 1 },
+	{ NOTE_A3, 350 },
+	{ NOTE_B3, 150 },
+	{ NOTE_C4, 400 },
+	{ NOTE_A3, 400 },
+	{ NOTE_D4, 400 },
+	{ NOTE_E4, 400 },
+	{ NOTE_F4, 400 },
+	{ NOTE_D4, 400 },
+
+	{ NOTE_B3, 400 },
+	{ 0, 1 },
+	{ NOTE_B3, 350 },
+	{ NOTE_Cs4, 150 },
+	{ NOTE_D4, 400 },
+	{ NOTE_B3, 400 },
+	{ NOTE_Af3, 400 },
+	{ NOTE_B3, 400 },
+	{ NOTE_F3, 400 },
+	{ NOTE_Af3, 400 },
+};
+
+static const struct tune theme_tune = {
+	ARRAY_SIZE(theme_tune_notes),
+	theme_tune_notes,
+};
+
+static void theme_finished(__attribute__((unused)) void *x)
+{
+	play_tune(&theme_tune, theme_finished, NULL);
 }
 
 static void badgey_intro(void)
@@ -7765,6 +7804,7 @@ static void badgey_intro(void)
 	FbWriteString("your way to RICHMOND\n");
 	FbWriteString("Good luck!");
 	FbSwapBuffers();
+	play_tune(&theme_tune, theme_finished, NULL);
 	set_badgey_state(BADGEY_INTRO_WAIT);
 }
 
