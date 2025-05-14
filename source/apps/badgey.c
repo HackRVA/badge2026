@@ -58,7 +58,7 @@ static struct dynmenu_item planet_menu_item[10];
 static struct dynmenu cave_menu;
 static struct dynmenu_item cave_menu_item[10];
 static struct dynmenu town_menu;
-static struct dynmenu_item town_menu_item[10];
+static struct dynmenu_item town_menu_item[11];
 static struct dynmenu board_ship_menu;
 static struct dynmenu_item board_ship_menu_item[2];
 static struct dynmenu initial_menu;
@@ -5584,6 +5584,9 @@ static void badgey_cave_menu(void)
 		dynmenu_add_item(&cave_menu, "DIG", BADGEY_USE_ITEM, 4);
 		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
 		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
+#if DEV_CHEATS_ENABLED
+		dynmenu_add_item(&cave_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
+#endif
 		menu_setup = 1;
 	}
 
@@ -5633,6 +5636,13 @@ static void badgey_cave_menu(void)
 		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
+#if DEV_CHEATS_ENABLED
+	case 254:
+		menu_setup = 0;
+		screen_changed = 1;
+		set_badgey_state(BADGEY_DEV_CHEATS);
+		break;
+#endif
 	}
 }
 
@@ -5866,6 +5876,9 @@ static void badgey_town_menu(void)
 		dynmenu_add_item(&town_menu, "INVENTORY", BADGEY_INVENTORY, 9);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 4);
+#if DEV_CHEATS_ENABLED
+		dynmenu_add_item(&town_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
+#endif
 		menu_setup = 1;
 	}
 
@@ -5901,6 +5914,11 @@ static void badgey_town_menu(void)
 	case 9: /* inventory */
 		set_badgey_state(BADGEY_INVENTORY);
 		break;
+#if DEV_CHEATS_ENABLED
+	case 254:
+		set_badgey_state(BADGEY_DEV_CHEATS);
+		break;
+#endif
 	default:
 		set_badgey_state(BADGEY_RUN);
 		break;
