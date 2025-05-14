@@ -39,6 +39,7 @@
 #include "smashout.h"
 #include "username.h"
 #include "slot_machine.h"
+#include "simonSays.h"
 // #include "gulag.h"
 #include "asteroids.h"
 // #include "etch-a-sketch.h"
@@ -79,6 +80,7 @@ static const struct menu_t games_m[] = {
 	{"Asteroids", VERT_ITEM, FUNCTION, { .func = asteroids_cb }, &asteroids_icon, },
 	{"Lunar Rescue",  VERT_ITEM, FUNCTION, { .func = lunarlander_cb}, &lunar_rescue_icon, },
 	{"Battlezone", VERT_ITEM, FUNCTION, { .func = battlezone_cb }, &battlezone_icon, },
+	{"Simon Says", VERT_ITEM, FUNCTION, { .func = simonSays_cb}, &battlezone_icon, },
 	{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, &slotmachine_icon, },
 	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, &breakout_icon, },
 	{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
