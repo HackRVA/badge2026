@@ -6118,6 +6118,14 @@ static void badgey_run(void)
 		check_buttons(tick);
 }
 
+/* This is to skip over cave numbers when indexing into hackerspacename[] or pubname[]
+ * using town or cave numbers
+ */
+static int town_num_to_name_index(int town_num)
+{
+	return (town_num / 10) * 5 + (town_num % 10);
+}
+
 const char *hackerspacename[] = {
 	"SEGVAULT",
 	"BODGERY",
@@ -6173,26 +6181,11 @@ const char *pubname[] = {
 	"PLANETFALL",
 	"BAR_ZERO",
 
-	/* blank ones are the "pubs" for each cave (they don't exist,
-	 * but make the indexing work)
-	 */
-	"",
-	"",
-	"",
-	"",
-	"",
-
 	"CANTINA_X",
 	"SCOOTERS",
 	"RED_DWARF",
 	"SCOTTYS",
 	"GOLDEN_HART",
-
-	"",
-	"",
-	"",
-	"",
-	"",
 
 	"KRYTENS",
 	"TECH_NOIR",
@@ -6200,35 +6193,17 @@ const char *pubname[] = {
 	"MILLIWAYS",
 	"QUARKS",
 
-	"",
-	"",
-	"",
-	"",
-	"",
-
 	"TRIBBLES",
 	"EMOHAWK_PUB",
 	"NOSTROMO_BAR",
 	"MAGRATHEA",
 	"SOLOS_SUDS",
 
-	"",
-	"",
-	"",
-	"",
-	"",
-
 	"DAGOBAH",
 	"SERENITY",
 	"PAN_GALACTIC",
 	"TEN_FOUR",
 	"MOES_BAR",
-
-	"",
-	"",
-	"",
-	"",
-	"",
 };
 
 static int paint_town(int x, int y, void *cookie)
@@ -6751,10 +6726,11 @@ static void generate_town(int town_number)
 	memcpy(l, towninfo[town].name, strlen(towninfo[town].name));
 
 	/* Generate buildings */
-	generate_building(pubname[town], SHOP_PUB, roadchar, &seed);
+	generate_building(pubname[town_num_to_name_index(town)], SHOP_PUB, roadchar, &seed);
 	generate_building("INN", SHOP_INN, roadchar, &seed);
 	if (towninfo[town].feature & town_hackerspace)
-		generate_building(hackerspacename[town], SHOP_HACKERSPACE, roadchar, &seed);
+		generate_building(hackerspacename[town_num_to_name_index(town)],
+			SHOP_HACKERSPACE, roadchar, &seed);
 	if (towninfo[town].feature & town_weapons)
 		generate_building(weapons_store_name[town % 5], SHOP_WEAPONS, roadchar, &seed);
 	if (towninfo[town].feature & town_armoury)
