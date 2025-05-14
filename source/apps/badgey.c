@@ -3426,6 +3426,7 @@ enum badgey_state_t {
 	BADGEY_USE_BADGE_BOM,
 	BADGEY_SAVE_GAME,
 	BADGEY_RESTORE_GAME,
+	BADGEY_ASSEMBLE_BADGE,
 	BADGEY_EXIT,
 #if DEV_CHEATS_ENABLED
 	BADGEY_DEV_CHEATS,
@@ -5721,6 +5722,22 @@ static int find_shopkeeper(int shop_type)
 	return -1;
 }
 
+static int player_has_all_badge_parts(void)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++) {
+		if (!player.carrying[badge_bom[i]])
+			return 0;
+	}
+	return 1;
+}
+
+static int player_in_richmond(void)
+{
+	if (player.town_or_cave_num == 1 && player.old_world[player.world_level] == &gnarg)
+		return 1;
+	return 0;
+}
+
 static void badgey_talk_to_shopkeeper(void)
 {
 	static int menu_setup = 0;
@@ -5747,6 +5764,11 @@ static void badgey_talk_to_shopkeeper(void)
 				shop_item[item].price, shop_item[item].name);
 			dynmenu_add_item(&town_menu, menu_item, BADGEY_RUN, i);
 		}
+		if (player_in_richmond() &&
+				st == SHOP_HACKERSPACE &&
+				player_has_all_badge_parts()) {
+			dynmenu_add_item(&town_menu, "ASSEMBLE BADGE", BADGEY_RUN, 252);
+		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
 		menu_setup = 1;
@@ -5770,6 +5792,11 @@ static void badgey_talk_to_shopkeeper(void)
 	} else if (choice == 253) { /* stats */
 		screen_changed = 1;
 		set_badgey_state(BADGEY_STATS);
+		menu_setup = 0;
+	} else if (choice == 252) { /* assemble badge! */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_ASSEMBLE_BADGE);
 	} else if (choice >= 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
 		char *clue_text = "";
@@ -7984,6 +8011,76 @@ static void badgey_restore_game(void)
 	status_message("Saved game\nrestored from\nflash memory");
 }
 
+static const struct note badge_assembly_tune_notes[] = {
+	{ NOTE_C5, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_C4, 100 },
+
+	{ NOTE_C4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_C5, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_C5, 100 },
+};
+
+static const struct tune badge_assembly_tune = {
+	ARRAY_SIZE(badge_assembly_tune_notes),
+	badge_assembly_tune_notes,
+};
+
+static void badgey_assemble_badge(void)
+{
+	if (player_has_all_badge_parts() && !player.carrying[RVASEC_BADGE]) {
+		/* take away all the badge parts and Badge BoM. */
+		for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++) {
+			player.carrying[badge_bom[i]] = 0;
+		}
+		player.carrying[BADGE_BOM] = 0;
+		player.carrying[RVASEC_BADGE] = 1;
+
+		FbClear();
+		FbColor(WHITE);	
+		FbBackgroundColor(BLACK);
+
+		FbMove(3, 3);
+		FbWriteString("CONGRATS!\nYOU HAVE\nASSEMBLED AN\nRVASEC BADGE!\nWOOHOO!\n");
+		FbSwapBuffers();
+		play_tune(&badge_assembly_tune, NULL, NULL);
+		return;
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		set_badgey_state(previous_badgey_state);
+	}
+}
+
 #if TARGET_SIMULATOR
 static void sanity_check_one_cave_entrance(const struct badgey_world *w, int x, int y)
 {
@@ -8311,6 +8408,9 @@ void badgey_cb(struct badge_app *app)
 		break;
 	case BADGEY_RESTORE_GAME:
 		badgey_restore_game();
+		break;
+	case BADGEY_ASSEMBLE_BADGE:
+		badgey_assemble_badge();
 		break;
 #if DEV_CHEATS_ENABLED
 	case BADGEY_DEV_CHEATS:
