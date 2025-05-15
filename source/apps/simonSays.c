@@ -143,33 +143,27 @@ void showChoice(Choice c, bool sound){
 	int freq=0;
 	switch (c){
 		case UP:
-			printf("playing blue\n");
 			temp = upblue_p;
 			freq = 440;
 			break;
 		case RIGHT:
-			printf("playing yellow\n");
 			temp = rightyellow_p;
 			freq = 340;
 			break;
 		case DOWN:
-			printf("playing green\n");
 			temp = downgreen_p;
 			freq = 240;
 			break;
 		case LEFT:
-			printf("playing red\n");
 			temp = leftred_p;
 			freq = 140;
 			break;
 		default:
-			printf("showing the darknes\n");
 			temp = alldark_p;
 			break;
 	}
 	if(sound) {
 		audio_out_beep(freq,500);
-		printf("audio should have played\n");
 	}
 
 	FbClear();
@@ -216,7 +210,6 @@ void playbackRun (void){
 void playerTurnSetup(void){
 	it=0;
 	lStop = (rtc_get_ms_since_boot()+3000);
-	printf("lStop has been reset to %ld",lStop);
 	showChoice(NONE,false);
 	simonSays_state = SIMONSAYS_PLAYERTURN_RUN;
 	dPad=NONE;
@@ -294,9 +287,7 @@ void simonSays_cb(__attribute__((unused)) struct badge_app *app){
 		playbackRun();
 		break;
 	case SIMONSAYS_SPIRAL:
-		printf("---------round---------\n");
 		roundAndRound();
-		printf("=========and round========\n");
 		delay(4000,SIMONSAYS_ADD);
 		break;
 	case SIMONSAYS_ADD:
