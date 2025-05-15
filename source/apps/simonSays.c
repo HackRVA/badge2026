@@ -12,6 +12,7 @@
 #include "simonSays_assets.h"
 #include "audio.h"
 #include "xorshift.h"
+#include "dynmenu.h"
 
 const struct asset2 *alldark_p = &alldark;
 const struct asset2 *upblue_p = &upblue;
@@ -24,13 +25,17 @@ const int MAX_TURNS = 100;
 /* Program states.  Initial state is MYPROGRAM_INIT */
 enum simonSays_state_t {
 	SIMONSAYS_INIT,
-	SIMONSAYS_GAMELOOP,
-	SIMONSAYS_PLAY,
+	SIMONSAYS_PLAYBACK_SETUP,
+	SIMONSAYS_PLAYBACK_RUN,
+	SIMONSAYS_PLAYERTURN_SETUP,
+	SIMONSAYS_PLAYERTURN_RUN,
 	SIMONSAYS_SPIRAL,
-	SIMONSAYS_TEST,
 	SIMONSAYS_ADD,
+	SIMONSAYS_GENERIC_DELAY,
 	SIMONSAYS_EXIT
 };
+
+// CHOICES THE PLAYER CAN MAKE
 typedef enum Choice {
 	UP,
 	RIGHT,
@@ -39,239 +44,267 @@ typedef enum Choice {
 	NONE
 }Choice;
 
-typedef struct Turn{
-	Choice choice;
-	struct Turn *next;
-	int turnNum;
-}Turn;
-
-Turn *sequence, *activeFrame;
+enum Choice sequence[100];
 Choice dPad;
 
-static enum simonSays_state_t simonSays_state = SIMONSAYS_INIT;
-int turns=1;
+bool lastone;
+int it,usedturns,dReturn,sReturn = 0;
+uint64_t stoptime,now,lStop,lNow;
 
-static Choice randChoice(void){
+static enum simonSays_state_t simonSays_state = SIMONSAYS_INIT;
+
+// provided to tax the badge for a set ammount of time
+void haltAndCatchFire(){
+	now = rtc_get_ms_since_boot();
+	if(now>stoptime){
+	simonSays_state = dReturn;
+
+	}
+}
+//entrypoint to halt and catch fire
+void delay(int ms, int returnTo){
+	stoptime = rtc_get_ms_since_boot()+ms;
+	dReturn=returnTo;
+	simonSays_state = SIMONSAYS_GENERIC_DELAY;
+}
+
+//RANDOMIZE THE SEQUENCE
+	Choice randChoice(void){
 	uint64_t timestamp= rtc_get_ms_since_boot();
 	unsigned int my_state = 0xa5a5a5a5 ^ timestamp;
 	return (xorshift(&my_state) % 4);
-
 }
-
-static void newTurn(void){
-	Turn *t;
-	if(turns==MAX_TURNS){
+//ADD NEW TURNS IN THE SEQUENCE
+	void newTurn(void){
+	if(usedturns==MAX_TURNS){
 		//win the game :)
 		//no need to add a link
-		return;
+		simonSays_state = SIMONSAYS_EXIT;
+		return; // LETS GET OUT OF THIS PLACE
 	}
-	t = (Turn*)malloc(sizeof(Turn));
-	t->turnNum =1+turns;
-
-	t->choice = randChoice();
-	t->next = NULL;
-	turns++;
-	for(activeFrame=sequence;activeFrame->next!=NULL;activeFrame=activeFrame->next){
-
-	}
-	activeFrame->next=t;
-	activeFrame=activeFrame->next;
+	dPad=NONE; //CLEAR ANY DPAD DATA
+	sequence[usedturns]=randChoice(); //SET NEXT FRAME
+	usedturns++; //COUNT 1...2...3... BREATHE
+	simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
 }
-
-static void checkin(void)
+//THIS IS TO POLL THE COLLABORATIVE WORKSPACE
+//NOT SURE IF ITS EVEN REALLY NEEDED.
+//PROBABLY KEEPS THE SCREENSAVOR IN CHECK THO
+	void checkin(void)
 {
 	button_reset_last_input_timestamp();
 }
 
+//cleaning house
+	void cleanSequence(void){
+	for(int i =0;i<MAX_TURNS;i++){
+		sequence[i]=NONE;
+	}
 
-static void simonSays_init(void){
-	turns=1;
-	sequence = (Turn*)malloc(sizeof(Turn));
-	sequence->choice = randChoice();
-	sequence->next=NULL;
-	sequence->turnNum=turns;
-	activeFrame = (Turn*)malloc(sizeof(Turn));
-	activeFrame = sequence;
+}
+
+//SETS UP OUR WORK ENVIRONMENT
+	void simonSays_init(void){
+	usedturns=0; // COUNTS THE TURNS
+	cleanSequence(); //CLEANS THE SEQUENCE
+	newTurn(); //ADDS A NEW FRAME TO THE SEQUENCE
 	FbInit();
 	FbClear();
-	simonSays_state = SIMONSAYS_GAMELOOP;
+	simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
 }
-
-
-static void check_buttons(void){
+//CHECKS TO SEE WHAT BUTTONS ARE PRESSED
+	void check_buttons(void){
     int down_latches = button_down_latches();
 	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
-		printf("left button pressed\n");
 		dPad = LEFT;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
-		printf("right button pressed\n");
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT,down_latches)) {
 		dPad = RIGHT;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
-		printf("up button pressed\n");
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		dPad = UP;
-		//simonSays_state = SIMONSAYS_STATEONE;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches))
-	{printf("down button pressed\n");
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN,down_latches))
+	{
 		dPad = DOWN;
-	    //simonSays_state = SIMONSAYS_STATETWO;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
-		printf("'A' button pressed\n");
 		simonSays_state = SIMONSAYS_EXIT;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		printf("'B' button pressed\n");
-
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		simonSays_state = SIMONSAYS_EXIT;
 	}
 }
 
-static void delay(int x){
-	uint64_t first, second;
-	first = rtc_get_ms_since_boot();
-	second = rtc_get_ms_since_boot();
-	int result = ((int)second - (int)first)/100;
-
-	while(result<x){
-		check_buttons();
-		second = rtc_get_ms_since_boot();
-		result = ((int)second - (int)first)/100;
-		//printf("%d\n",result);
-	}
-}
 
 
-
-static void showChoice(Choice c, int someTime){
+//DISPLAYING THE RIGHT CHOICES
+void showChoice(Choice c, bool sound){
 	const struct asset2 *temp;
 	int freq=0;
 	switch (c){
 		case UP:
+			printf("playing blue\n");
 			temp = upblue_p;
 			freq = 440;
 			break;
 		case RIGHT:
+			printf("playing yellow\n");
 			temp = rightyellow_p;
 			freq = 340;
 			break;
 		case DOWN:
+			printf("playing green\n");
 			temp = downgreen_p;
 			freq = 240;
 			break;
 		case LEFT:
+			printf("playing red\n");
 			temp = leftred_p;
 			freq = 140;
 			break;
 		default:
+			printf("showing the darknes\n");
 			temp = alldark_p;
+			break;
 	}
-	audio_out_beep(freq,500);
+	if(sound) {
+		audio_out_beep(freq,500);
+		printf("audio should have played\n");
+	}
+
 	FbClear();
 	FbColor(WHITE);
 	FbMove(16,0);
 	FbImage2(temp, 0);
 	FbSwapBuffers();
+}
+//dunno if im going to use it...
+//i was making simon dance a bit
+//may make some different modes
+void roundAndRound(){
+	showChoice(NONE,false);
+	}
+//sets up the playback variables
+void playbackSetup (void){
+	it = 0; //GENERIC GLOBAL ITERATOR
+	dPad = NONE; // CLEAR ANY DPAD DATA
+	lastone = false; // CLEAR THE KILLSWITCH
+	simonSays_state = SIMONSAYS_PLAYBACK_RUN;
+}
+
+//playback logic.
+void playbackRun (void){
+	//IF ITS THE LAST FRAME IN THE SEQUENCE
+	if(lastone){
+		//START THE PLAYERS TURN
+		simonSays_state = SIMONSAYS_PLAYERTURN_SETUP;
+		return;
+	}
+	//IF THIS IS GOING TO BE THE LAST TURN
+	if((it+1==usedturns) | (it==99)){
+		lastone=true;
+	}
+	//SHOW THE FRAME AND WAIT A BIT
+	showChoice(sequence[it],true);
+	delay(1000,SIMONSAYS_PLAYBACK_RUN);
+	it++;
+	check_buttons();
+	checkin();
+}
+
+//setup to listen and verify player input
+void playerTurnSetup(void){
+	it=0;
+	lStop = (rtc_get_ms_since_boot()+3000);
+	printf("lStop has been reset to %ld",lStop);
+	showChoice(NONE,false);
+	simonSays_state = SIMONSAYS_PLAYERTURN_RUN;
 	dPad=NONE;
-	delay(someTime);
-
+	check_buttons();
 }
 
-static void playSequence(void){
-	Turn *thisTurn = sequence;
-	printf("in the play sequence method \n");
-	int cycles = 0;
-	bool notFirstRun = false;
-	do{
-		if(notFirstRun){thisTurn=thisTurn->next;}
-		showChoice(thisTurn->choice,3);
-		showChoice(NONE,1);
-		notFirstRun = true;
-		cycles++;
-		checkin();
-		check_buttons();
-		FbPushBuffer();
-		printf("%d\n",cycles);
-	}
-	while(thisTurn->next!=NULL);
-}
-
-static void roundAndRound(void){
-	showChoice(UP,1);
-	showChoice(RIGHT,1);
-	showChoice(DOWN,1);
-	showChoice(LEFT,1);
-}
-static bool playerTurn(void){
-	Turn *thisTurn = sequence;
-	printf("entering the dreaded abyss of player turn drama\n");
-	bool notFirstRun = false;
-	do{
-		if(notFirstRun){thisTurn=thisTurn->next;}
-		notFirstRun = true;
-		bool success = false;
-		for(int i=0;i<3;i++){
-			check_buttons();
-			if(thisTurn->choice==dPad){
-				success = true;
-				break;
-			}
-			delay(10);
+//playerturn logic.
+void playerTurnRun (void){
+	//IF THE DPAD MATCHES THE CURRENT
+	//NODE IN THE SEQUENCE
+	if(dPad==sequence[it]){
+		//PLAY THE CHOICE
+		showChoice(dPad,true);
+		//IF ITS THE LAST IN THE SEQUENCE
+		if(it==(usedturns-1)){
+			//sequence complete
+			dPad=NONE;
+			//ADD A NEW ONE
+			delay(2000,SIMONSAYS_ADD);
 		}
-		if(!success){return false;}
-	}
-	while(thisTurn->next!=NULL);
-	printf("got them all right!\n");
-	return true;
-}
-
-static void simonSaysPlayGames(void){
-	printf("entering the game loop of doom\n");
-	playSequence();
-	showChoice(NONE,5);
-	roundAndRound();
-	roundAndRound();
-	if(playerTurn()){
-		newTurn();
-		roundAndRound();
-		roundAndRound();
+		//IF ITS NOT THE LAST ONE THEN WE
+		//KEEP PLAYING THE SEQUENCE
+		else{
+			it++;
+			dPad=NONE;
+			check_buttons();
+			//GIVE EM SOME EXTRA TIME
+			lStop+=1000;
+			return;
+		}
 	}
 	else{
-		printf("----user lost!!!----\n");
-		simonSays_state	= SIMONSAYS_INIT;
-    }
+			//COUNTDOWN TIMER
+		lNow=rtc_get_ms_since_boot();
+		bool timesup = (lNow>lStop);
+		if(dPad!=NONE||timesup){
+			//GOT IT WRONG END THE GAME
+			//PROBABLY WILL GO TO A MENU LATER
+			simonSays_state=SIMONSAYS_EXIT;
+			return;
+		}
+		else{
+			//NO INPUT SO CHECK BUTTONS AGAIN
+			check_buttons();
+			return;
+		}
+
+	}
 
 }
-static void eatYourDead(Turn* t){
-	if(t->next!=NULL){
-		eatYourDead(t->next);
-	}
-	free(t);
-	}
 
-
-static void simonSays_exit(void){
+//THIS GETS OUT OF THE PROGRAM CLEANLY
+void simonSays_exit(void){
+	cleanSequence();
 	simonSays_state = SIMONSAYS_INIT; /* So that when we start again, we do not immediately exit */
-	eatYourDead(sequence);
 	pop_app();
 }
 
-/* You will need to rename myprogram_cb() something else. */
+/* collabortive processing interface */
 void simonSays_cb(__attribute__((unused)) struct badge_app *app){
 	switch (simonSays_state) {
 	case SIMONSAYS_INIT:
 		simonSays_init();
 		break;
-	case SIMONSAYS_GAMELOOP:
-		simonSaysPlayGames();
+	case SIMONSAYS_PLAYERTURN_SETUP:
+		playerTurnSetup();
 		break;
-	case SIMONSAYS_PLAY:
-		playSequence();
+	case SIMONSAYS_PLAYERTURN_RUN:
+		playerTurnRun();
+		break;
+	case SIMONSAYS_PLAYBACK_SETUP:
+		playbackSetup();
+		break;
+	case SIMONSAYS_PLAYBACK_RUN:
+		playbackRun();
 		break;
 	case SIMONSAYS_SPIRAL:
+		printf("---------round---------\n");
 		roundAndRound();
+		printf("=========and round========\n");
+		delay(4000,SIMONSAYS_ADD);
 		break;
 	case SIMONSAYS_ADD:
 		newTurn();
 		break;
-
+	case SIMONSAYS_GENERIC_DELAY:
+		haltAndCatchFire();
+		break;
 	case SIMONSAYS_EXIT:
 		simonSays_exit();
 		break;
