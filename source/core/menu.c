@@ -37,6 +37,7 @@
 // #include "pong.h"
 #include "qc.h"
 #include "smashout.h"
+#include "simonSays.h"
 #include "username.h"
 #include "slot_machine.h"
 // #include "gulag.h"
@@ -82,6 +83,7 @@ static const struct menu_t games_m[] = {
 	{"Battlezone", VERT_ITEM, FUNCTION, { .func = battlezone_cb }, &battlezone_icon, },
 	{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, &slotmachine_icon, },
 	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, &breakout_icon, },
+	{"Simon Says",      VERT_ITEM, FUNCTION, { .func = simonSays_cb }, &breakout_icon, },
 	{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
 	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
 	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, &hacker_sim_icon, },
