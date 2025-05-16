@@ -3556,6 +3556,7 @@ enum badgey_state_t {
 	BADGEY_RESTORE_GAME,
 	BADGEY_ASSEMBLE_BADGE,
 	BADGEY_REVIEW_CLUES,
+	BADGEY_PLAYER_DIED,
 	BADGEY_EXIT,
 #if DEV_CHEATS_ENABLED
 	BADGEY_DEV_CHEATS,
@@ -6433,6 +6434,9 @@ static void maybe_heal_player(void)
 			player.hp++;
 		time = 0;
 	}
+
+	if (player.hp == 0)
+		set_badgey_state(BADGEY_PLAYER_DIED);
 }
 
 static void badgey_run(void)
@@ -7989,6 +7993,9 @@ static void badgey_combat(void)
 		/* respawn the overworld creature far away so we don't immediately jump back into combat */
 		respawn_monster(overworld_combat_creature, &seed);
 	}
+
+	if (player.hp == 0)
+		set_badgey_state(BADGEY_PLAYER_DIED);
 }
 
 static void badgey_abandon_confirm(void)
@@ -8578,6 +8585,60 @@ static void badgey_review_clues(void)
 	}
 }
 
+static const struct note funeral_march_notes[] = {
+	{ NOTE_C3, 400 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 400 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 200 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 400 },
+	{ NOTE_REST, 200 },
+	{ NOTE_Ds3, 400 },
+	{ NOTE_D3, 200 },
+	{ NOTE_REST, 1 },
+	{ NOTE_D3, 400 },
+	{ NOTE_C3, 200 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 400 },
+	{ NOTE_B2, 200 },
+	{ NOTE_C3, 400 },
+};
+
+static const struct tune funeral_march = {
+	ARRAY_SIZE(funeral_march_notes),
+	funeral_march_notes,
+};
+
+static void badgey_player_died(void)
+{
+	static int first_time = 1;
+
+	if (first_time) {
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		FbClear();
+		FbMove(0, 10);
+		FbWriteString("OH NO!\n");
+		FbWriteString("YOU HAVE DIED!\n");
+		FbSwapBuffers();
+		play_tune(&funeral_march, NULL, NULL);
+		first_time = 0;
+	}
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		first_time = 1;
+		game_in_progress = 0;
+		set_badgey_state(BADGEY_INITIAL_MENU);
+	}
+}
+
 #if TARGET_SIMULATOR
 static void sanity_check_one_cave_entrance(const struct badgey_world *w, int x, int y)
 {
@@ -8819,6 +8880,7 @@ void badgey_cb(struct badge_app *app)
 		screen_changed = 1;
 
 	sanity_check_aux_cave_entrances();
+
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:
 		badgey_initial_menu();
@@ -8911,6 +8973,9 @@ void badgey_cb(struct badge_app *app)
 		break;
 	case BADGEY_REVIEW_CLUES:
 		badgey_review_clues();
+		break;
+	case BADGEY_PLAYER_DIED:
+		badgey_player_died();
 		break;
 #if DEV_CHEATS_ENABLED
 	case BADGEY_DEV_CHEATS:
