@@ -5014,6 +5014,17 @@ static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, 
 	}
 }
 
+static void draw_hit_points(void)
+{
+	char buf[20];
+	snprintf(buf, sizeof(buf), "HP:%d/%d", player.hp, player.level * 100);
+	int n = strlen(buf);
+	FbColor(WHITE);
+	FbBackgroundColor(BLACK);
+	FbMove(LCD_XSIZE - (n * 8), LCD_YSIZE - 8);
+	FbWriteString(buf);
+}
+
 static void maybe_draw_player_coords(void)
 {
 	if (player.carrying[POSITION_FINDER] <= 0)
@@ -5078,6 +5089,7 @@ static void draw_cave_screen(void)
 		player.known_clues[clue_no] = 1;
 		FbColor(WHITE);
 	}
+	draw_hit_points();
 	maybe_draw_player_coords();
 }
 
@@ -5639,6 +5651,7 @@ static void draw_screen(void)
 	draw_creatures();
 	draw_ships();
 
+	draw_hit_points();
 	maybe_draw_player_coords();
 
 	char ch = player.world->wm[windex(player.x, player.y)];
@@ -7792,6 +7805,7 @@ static void draw_combat_screen(void)
 	draw_combat_creatures();
 	draw_combat_missiles();
 	draw_combat_player();
+	draw_hit_points();
 }
 
 static void player_strike_with_weapon(__attribute__((unused)) int direction)
