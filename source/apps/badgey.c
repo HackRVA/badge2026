@@ -3170,6 +3170,7 @@ static void citizen_move(struct creature *self);
 static const struct creature_generic_data {
 	int min_hp, max_hp;
 	void (*move)(struct creature *self);
+	char *species;
 	union {
 		struct citizen_generic {
 			uint8_t min_icon;
@@ -3215,6 +3216,7 @@ static const struct creature_generic_data {
 		.min_hp = 50,
 		.max_hp = 100,
 		.move = citizen_move,
+		.species = "HUMAN",
 	},
 	{
 		.guard = {
@@ -3223,6 +3225,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_move,
+		.species = "HUMAN",
 	},
 	{
 		.robot1 = {
@@ -3231,6 +3234,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_move,
+		.species = "ROBOT",
 	},
 	{
 		.robot2 = {
@@ -3239,6 +3243,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_move,
+		.species = "ROBOT",
 	},
 	{
 		.robot3 = {
@@ -3247,6 +3252,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_move,
+		.species = "ROBOT",
 	},
 	{
 		.byrstran = {
@@ -3255,6 +3261,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_monster_move,
+		.species = "BYRSTAN",
 	},
 	{
 		.hargon = {
@@ -3263,6 +3270,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_monster_move,
+		.species = "HARGON",
 	},
 	{
 		.rovdan = {
@@ -3271,6 +3279,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_monster_move,
+		.species = "ROVDAN",
 	},
 	{
 		.skavo = {
@@ -3279,6 +3288,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_monster_move,
+		.species = "SKAVO",
 	},
 	{
 		.tarcon = {
@@ -3287,6 +3297,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_monster_move,
+		.species = "TARCON",
 	},
 	{
 		.zunaro = {
@@ -3295,6 +3306,7 @@ static const struct creature_generic_data {
 		.min_hp = 100,
 		.max_hp = 200,
 		.move = generic_monster_move,
+		.species = "ZUNARO",
 	},
 };
 
@@ -3320,7 +3332,21 @@ struct creature {
 	struct creature_specific_data csd;
 	uint8_t no_in_party;
 	int hit_points;
+	int level; /* hit point multiplier */
+	unsigned char level_modifier;
+#define MAX_LEVEL 4
 	int16_t clue;
+};
+
+/* adjectives to describe the "levels" of creatures */
+#define NLEVEL_MODIFIERS 6
+static const char *level_modifier[NLEVEL_MODIFIERS][MAX_LEVEL] = {
+	{ "PYGMY ", "", "LARGE ", "GIANT " },
+	{ "SOUTHERN ", "", "NORTHERN ", "GRIZZLY " },
+	{ "LESSER ", "", "GREATER ", "MONSTROUS " },
+	{ "STUNTED ", "", "CRESTED ", "CRAZED " },
+	{ "SICKLY ", "", "MUTANT ", "FRENZIED " },
+	{ "EASTERN ", "", "WESTERN ", "ARCTIC " },
 };
 
 #define MAX_CREATURES 25
@@ -3365,6 +3391,8 @@ static struct player {
 	unsigned char in_shop;
 	int money;
 	int hp;
+	int experience;
+	int level; /* determines max hp */
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
@@ -3391,6 +3419,8 @@ static struct player {
 	.money = 500,
 	.carrying = { 0 },
 	.hp = 100,
+	.experience = 0,
+	.level = 1,
 	.equipped_weapon = EQUIPPED_NONE,
 	.equipped_armor = EQUIPPED_NONE,
 };
@@ -3869,6 +3899,9 @@ static void badgey_init(void)
 	player.moving = 0;
 	player.in_shop = 0;
 	player.money = 500;
+	player.hp = 100;
+	player.level = 1;
+	player.experience = 0;
 	memset(player.carrying, 0, sizeof(player.carrying));
 	memset(player.known_clues, 0, sizeof(player.known_clues));
 	player.carrying[POSITION_FINDER] = 1;
@@ -5253,6 +5286,8 @@ static const struct tune combat_fanfare = {
 
 static void enter_combat(int cr)
 {
+	static unsigned int seed = 0xffa5a5a5;
+
 	set_badgey_state(BADGEY_COMBAT);
 	screen_changed = 1;
 	play_tune(&combat_fanfare, NULL, NULL);
@@ -5262,11 +5297,17 @@ static void enter_combat(int cr)
 
 	int x = 2;
 	int y = 1;
+	int level = 1 + xorshift(&seed) % (player.level + 1);
+	int level_modifier = xorshift(&seed) % NLEVEL_MODIFIERS;
+	int minhp = level * creature_generic_data[creature[cr].type].min_hp;
+	int maxhp = level * creature_generic_data[creature[cr].type].max_hp;
 	for (int i = 0; i < creature[cr].no_in_party; i++) {
 		combat_creature[i].x = x;
 		combat_creature[i].y = y;
 		combat_creature[i].type = creature[cr].type;
-		combat_creature[i].hit_points = 100; /* TODO: something more sophisticated */
+		combat_creature[i].level = level;
+		combat_creature[i].level_modifier = (unsigned char) level_modifier;
+		combat_creature[i].hit_points = minhp + (xorshift(&seed) % (maxhp - minhp));
 		x = x + 2;
 		if (x > screen_cells_wide - 1) {
 			x = 3;
@@ -7078,6 +7119,10 @@ static void badgey_stats(void)
 		FbMove(0, 0);
 		snprintf(buf, sizeof(buf), "HP: %d\n", player.hp);
 		FbWriteString(buf);
+		snprintf(buf, sizeof(buf), "EXP: %d\n", player.experience);
+		FbWriteString(buf);
+		snprintf(buf, sizeof(buf), "LVL: %d\n", player.level);
+		FbWriteString(buf);
 		snprintf(buf, sizeof(buf), "GP: %d\n", player.money);
 		FbWriteString(buf);
 
@@ -7561,10 +7606,28 @@ static void draw_combat_field(void)
 
 static void draw_combat_creatures(void)
 {
-
 	for (int i = 0; i < ncombat_creatures; i++) {
 		struct creature *c = &combat_creature[i];
 		draw_creature_at_xy(16 * c->x + 8, 16 * c->y + 8, c->type, 0);
+	}
+	if (ncombat_creatures > 0) {
+		int level = combat_creature[0].level - 1;
+		int lm = combat_creature[0].level_modifier;
+		char buffer[25];
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		snprintf(buffer, sizeof(buffer), "%s%s",
+			level_modifier[lm][level],
+			creature_generic_data[combat_creature[0].type].species);
+		int n = strlen(buffer);
+		if (n > 19)
+			n = 19;
+		buffer[n] = '\0';
+		int spaces = (20 - n) / 2;
+		FbMove(0, 0);
+		for (int i = 0; i < spaces; i++)
+			FbWriteString(" ");
+		FbWriteString(buffer);
 	}
 }
 
