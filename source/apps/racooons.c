@@ -22,6 +22,7 @@ enum game_state {
 	STATE_MENU,
 	STATE_INIT,
     STATE_RUN,
+	STATE_GAME_OVER,
     STATE_EXIT
 };
 
@@ -42,6 +43,8 @@ static Position player = {80, 110};  // Center bottom
 static FallingItem items[MAX_ITEMS];
 static int tick = 0;
 static int score = 0;
+static int lives = 5;
+static bool alive = true;
 static int player_flash_timer = 0;
 static bool last_catch_good = true;
 static enum game_state current_state = STATE_MENU;
@@ -106,13 +109,19 @@ void check_collisions(void) {
 				score += 1;
 				last_catch_good = true;
 				player_flash_timer = 5;
-            } else {
-				score -= 1;
+            }
+
+			if (!items[i].good) {
+				lives -= 1;
 				last_catch_good = false;
 				player_flash_timer = 5;
-            }
-        }
-    }
+			
+				if (lives <= 0) {
+					current_state = STATE_GAME_OVER;
+				}
+        	}
+    	}
+	}
 }
 
 void draw_game(void) {
@@ -122,8 +131,24 @@ void draw_game(void) {
     FbColor(BLACK);
     FbMove(0, 0);
     FbFilledRectangle(SCREEN_WIDTH, SCREEN_HEIGHT);
+	
+	// Draw score
+	FbColor(YELLOW);
+	FbMove(5, 5);
+	char buf[20];
+	snprintf(buf, sizeof(buf), "Score: %d", score);
+	FbWriteString(buf);
 
-    // Draw player (WHITE square)
+	// Lives display using red circles
+	FbMove(SCREEN_WIDTH - 50, 5);
+	FbColor(WHITE);
+	FbWriteString("Lives:");
+
+	for (int i = 0; i < 5; i++) {
+		FbColor(i < lives ? RED : WHITE);
+		FbMove(SCREEN_WIDTH - 40 + i * 10, 15);
+		FbFilledRectangle(6, 6); 
+	}
 	
 	// Draw player
 	if (player_flash_timer > 0) {
@@ -146,12 +171,6 @@ void draw_game(void) {
         }
     }
 
-		// Draw score
-	FbColor(YELLOW);
-	FbMove(5, 5);
-	char buf[20];
-	snprintf(buf, sizeof(buf), "Score: %d", score);
-	FbWriteString(buf);
 
     FbSwapBuffers();
 }
@@ -220,6 +239,38 @@ void handle_menu_input(void) {
     }
 }
 
+void draw_game_over(void) {
+    FbInit();
+    FbColor(BLACK);
+    FbMove(0, 0);
+    FbFilledRectangle(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    FbColor(RED);
+    FbMove(40, 50);
+    FbWriteString("GAME OVER");
+
+    FbColor(YELLOW);
+    FbMove(30, 70);
+    FbWriteString("A: Try Again");
+    FbMove(30, 80);
+    FbWriteString("B: Quit");
+
+    FbSwapBuffers();
+}
+
+void handle_game_over_input(void) {
+    int btns = button_down_latches();
+
+    if (BUTTON_PRESSED(BADGE_BUTTON_A, btns)) {
+        current_state = STATE_INIT;
+        lives = 3;
+        score = 0;
+    }
+    if (BUTTON_PRESSED(BADGE_BUTTON_B, btns)) {
+        current_state = STATE_EXIT;
+    }
+}
+
 
 void racooons_cb(__attribute__((unused)) struct badge_app *app) {
     switch (current_state) {
@@ -227,6 +278,7 @@ void racooons_cb(__attribute__((unused)) struct badge_app *app) {
 			draw_menu();
 			handle_menu_input();
 			break;
+
         case STATE_INIT:
             for (int i = 0; i < MAX_ITEMS; i++) items[i].active = false;
             current_state = STATE_RUN;
@@ -235,6 +287,11 @@ void racooons_cb(__attribute__((unused)) struct badge_app *app) {
         case STATE_RUN:
             update_game();
             break;
+		
+		case STATE_GAME_OVER:
+			draw_game_over();
+			handle_game_over_input();
+			break;
 
         case STATE_EXIT:
             pop_app(); 
