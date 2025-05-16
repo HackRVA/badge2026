@@ -583,6 +583,21 @@ static void handle_menu_options(void)
 static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
+	if (puzzle_attack_state == PUZZLE_ATTACK_SHOW_HELP) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		return;
+	}
 	if (puzzle_attack_state == PUZZLE_ATTACK_MENU) {
 		current_menu_item_selected = false;
 		if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
