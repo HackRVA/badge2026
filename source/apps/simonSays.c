@@ -14,6 +14,7 @@
 #include "xorshift.h"
 #include "dynmenu.h"
 #include "music.h"
+#include "led_pwm.h"
 
 const struct asset2 *alldark_p = &alldark;
 const struct asset2 *upblue_p = &upblue;
@@ -63,25 +64,33 @@ void showChoice(Choice c, bool sound){
 			temp = upblue_p;
 			//freq = 196;
 			freq = NOTE_G4;
+			led_pwm_enable(BADGE_LED_RGB_BLUE, 255);
 			break;
 		case RIGHT:
 			temp = rightyellow_p;
 			//freq = 261;
 			freq = NOTE_E4;
+			led_pwm_enable(BADGE_LED_RGB_RED, 255);
+			led_pwm_enable(BADGE_LED_RGB_GREEN, 255);
 			break;
 		case DOWN:
 			temp = downgreen_p;
 			//freq = 392;
 			freq= NOTE_C4;
+			led_pwm_enable(BADGE_LED_RGB_GREEN, 255);
 			break;
 		case LEFT:
 			temp = leftred_p;
 			//freq = 329;
 			freq = NOTE_G3;
+			led_pwm_enable(BADGE_LED_RGB_RED, 255);
 			break;
 		default:
 			temp = alldark_p;
 			freq = 0;
+			led_pwm_disable(BADGE_LED_RGB_RED);
+			led_pwm_disable(BADGE_LED_RGB_GREEN);
+			led_pwm_disable(BADGE_LED_RGB_BLUE);
 			break;
 	}
 	if(sound) {
@@ -110,6 +119,9 @@ void haltAndCatchFire(){
 	uint64_t stopagain = stoptime+150;
 	if(now>stoptime){
 		showChoice(NONE,false);
+		led_pwm_disable(BADGE_LED_RGB_RED);
+		led_pwm_disable(BADGE_LED_RGB_GREEN);
+		led_pwm_disable(BADGE_LED_RGB_BLUE);
 		if(now>stopagain){
 		simonSays_state = dReturn;
 		}
@@ -235,6 +247,9 @@ void playerTurnRun (void){
 	//IF THE DPAD MATCHES THE CURRENT
 	//NODE IN THE SEQUENCE
 	if(dPad==sequence[it]){
+		led_pwm_disable(BADGE_LED_RGB_RED);
+		led_pwm_disable(BADGE_LED_RGB_GREEN);
+		led_pwm_disable(BADGE_LED_RGB_BLUE);
 		//PLAY THE CHOICE
 		showChoice(dPad,true);
 		//IF ITS THE LAST IN THE SEQUENCE
@@ -262,6 +277,8 @@ void playerTurnRun (void){
 		if(dPad!=NONE||timesup){
 			//GOT IT WRONG END THE GAME
 			//PROBABLY WILL GO TO A MENU LATER
+			//led_pwm_enable(BADGE_LED_RED,255);
+
 			audio_out_beep(42,2000);
 			delay(1000,SIMONSAYS_PLAYERLOST);
 			return;
