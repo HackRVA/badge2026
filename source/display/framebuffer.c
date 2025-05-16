@@ -271,9 +271,12 @@ void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
     const int row_padding = asset->x % 2;
     const int bytes_per_row = (asset->x >> 1) + row_padding;
 
+    if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
+    if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
+
     /* clip to end of LCD buffer */
     yEnd = y_pos + height;
-    if (yEnd >= LCD_YSIZE) yEnd = LCD_YSIZE-1;
+    if (yEnd >= LCD_YSIZE) yEnd = LCD_YSIZE;
 
     for (y = y_pos; y < yEnd; y++) {
 
@@ -828,7 +831,7 @@ void FbImage1bit(const struct asset *asset, unsigned char seqNum)
                     if (ci == 0) {
                         if (G_Fb.transMask > 0)
                             BUFFER(y * LCD_XSIZE + x + G_Fb.pos.x + bit) = (BUFFER(y * LCD_XSIZE + x + G_Fb.pos.x + bit) & (~G_Fb.transMask)) | (G_Fb.BGcolor & G_Fb.transMask);
-                        else
+                        else if (G_Fb.BGcolor != G_Fb.transIndex)
                             BUFFER(y * LCD_XSIZE + x + G_Fb.pos.x + bit) = G_Fb.BGcolor;
                     } else {
                         if (G_Fb.transMask > 0)
@@ -959,6 +962,23 @@ void FbFilledRectangle(unsigned char width, unsigned char height)
     G_Fb.changed = 1;
 }
 
+/*
+void FbPlaceFilledRectangle(unsigned short color, int x_pos, int y_pos, int width, int height)
+{   
+    int x_start = x_pos < 0 ?                   0           : x_pos;
+    int x_end   = x_pos + width > LCD_XSIZE ?   LCD_XSIZE   : x_pos + width;
+    int y_start = y_pos < 0 ?                   0           : y_pos;
+    int y_end   = y_pos + height > LCD_YSIZE ?  LCD_YSIZE   : y_pos + height;
+
+    for (int y = y_start; y < y_end; y++) {
+        for (int x = x_start; x < x_end; x++) {
+            BUFFER(y * LCD_XSIZE + x) = color;
+        }
+    }
+    G_Fb.changed = 1;
+}
+*/
+
 void FbPoint(unsigned char x, unsigned char y)
 {
     if (x >= LCD_XSIZE) x = LCD_XSIZE-1;
@@ -970,6 +990,16 @@ void FbPoint(unsigned char x, unsigned char y)
     FbMove(x, y);
     G_Fb.changed = 1;
 }
+
+/*
+void FbPlacePoint(unsigned short color, int x, int y) {
+    if (x >= 0 && x < LCD_XSIZE && y >= 0 && y < LCD_YSIZE) {
+        BUFFER(y * LCD_XSIZE + x) = color;
+        fb_mark_row_changed(x, y);
+        G_Fb.changed = 1;
+    }
+}
+*/
 
 void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, __attribute__((unused)) unsigned char y2)
 {
