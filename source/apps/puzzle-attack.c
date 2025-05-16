@@ -25,6 +25,8 @@
 #include "ui.h"
 #include "xorshift.h"
 #include "particle.h"
+#include "audio.h"
+#include "music.h"
 
 #define IS_ENDLESS_PLAY_DISABLED 0
 #define ENABLE_LIGHTNING 1
@@ -142,6 +144,315 @@ static uint8_t removal_progress[CELL_COUNT];
 static struct particle_pool *particle_pool = NULL;
 #define PARTICLE_GRAVITY 16
 #define PARTICLE_MAX_INITIAL_VELOCITY 800
+
+#define ARRAYSIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+#define whole_note (2000)
+#define half_note (whole_note / 2)
+#define quarter_note (whole_note / 4)
+#define dotted_quarter ((3 * whole_note) / 8)
+#define eighth_note (whole_note / 8)
+#define sixteenth_note (whole_note / 16)
+#define thirtysecond_note (whole_note / 32)
+
+#define kick_drum { NOTE_A2, 10, }
+#define snare_drum { NOTE_B6, 10, }
+
+static struct note puzzle_attack_theme_notes[] = {
+	/* just bass */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+        { NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+
+
+	/* both */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_F4, thirtysecond_note, },
+		{ NOTE_G4, thirtysecond_note, },
+		{ NOTE_Bf4, thirtysecond_note, },
+		{ NOTE_C5, thirtysecond_note, },
+		{ NOTE_Ef5, thirtysecond_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+		{ NOTE_G5, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+		{ NOTE_C5, eighth_note, },
+		{ NOTE_C6, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_REST, sixteenth_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_F5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+  snare_drum,
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, eighth_note, },
+		{ NOTE_REST, sixteenth_note, },
+
+	/* both */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_F4, thirtysecond_note, },
+		{ NOTE_G4, thirtysecond_note, },
+		{ NOTE_Bf4, thirtysecond_note, },
+		{ NOTE_C5, thirtysecond_note, },
+		{ NOTE_Ef5, thirtysecond_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+		{ NOTE_G5, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+		{ NOTE_C5, eighth_note, },
+		{ NOTE_C6, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_REST, sixteenth_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_F5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+  snare_drum,
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, eighth_note, },
+		{ NOTE_REST, sixteenth_note, },
+
+	/* just bass */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+        { NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+};
+
+static struct tune puzzle_attack_theme = {
+	.num_notes = ARRAYSIZE(puzzle_attack_theme_notes),
+	.note = &puzzle_attack_theme_notes[0],
+};
 
 static inline enum BLOCK_TYPE block_get_type(int x, int y) {
 	int idx = y * GRID_COLS + x;
@@ -996,6 +1307,31 @@ static void draw_screen(void)
 	}
 #endif
 }
+static int calculate_theme_duration(struct note *notes, size_t note_count)
+{
+	int total_duration = 0;
+	for (size_t i = 0; i < note_count; ++i) {
+		total_duration += notes[i].duration;
+	}
+	return total_duration;
+}
+static bool is_playing = false;
+static uint64_t last_music_start_time;
+static int theme_duration = 200;
+static void play_theme(void)
+{
+	uint64_t now = rtc_get_ms_since_boot();
+
+	if (is_playing && now >= last_music_start_time + theme_duration)
+		is_playing = false;
+
+	if (is_playing)
+		return;
+
+	play_tune(&puzzle_attack_theme, NULL, NULL);
+	is_playing = true;
+	last_music_start_time = now;
+}
 
 void puzzle_attack_cb(struct badge_app *app)
 {
@@ -1013,10 +1349,13 @@ void puzzle_attack_cb(struct badge_app *app)
 	switch (puzzle_attack_state) {
 	case PUZZLE_ATTACK_INIT:
 		puzzle_attack_init();
+		theme_duration = calculate_theme_duration(puzzle_attack_theme_notes, puzzle_attack_theme.num_notes);
+		theme_duration += quarter_note;
 		break;
 	case PUZZLE_ATTACK_RUN:
 		puzzle_attack_update();
 		draw_screen();
+		play_theme();
 		break;
 	case PUZZLE_ATTACK_SHOW_HELP:
 		FbClear();
@@ -1036,6 +1375,8 @@ void puzzle_attack_cb(struct badge_app *app)
 		break;
 	case PUZZLE_ATTACK_EXIT:
 		puzzle_attack_state = PUZZLE_ATTACK_INIT;
+		stop_tune();
+		is_playing = false;
 		pop_app();
 		break;
 	default:
