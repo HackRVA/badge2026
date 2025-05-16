@@ -33,6 +33,7 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/menu_2025.c
 	${CMAKE_CURRENT_LIST_DIR}/screensaver_app.c
 	${CMAKE_CURRENT_LIST_DIR}/drum_machine.c
+        ${CMAKE_CURRENT_LIST_DIR}/racooons.c
         )
 add_subdirectory(clue_assets)
 add_subdirectory(new_badge_monsters_assets)
