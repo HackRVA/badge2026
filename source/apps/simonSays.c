@@ -49,7 +49,7 @@ typedef enum Choice {
 enum Choice sequence[100];
 Choice dPad;
 
-bool lastone;
+bool lastone,released,clear;
 int it,usedturns,dReturn,sReturn = 0;
 uint64_t stoptime,now,lStop,lNow;
 
@@ -177,6 +177,7 @@ void delay(int ms, int returnTo){
 //CHECKS TO SEE WHAT BUTTONS ARE PRESSED
 	void check_buttons(void){
     int down_latches = button_down_latches();
+	int up_latches = button_up_latches();
 	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
 		dPad = LEFT;
 	}
@@ -195,14 +196,39 @@ void delay(int ms, int returnTo){
 	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		simonSays_state = SIMONSAYS_EXIT;
 	}
+	//******************************************//
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+		if(dPad == LEFT){
+			released = true;
+		}
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT,up_latches)) {
+		if(dPad == RIGHT){
+			released = true;
+		}
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_UP, up_latches)) {
+		if(dPad == UP){
+			released = true;
+		}
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN,up_latches))
+	{
+		if(dPad == DOWN){
+			released = true;
+		}
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, up_latches)) {
+		//simonSays_state = SIMONSAYS_EXIT;
+	}
+	else if (BUTTON_PRESSED(BADGE_BUTTON_B, up_latches)) {
+		//simonSays_state = SIMONSAYS_EXIT;
+	}
+
+
+	//******************************************//
 }
 
-//dunno if im going to use it...
-//i was making simon dance a bit
-//may make some different modes
-void roundAndRound(){
-	showChoice(NONE,false);
-	}
 //sets up the playback variables
 void playbackSetup (void){
 	it = 0; //GENERIC GLOBAL ITERATOR
@@ -235,6 +261,8 @@ void playbackRun (void){
 //setup to listen and verify player input
 void playerTurnSetup(void){
 	it=0;
+	released = false;
+	clear = true;
 	lStop = (rtc_get_ms_since_boot()+3000);
 	simonSays_state = SIMONSAYS_PLAYERTURN_RUN;
 	dPad=NONE;
@@ -243,7 +271,18 @@ void playerTurnSetup(void){
 
 //playerturn logic.
 void playerTurnRun (void){
-
+	if(released){
+		delay(250,SIMONSAYS_PLAYERTURN_RUN);
+		released = false;
+		clear = true;
+	}
+	if(clear){
+		showChoice(NONE,false);
+		led_pwm_disable(BADGE_LED_RGB_RED);
+		led_pwm_disable(BADGE_LED_RGB_GREEN);
+		led_pwm_disable(BADGE_LED_RGB_BLUE);
+		clear = false;
+	}
 	//IF THE DPAD MATCHES THE CURRENT
 	//NODE IN THE SEQUENCE
 	if(dPad==sequence[it]){
