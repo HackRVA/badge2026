@@ -3621,8 +3621,23 @@ static void missile_collision_detection(int m)
 			int cy = 16 * combat_creature[i].y + 8 + 8;
 			int dist2 = (cx - mx) * (cx - mx) + (cy - my) * (cy - my);
 			if (dist2 < 8 * 8) {
-				/* TODO: more sophisticated damage */
-				combat_creature[i].hit_points = 0;
+				int damage = 10;
+				if (player.equipped_weapon != EQUIPPED_NONE) {
+					int w = shop_to_weapon_index(player.equipped_weapon);
+					if (w >= 0)
+						damage = weapon[w].damage;
+				}
+				damage = damage * player.level;
+				int ty = combat_creature[i].type;
+				int protection = creature_generic_data[ty].armor_protection;
+				damage = damage - ((damage * protection) / 256);
+				if (damage < 0)
+					damage = 0;
+				int hp = combat_creature[i].hit_points - damage;
+				if (hp < 0)
+					hp = 0;
+					
+				combat_creature[i].hit_points = hp;
 				missile[m].alive = 0;
 				if (combat_creature[i].hit_points == 0) { /* killed it? */
 					/* player gains experience */
