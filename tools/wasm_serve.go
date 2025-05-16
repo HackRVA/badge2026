@@ -60,10 +60,11 @@ var loginTmpl = template.Must(template.New("login").Parse(`
 `))
 
 var (
-	port     = flag.String("port", "8080", "Port to serve on")
-	srcDir   = flag.String("src", "", "Source directory to copy from (optional)")
-	destDir  = flag.String("dir", "./build_wasm/source/", "Destination directory to copy to")
-	password = flag.String("password", "", "If set, requires login with this password")
+	port    = flag.String("port", "8080", "Port to serve on")
+	srcDir  = flag.String("src", "", "Source directory to copy from (optional)")
+	destDir = flag.String("dir", "./build_wasm/source/", "Destination directory to copy to")
+
+	password string
 )
 
 func main() {
@@ -81,8 +82,10 @@ func main() {
 		fmt.Println("No source directory specified, skipping copy.")
 	}
 
+	password = os.Getenv("BADGESIM_PASSWORD")
+
 	http.HandleFunc("/login", loginHandler)
-	http.Handle("/", authMiddleware(http.HandlerFunc(fileHandler), *password))
+	http.Handle("/", authMiddleware(http.HandlerFunc(fileHandler), password))
 
 	fmt.Printf("Serving on http://0.0.0.0:%s\n", *port)
 	err := http.ListenAndServe("0.0.0.0:"+*port, nil)
@@ -111,7 +114,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie("auth"); err == nil && c.Value == *password {
+	if c, err := r.Cookie("auth"); err == nil && c.Value == password {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -120,10 +123,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		loginTmpl.Execute(w, nil)
 	case http.MethodPost:
 		r.ParseForm()
-		if r.Form.Get("password") == *password {
+		if r.Form.Get("password") == password {
 			http.SetCookie(w, &http.Cookie{
 				Name:     "auth",
-				Value:    *password,
+				Value:    password,
 				Path:     "/",
 				HttpOnly: true,
 				Expires:  time.Now().Add(24 * time.Hour),
