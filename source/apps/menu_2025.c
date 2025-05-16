@@ -197,13 +197,20 @@ static void do_selection(void)
 		if (current_menu_stack_idx < MAX_APP_STACK_DEPTH - 1) {
 			struct menu_t *submenu = (struct menu_t *)
 				&m[current_context->current_item].data.menu[0];
-			if (menu_has_icons(submenu))
+			if (menu_has_icons(submenu)) {
 				app.app_func = tape_deck_menu_app_cb;
-			else
+				current_menu_stack_idx++;
+				app.app_context = &context_stack[current_menu_stack_idx];
+			} else {
 				app.app_func = default_menu_app_cb;
-			current_menu_stack_idx++;
+				/* Don't increment current_menu_stack_idx in this case
+				 * because the "back" option will be done in another app
+				 * and won't decrement it when it's done, so we want it
+				 * to remain the same when we are back via pop_app().
+				 */
+				app.app_context = &context_stack[current_menu_stack_idx + 1];
+			}
 			app.wake_up = 1;
-			app.app_context = &context_stack[current_menu_stack_idx];
 			init_default_menu_app_context(app.app_context, submenu);
 			app.menu = m;
 			app.current_selection = current_context->current_item;
