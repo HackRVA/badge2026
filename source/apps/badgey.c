@@ -5661,7 +5661,6 @@ static void draw_screen(void)
 	}
 
 	screen_changed = 0;
-	FbPushBuffer();
 }
 
 static int ladder_is_here(int x, int y)
