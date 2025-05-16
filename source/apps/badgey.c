@@ -3212,6 +3212,8 @@ static const struct creature_generic_data {
 	int experience_bonus;
 	int damage; /* deals (.damage * level) damage */
 	int armor_protection;
+	unsigned int fire_chance; /* out of 1000 */
+	unsigned int move_chance; /* out of 1000 */
 	char *species;
 	union {
 		struct citizen_generic {
@@ -3261,6 +3263,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 5,
 		.damage = 8,
 		.armor_protection = 15,
+		.fire_chance = 150,
+		.move_chance = 40,
 		.species = "HUMAN",
 	},
 	{
@@ -3273,6 +3277,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 20,
 		.damage = 16,
 		.armor_protection = 50,
+		.fire_chance = 250,
+		.move_chance = 500,
 		.species = "HUMAN",
 	},
 	{
@@ -3285,6 +3291,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 5,
 		.damage = 26,
 		.armor_protection = 25,
+		.fire_chance = 100,
+		.move_chance = 400,
 		.species = "ROBOT",
 	},
 	{
@@ -3297,6 +3305,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 5,
 		.damage = 26,
 		.armor_protection = 20,
+		.fire_chance = 100,
+		.move_chance = 500,
 		.species = "ROBOT",
 	},
 	{
@@ -3309,6 +3319,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 5,
 		.damage = 5,
 		.armor_protection = 15,
+		.fire_chance = 100,
+		.move_chance = 300,
 		.species = "ROBOT",
 	},
 	{
@@ -3321,6 +3333,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 5,
 		.damage = 13,
 		.armor_protection = 25,
+		.fire_chance = 250,
+		.move_chance = 300,
 		.species = "BYRSTAN",
 	},
 	{
@@ -3333,6 +3347,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 12,
 		.damage = 10,
 		.armor_protection = 25,
+		.fire_chance = 200,
+		.move_chance = 350,
 		.species = "HARGON",
 	},
 	{
@@ -3345,6 +3361,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 17,
 		.damage = 20,
 		.armor_protection = 60,
+		.fire_chance = 170,
+		.move_chance = 600,
 		.species = "ROVDAN",
 	},
 	{
@@ -3357,6 +3375,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 7,
 		.damage = 8,
 		.armor_protection = 20,
+		.fire_chance = 100,
+		.move_chance = 260,
 		.species = "SKAVO",
 	},
 	{
@@ -3369,6 +3389,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 4,
 		.damage = 8,
 		.armor_protection = 70,
+		.fire_chance = 80,
+		.move_chance = 650,
 		.species = "TARCON",
 	},
 	{
@@ -3381,6 +3403,8 @@ static const struct creature_generic_data {
 		.experience_bonus = 14,
 		.damage = 17,
 		.armor_protection = 90,
+		.fire_chance = 150,
+		.move_chance = 350,
 		.species = "ZUNARO",
 	},
 };
@@ -7744,13 +7768,15 @@ static void move_combat_creature(int i, unsigned int *seed)
 	int vx = 0;
 	int mx, my;
 
-	int n = (xorshift(seed) % 100);
-	if (n > 60)
+	int ty = combat_creature[i].type;
+
+	unsigned int n = (xorshift(seed) % 1000);
+	if (n > creature_generic_data[ty].move_chance)
 		return;
 
-	int ty = combat_creature[i].type;
 	int lvl = combat_creature[i].level;
 	int damage = lvl * creature_generic_data[ty].damage;
+	unsigned int fire_chance = creature_generic_data[ty].fire_chance;
 	if (player.cbx == combat_creature[i].x) {
 		if (player.cby > combat_creature[i].y)
 			vy = 1;
@@ -7758,7 +7784,8 @@ static void move_combat_creature(int i, unsigned int *seed)
 			vy = -1;
 		mx = (16 * combat_creature[i].x + 8) * 256;
 		my = (16 * combat_creature[i].y + 8) * 256;
-		add_missile(mx, my, 0, 2048 * vy, 0, 100, damage);
+		if ((xorshift(seed) % 1000) < fire_chance)
+			add_missile(mx, my, 0, 2048 * vy, 0, 100, damage);
 		return;
 	} else if (player.cby == combat_creature[i].y) {
 		if (player.cbx > combat_creature[i].x)
@@ -7767,7 +7794,8 @@ static void move_combat_creature(int i, unsigned int *seed)
 			vx = -1;
 		mx = (16 * combat_creature[i].x + 8) * 256;
 		my = (16 * combat_creature[i].y + 8) * 256;
-		add_missile(mx, my, 2048 * vx, 0, 0, 100, damage);
+		if ((xorshift(seed) % 1000) < fire_chance)
+			add_missile(mx, my, 2048 * vx, 0, 0, 100, damage);
 		return;
 	}
 	int nx = combat_creature[i].x;
