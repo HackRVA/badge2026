@@ -2874,10 +2874,9 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define ITEM_TYPE_INTANGIBLE 0
 #define ITEM_TYPE_SUSTENANCE 1
 #define ITEM_TYPE_ARMOR 2
-#define ITEM_TYPE_RANGED_WEAPON 3
-#define ITEM_TYPE_MELEE_WEAPON 4
-#define ITEM_TYPE_SOFTWARE 5
-#define ITEM_TYPE_USELESS 6
+#define ITEM_TYPE_WEAPON 3
+#define ITEM_TYPE_SOFTWARE 4
+#define ITEM_TYPE_USELESS 5
 
 /* Must match shop_item[], below */
 enum item_index {
@@ -2885,10 +2884,15 @@ enum item_index {
 	RESTORE_GAME,
 	FOOD,
 	DRINK,
+
+	/* Note all the armor must be together, and LIGHT_ARMOR must be first */
 	LIGHT_ARMOR,
 	HEAVY_ARMOR,
+
+	/* Note all the weapons must be together, and LASER_CUTLASS must be first */
 	LASER_CUTLASS,
 	BLASTER,
+
 	PLA_DOODAD,
 	TSHIRT,
 	SACRAFICTION,
@@ -2913,6 +2917,41 @@ enum item_index {
 	RVASEC_BADGE,
 };
 
+static const struct weapon {
+	enum item_index i;
+	int damage;
+	int level_requirement;
+	unsigned char ranged_weapon;
+} weapon[] = {
+	{ LASER_CUTLASS, 5, 1, 0 },
+	{ BLASTER, 5, 2, 1 },
+};
+
+static const struct armor {
+	enum item_index i;
+	int protection; /* as a part in 255 */
+	int level_requirement;
+} armor[] = {
+	{ LIGHT_ARMOR, 20, 1 },
+	{ HEAVY_ARMOR, 50, 2 },
+};
+
+static int shop_to_weapon_index(int shop_item_index)
+{
+	int x = shop_item_index - LASER_CUTLASS;
+	if (x >= 0 && x < (int) ARRAY_SIZE(weapon))
+		return x;
+	return -1;
+}
+
+static int shop_to_armor_index(int shop_item_index)
+{
+	int x = shop_item_index - LIGHT_ARMOR;
+	if (x >= 0 && x < (int) ARRAY_SIZE(armor))
+		return x;
+	return -1;
+}
+
 static const struct shop_item {
 	char *name;
 	int price;
@@ -2933,8 +2972,8 @@ static const struct shop_item {
 	{ "HEAVY ARMOR", 80, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
 
 	/* WEAPONS */
-	{ "LASER CUTLASS", 10, ITEM_TYPE_MELEE_WEAPON, SHOP_WEAPONS, 0 },
-	{ "BLASTER", 20, ITEM_TYPE_RANGED_WEAPON, SHOP_WEAPONS, 0 },
+	{ "LASER CUTLASS", 10, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+	{ "BLASTER", 20, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
 
 	/* HACKERSPACE */
 	{ "PLA DOODAD", 1, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
@@ -5940,6 +5979,42 @@ static void badgey_talk_to_shopkeeper(void)
 			goto done_with_shopping;
 		}
 
+		if (shop_item[item].item_type == ITEM_TYPE_WEAPON) {
+			int w = shop_to_weapon_index(item);
+#if TARGET_SIMULATOR
+			if (w < 0) {
+				fprintf(stderr, "Bad weapon at %s:%d\n", __FILE__, __LINE__);
+				raise(SIGTRAP);
+			}
+#endif
+			if (player.level < weapon[w].level_requirement) {
+				snprintf(message, sizeof(message), "\n\n"
+					"YOU DO NOT HAVE\n"
+					"SUFFICIENT\n"
+					"EXPERIENCE FOR\n"
+					"THAT WEAPON\n");
+				goto done_with_shopping;
+			}
+		}
+
+		if (shop_item[item].item_type == ITEM_TYPE_ARMOR) {
+			int w = shop_to_armor_index(item);
+#if TARGET_SIMULATOR
+			if (w < 0) {
+				fprintf(stderr, "Bad armor at %s:%d\n", __FILE__, __LINE__);
+				raise(SIGTRAP);
+			}
+#endif
+			if (player.level < armor[w].level_requirement) {
+				snprintf(message, sizeof(message), "\n\n"
+					"YOU DO NOT HAVE\n"
+					"SUFFICIENT\n"
+					"EXPERIENCE FOR\n"
+					"THAT ARMOR\n");
+				goto done_with_shopping;
+			}
+		}
+
 		snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
 				shop_item[item].price,
 				shop_item[item].name,
@@ -7235,19 +7310,16 @@ static void badgey_stats(void)
 static void badgey_equip(void)
 {
 	static int menu_setup = 0;
-	int count = 0;
-	unsigned char t1, t2;
+	int t1, count = 0;
 	static struct dynmenu item_menu;
 	static struct dynmenu_item item_menu_item[15];
 	char *title;
 
 	if (badgey_state == BADGEY_EQUIP_ARMOR) {
 		t1 = ITEM_TYPE_ARMOR;
-		t2 = t1;
 		title = "EQUIP ARMOR";
 	} else if (badgey_state == BADGEY_EQUIP_WEAPON) {
-		t1 = ITEM_TYPE_RANGED_WEAPON;
-		t2 = ITEM_TYPE_MELEE_WEAPON;
+		t1 = ITEM_TYPE_WEAPON;
 		title = "EQUIP WEAPON";
 	}
 
@@ -7260,8 +7332,7 @@ static void badgey_equip(void)
 				player.carrying_dirty = 1;
 				continue;
 			}
-			if (shop_item[i].item_type == t1 ||
-				shop_item[i].item_type == t2) {
+			if (shop_item[i].item_type == t1) {
 				dynmenu_add_item(&item_menu, shop_item[i].name, badgey_state, i);
 				count++;
 				if (count >= (int) ARRAY_SIZE(item_menu_item) - 1)
