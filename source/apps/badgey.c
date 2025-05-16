@@ -2891,7 +2891,7 @@ enum item_index {
 	BLASTER,
 	PLA_DOODAD,
 	TSHIRT,
-	SACRAMENT,
+	SACRAFICTION,
 	BLESSING,
 	SPACESHIP_RENTAL,
 	COMPASS,
@@ -2941,7 +2941,7 @@ static const struct shop_item {
 	{ "T-SHIRT", 25, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 
 	/* TEMPLE */
-	{ "SACRAMENT", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
+	{ "SACRAFICTION", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 	{ "BLESSING", 200, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 
 	/* SPACE SHIP RENTAL */
@@ -3170,6 +3170,7 @@ static void citizen_move(struct creature *self);
 static const struct creature_generic_data {
 	int min_hp, max_hp;
 	void (*move)(struct creature *self);
+	int experience_bonus;
 	char *species;
 	union {
 		struct citizen_generic {
@@ -3216,96 +3217,107 @@ static const struct creature_generic_data {
 		.min_hp = 50,
 		.max_hp = 100,
 		.move = citizen_move,
+		.experience_bonus = 5,
 		.species = "HUMAN",
 	},
 	{
 		.guard = {
 				.icon = ICON_GUARD,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 200,
+		.max_hp = 400,
 		.move = generic_move,
+		.experience_bonus = 20,
 		.species = "HUMAN",
 	},
 	{
 		.robot1 = {
 			.icon = ICON_GOLDROBOT,
 		 },
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_move,
+		.experience_bonus = 5,
 		.species = "ROBOT",
 	},
 	{
 		.robot2 = {
 			.icon = ICON_BLACKPROBE,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_move,
+		.experience_bonus = 5,
 		.species = "ROBOT",
 	},
 	{
 		.robot3 = {
 			.icon = ICON_ROBOT3,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_move,
+		.experience_bonus = 5,
 		.species = "ROBOT",
 	},
 	{
 		.byrstran = {
 			.icon = ICON_BYRSTRAN,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_monster_move,
+		.experience_bonus = 5,
 		.species = "BYRSTAN",
 	},
 	{
 		.hargon = {
 			.icon = ICON_HARGON,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 120,
+		.max_hp = 240,
 		.move = generic_monster_move,
+		.experience_bonus = 12,
 		.species = "HARGON",
 	},
 	{
 		.rovdan = {
 			.icon = ICON_ROVDAN,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 170,
+		.max_hp = 340,
 		.move = generic_monster_move,
+		.experience_bonus = 17,
 		.species = "ROVDAN",
 	},
 	{
 		.skavo = {
 			.icon = ICON_SKAVO,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 70,
+		.max_hp = 140,
 		.move = generic_monster_move,
+		.experience_bonus = 7,
 		.species = "SKAVO",
 	},
 	{
 		.tarcon = {
 			.icon = ICON_TARCON,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 40,
+		.max_hp = 80,
 		.move = generic_monster_move,
+		.experience_bonus = 4,
 		.species = "TARCON",
 	},
 	{
 		.zunaro = {
 			.icon = ICON_ZUNARO,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 140,
+		.max_hp = 240,
 		.move = generic_monster_move,
+		.experience_bonus = 14,
 		.species = "ZUNARO",
 	},
 };
@@ -3392,7 +3404,7 @@ static struct player {
 	int money;
 	int hp;
 	int experience;
-	int level; /* determines max hp */
+	int level; /* determines max hp, 100 * level */
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
@@ -3523,6 +3535,13 @@ static void missile_collision_detection(int m)
 				/* TODO: more sophisticated damage */
 				combat_creature[i].hit_points = 0;
 				missile[m].alive = 0;
+				if (combat_creature[i].hit_points == 0) { /* killed it? */
+					/* player gains experience */
+					int t = combat_creature[i].type;
+					int lvl = combat_creature[i].level;
+					int bonus = creature_generic_data[t].experience_bonus;
+					player.experience += lvl * bonus;
+				}
 				/* TODO: add explosion or something here */
 			}
 		} else { /* missile is from monster */
@@ -5800,6 +5819,20 @@ static int player_in_richmond(void)
 	return 0;
 }
 
+static const struct note level_up_fanfare_notes[] = {
+	{ NOTE_A3,  100 },
+	{ NOTE_C4,  100 },
+	{ NOTE_Ds4, 120 },
+	{ NOTE_Gs4, 150 },
+	{ NOTE_A4,  300 },
+};
+
+// Level Up Tune Structure
+static struct tune level_up_tune = {
+	.num_notes = ARRAY_SIZE(level_up_fanfare_notes),
+	.note = &level_up_fanfare_notes[0],
+};
+
 static void badgey_talk_to_shopkeeper(void)
 {
 	static int menu_setup = 0;
@@ -5867,22 +5900,50 @@ static void badgey_talk_to_shopkeeper(void)
 			clue_text = clue[creature[shopkeeper].clue].clue_text;
 			player.known_clues[creature[shopkeeper].clue] = 1;
 		}
-
 		if (player.money < shop_item[shop[st].item[choice]].price) {
 			snprintf(message, sizeof(message), "\n\n"
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
 					" MONEY FOR\n THAT\n");
-		} else {
-			int item = shop[st].item[choice];
-
-			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
-					shop_item[item].price,
-					shop_item[item].name,
-					clue_text);
-			player.money -= shop_item[item].price;
-			player.carrying[item]++;
-			player.carrying_dirty = 1;
+			goto done_with_shopping;
 		}
+
+		int item = shop[st].item[choice];
+
+		fprintf(stderr, "shop_item[item].name = '%s'\n",
+			shop_item[item].name);
+		if (strcmp(shop_item[item].name, "SACRAFICTION") == 0) {
+			if (player.experience < player.level * 1000) {
+				snprintf(message, sizeof(message), "\n\n"
+					" YOU MUST GAIN\n"
+					" MORE EXPERIENCE\n"
+					" MY CHILD.\n");
+			} else if (player.level < MAX_LEVEL) {
+				/* player levels up */
+				snprintf(message, sizeof(message), "\n\n"
+					" USE YOUR NEW\n"
+					" POWER WISELY\n"
+					" MY CHILD\n");
+				player.money -= shop_item[item].price;
+				player.level++;
+				play_tune(&level_up_tune, NULL, NULL);
+			} else {
+				snprintf(message, sizeof(message), "\n\n"
+					" YOU HAVE ATTAINED\n"
+					" MAXIMUM\n"
+					" ENLIGHTENMENT\n"
+					" MY CHILD\n");
+			}
+			goto done_with_shopping;
+		}
+
+		snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
+				shop_item[item].price,
+				shop_item[item].name,
+				clue_text);
+		player.money -= shop_item[item].price;
+		player.carrying[item]++;
+		player.carrying_dirty = 1;
+done_with_shopping:
 		status_message(message);
 		screen_changed = 1;
 		menu_setup = 0;
@@ -6194,6 +6255,18 @@ static void badgey_planet_menu(void)
 	}
 }
 
+static void maybe_heal_player(void)
+{
+	static int time = 0;
+
+	time++;
+	if (time == 30) { /* gain 1 hp per second */
+		if (player.hp < player.level * 100)
+			player.hp++;
+		time = 0;
+	}
+}
+
 static void badgey_run(void)
 {
 	static uint64_t last_ms = 0;
@@ -6210,6 +6283,8 @@ static void badgey_run(void)
 		if (water_scroll > 15)
 			water_scroll = 0;
 	}
+
+	maybe_heal_player();
 
 	draw_screen();
 	FbPushBuffer();
@@ -7117,7 +7192,7 @@ static void badgey_stats(void)
 
 	if (screen_changed) {
 		FbMove(0, 0);
-		snprintf(buf, sizeof(buf), "HP: %d\n", player.hp);
+		snprintf(buf, sizeof(buf), "HP: %d/%d\n", player.hp, player.level * 100);
 		FbWriteString(buf);
 		snprintf(buf, sizeof(buf), "EXP: %d\n", player.experience);
 		FbWriteString(buf);
@@ -7914,6 +7989,8 @@ struct badgey_state {
 	int dir;
 	int money;
 	int hp;
+	int exp;
+	int level;
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char equipped_weapon, equipped_armor;
 	int aboard_ship;
@@ -7976,6 +8053,8 @@ static void badgey_serialize_state(struct badgey_state *state)
 	state->dir = player.dir;
 	state->money = player.money;
 	state->hp = player.hp;
+	state->exp = player.experience;
+	state->level = player.level;
 	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
 		state->carrying[i] = player.carrying[i];
 	state->equipped_weapon = player.equipped_weapon;
@@ -8034,6 +8113,8 @@ static void badgey_deserialize_state(struct badgey_state *state)
 	player.seedx = state->seedx;
 	player.seedy = state->seedy;
 	player.dir = state->dir;
+	player.hp = state->hp;
+	player.experience = state->exp;
 	player.money = state->money;
 	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
 		player.carrying[i] = state->carrying[i];
