@@ -115,7 +115,8 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         break;
 
     case SPLASH_STATE_LOADBAR:
-	FbBackgroundColor(0x21c5);
+	// FbBackgroundColor(0x21c5);
+        FbBackgroundColor(G_Fb.transIndex);
         FbMove(0, 0);
         FbImage2(&RVAsec_14, 0);
 
@@ -177,7 +178,8 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         FbImage2(&RVAsec_14, 0);
 
         FbColor(WHITE);
-	FbBackgroundColor(0x21c5);
+        // FbBackgroundColor(0x21c5);
+    	FbBackgroundColor(G_Fb.transIndex);
         FbMove((LCD_XSIZE - ((ARRAY_SIZE(splash_words_btn1) - 1) * 8)) / 2, 
                SPLASH_SHIFT_DOWN);
         FbWriteLine(splash_words_btn1);
