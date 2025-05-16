@@ -3974,7 +3974,9 @@ static void badgey_collect_treasure(int treasure)
 	char buf[100];
 
 	if (treasure != -1) { /* First time through, draw the screen ... */
-		
+
+		int was_buried = (chest[treasure].status == CHEST_STATUS_BURIED);
+
 		gp = chest[treasure].gp;
 		si = chest[treasure].specialty_item;
 		set_badgey_state(BADGEY_COLLECT_TREASURE);
@@ -4003,8 +4005,10 @@ static void badgey_collect_treasure(int treasure)
 
 		FbMove(8, 8);
 		FbWriteString(buf);
-		FbMove(8, 72);
-		FbWriteString("NOTE: YOU CAN DIG\nWITH THE REWIND\nBUTTON\n");
+		if (was_buried) {
+			FbMove(8, 72);
+			FbWriteString("NOTE: YOU CAN DIG\nWITH THE REWIND\nBUTTON\n");
+		}
 		FbSwapBuffers();
 		play_tune(&treasure_tune, NULL, NULL);
 		return;
