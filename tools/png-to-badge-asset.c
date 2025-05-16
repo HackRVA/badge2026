@@ -449,10 +449,24 @@ static int process_image(char *filename, char *prefix)
 		if (rc < 0)
 			goto error_out;
 	} else if (bits_per_pixel == 1) {
+		if ((width % 8) != 0) {
+			fprintf(stderr, "  Warning: %s width is not divisible by 8 for 1-bit image\n",
+				filename);
+			warnings++;
+		}
 		int rc = generate_pixdata1(image, width, height, hasalpha);
 		if (rc < 0)
 			goto error_out;
 	} else {
+		if (pixels_per_byte == 2 && (width % 2) != 0) {
+			fprintf(stderr, "  Warning: %s width is not divisible by 2 for 4-bit image\n",
+				filename);
+			warnings++;
+		} else if (pixels_per_byte == 4 && (width % 4) != 0) {
+			fprintf(stderr, "  Warning: %s width is not divisible by 4 for 2-bit image\n",
+				filename);
+			warnings++;
+		}
 		int rc = generate_colormap_and_pixdata(image, width, height, hasalpha);
 		if (rc < 0)
 			goto error_out;
