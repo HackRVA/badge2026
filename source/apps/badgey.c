@@ -3210,6 +3210,8 @@ static const struct creature_generic_data {
 	int min_hp, max_hp;
 	void (*move)(struct creature *self);
 	int experience_bonus;
+	int damage; /* deals (.damage * level) damage */
+	int armor_protection;
 	char *species;
 	union {
 		struct citizen_generic {
@@ -3257,6 +3259,8 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = citizen_move,
 		.experience_bonus = 5,
+		.damage = 8,
+		.armor_protection = 15,
 		.species = "HUMAN",
 	},
 	{
@@ -3267,6 +3271,8 @@ static const struct creature_generic_data {
 		.max_hp = 400,
 		.move = generic_move,
 		.experience_bonus = 20,
+		.damage = 16,
+		.armor_protection = 50,
 		.species = "HUMAN",
 	},
 	{
@@ -3277,6 +3283,8 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_move,
 		.experience_bonus = 5,
+		.damage = 26,
+		.armor_protection = 25,
 		.species = "ROBOT",
 	},
 	{
@@ -3287,6 +3295,8 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_move,
 		.experience_bonus = 5,
+		.damage = 26,
+		.armor_protection = 20,
 		.species = "ROBOT",
 	},
 	{
@@ -3297,6 +3307,8 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_move,
 		.experience_bonus = 5,
+		.damage = 5,
+		.armor_protection = 15,
 		.species = "ROBOT",
 	},
 	{
@@ -3307,6 +3319,8 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_monster_move,
 		.experience_bonus = 5,
+		.damage = 13,
+		.armor_protection = 25,
 		.species = "BYRSTAN",
 	},
 	{
@@ -3317,6 +3331,8 @@ static const struct creature_generic_data {
 		.max_hp = 240,
 		.move = generic_monster_move,
 		.experience_bonus = 12,
+		.damage = 10,
+		.armor_protection = 25,
 		.species = "HARGON",
 	},
 	{
@@ -3327,6 +3343,8 @@ static const struct creature_generic_data {
 		.max_hp = 340,
 		.move = generic_monster_move,
 		.experience_bonus = 17,
+		.damage = 20,
+		.armor_protection = 60,
 		.species = "ROVDAN",
 	},
 	{
@@ -3337,6 +3355,8 @@ static const struct creature_generic_data {
 		.max_hp = 140,
 		.move = generic_monster_move,
 		.experience_bonus = 7,
+		.damage = 8,
+		.armor_protection = 20,
 		.species = "SKAVO",
 	},
 	{
@@ -3347,6 +3367,8 @@ static const struct creature_generic_data {
 		.max_hp = 80,
 		.move = generic_monster_move,
 		.experience_bonus = 4,
+		.damage = 8,
+		.armor_protection = 70,
 		.species = "TARCON",
 	},
 	{
@@ -3357,6 +3379,8 @@ static const struct creature_generic_data {
 		.max_hp = 240,
 		.move = generic_monster_move,
 		.experience_bonus = 14,
+		.damage = 17,
+		.armor_protection = 90,
 		.species = "ZUNARO",
 	},
 };
@@ -3524,10 +3548,11 @@ static struct missile {
 	int x, y, vx, vy; /* 24.8 fixed point */
 	int alive;
 	char from_player;
+	int damage;
 } missile[MAX_MISSILES];
 static int nmissiles = 0;
 
-static void add_missile(int x, int y, int vx, int vy, char from_player, int lifetime)
+static void add_missile(int x, int y, int vx, int vy, char from_player, int lifetime, int damage)
 {
 	if (nmissiles >= MAX_MISSILES)
 		return;
@@ -3537,6 +3562,7 @@ static void add_missile(int x, int y, int vx, int vy, char from_player, int life
 	missile[nmissiles].vy = vy;
 	missile[nmissiles].alive = lifetime;
 	missile[nmissiles].from_player = from_player;
+	missile[nmissiles].damage = damage;
 	nmissiles++;
 }
 
@@ -3588,11 +3614,23 @@ static void missile_collision_detection(int m)
 			int cy = 16 * player.cby + 8 + 8;
 			int dist2 = (cx - mx) * (cx - mx) + (cy - my) * (cy - my);
 			if (dist2 < 8 * 8) {
-				/* TODO: inflict damage on player */
+				int ai = player.equipped_armor;
+				int protection = 10;
+				int damage = missile[m].damage;
+				if (ai != EQUIPPED_NONE) {
+					int a = shop_to_armor_index(ai);
+					if (a >= 0)
+						protection = armor[a].protection;
+				}
+				damage = damage - ((damage * protection) / 256);
+				if (damage < 0)
+					damage = 0;
+				int hp = player.hp;
+				hp = hp - damage;
+				if (hp < 0)
+					hp = 0;
+				player.hp = hp;
 				missile[m].alive = 0;
-#if TARGET_SIMULATOR
-				printf("Player hit by missile!\n");
-#endif
 			}
 		}
 	}
@@ -7710,6 +7748,9 @@ static void move_combat_creature(int i, unsigned int *seed)
 	if (n > 60)
 		return;
 
+	int ty = combat_creature[i].type;
+	int lvl = combat_creature[i].level;
+	int damage = lvl * creature_generic_data[ty].damage;
 	if (player.cbx == combat_creature[i].x) {
 		if (player.cby > combat_creature[i].y)
 			vy = 1;
@@ -7717,7 +7758,7 @@ static void move_combat_creature(int i, unsigned int *seed)
 			vy = -1;
 		mx = (16 * combat_creature[i].x + 8) * 256;
 		my = (16 * combat_creature[i].y + 8) * 256;
-		add_missile(mx, my, 0, 2048 * vy, 0, 100);
+		add_missile(mx, my, 0, 2048 * vy, 0, 100, damage);
 		return;
 	} else if (player.cby == combat_creature[i].y) {
 		if (player.cbx > combat_creature[i].x)
@@ -7726,7 +7767,7 @@ static void move_combat_creature(int i, unsigned int *seed)
 			vx = -1;
 		mx = (16 * combat_creature[i].x + 8) * 256;
 		my = (16 * combat_creature[i].y + 8) * 256;
-		add_missile(mx, my, 2048 * vx, 0, 0, 100);
+		add_missile(mx, my, 2048 * vx, 0, 0, 100, damage);
 		return;
 	}
 	int nx = combat_creature[i].x;
@@ -7810,7 +7851,10 @@ static void draw_combat_screen(void)
 
 static void player_strike_with_weapon(__attribute__((unused)) int direction)
 {
-	add_missile((16 * player.cbx + 8) * 256, (16 * player.cby + 8) * 256, 2048 * xo4[direction], 2048 * yo4[direction], 1, 100);
+	int damage = 50; /* TODO: something better */
+	add_missile((16 * player.cbx + 8) * 256,
+			(16 * player.cby + 8) * 256,
+			2048 * xo4[direction], 2048 * yo4[direction], 1, 100, damage);
 }
 
 static void badgey_combat(void)
