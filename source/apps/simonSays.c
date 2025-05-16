@@ -114,7 +114,7 @@ void checkin(void)
 	button_reset_last_input_timestamp();
 }
 // provided to tax the badge for a set ammount of time
-void haltAndCatchFire(){
+void haltAndCatchFire(void){
 	now = rtc_get_ms_since_boot();
 	uint64_t stopagain = stoptime+150;
 	if(now>stoptime){
