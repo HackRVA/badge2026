@@ -45,6 +45,7 @@
 #include "rtc.h"
 #include "music.h"
 #include "key_value_storage.h"
+#include "particle.h"
 
 static const int screen_cells_wide = (LCD_XSIZE == 160) ? 9 : 7;
 static const int screen_cells_tall = (LCD_YSIZE == 160) ? 9 : 7;
@@ -64,6 +65,8 @@ static struct dynmenu_item board_ship_menu_item[2];
 static struct dynmenu initial_menu;
 static struct dynmenu_item initial_menu_item[10];
 static int game_in_progress = 0;
+static struct particle_pool *sparkpool;
+#define MAXSPARKS 50
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
 static const int xo4[] = { 0, 1, 0, -1 };
@@ -2964,6 +2967,19 @@ static const struct armor {
 	{ ENERGY_SHIELD,	150, 4, 1 },
 };
 
+static void add_explosion(int x, int y, int count, int life)
+{
+	static unsigned int xorshift_state = 0xa5a5a5a5;
+        for (int i = 0; i < count; i++) {
+		int vx, vy;
+                vx = xorshift(&xorshift_state) % (5 * 256);
+                vy = xorshift(&xorshift_state) % (5 * 256);
+		vx = vx - ((5 * 256) / 2);
+		vy = vy - ((5 * 256) / 2);
+		sparkpool->config.add_particle(sparkpool, x, y, vx, vy, xorshift(&xorshift_state) % life, YELLOW);
+        }
+}
+
 static int shop_to_weapon_index(int shop_item_index)
 {
 	int x = shop_item_index - FIRST_WEAPON;
@@ -3585,6 +3601,7 @@ enum badgey_state_t {
 	BADGEY_EQUIP_ARMOR,
 	BADGEY_ABANDON_CONFIRM,
 	BADGEY_COMBAT,
+	BADGEY_EXIT_COMBAT,
 	BADGEY_COLLECT_TREASURE,
 	BADGEY_DIG,
 	BADGEY_USE_ITEM,
@@ -3686,8 +3703,11 @@ static void missile_collision_detection(int m)
 					int lvl = combat_creature[i].level;
 					int bonus = creature_generic_data[t].experience_bonus;
 					player.experience += lvl * bonus;
+					/* make monster explode */
+					add_explosion(256 * (16 * combat_creature[i].x + 16),
+						256 * (16 * combat_creature[i].y + 16),
+						50, 100);
 				}
-				/* TODO: add explosion or something here */
 			}
 		} else { /* missile is from monster */
 			int cx = 16 * player.cbx + 8 + 8;
@@ -5712,6 +5732,7 @@ static void draw_screen(void)
 
 	if (player.in_cave) {
 		draw_cave_screen();
+		sparkpool->config.draw_particles(sparkpool);
 		screen_changed = 0;
 		return;
 	}
@@ -5791,6 +5812,7 @@ static void draw_screen(void)
 		}
 	}
 
+	sparkpool->config.draw_particles(sparkpool);
 	screen_changed = 0;
 }
 
@@ -6497,6 +6519,11 @@ static void badgey_run(void)
 	}
 
 	maybe_heal_player();
+
+	if (sparkpool->nparticles > 0)
+		screen_changed = 1;
+
+	sparkpool->config.move_particles(sparkpool);
 
 	draw_screen();
 	FbPushBuffer();
@@ -7947,6 +7974,7 @@ static void draw_combat_screen(void)
 	draw_combat_missiles();
 	draw_combat_player();
 	draw_hit_points();
+	sparkpool->config.draw_particles(sparkpool);
 }
 
 static void player_strike_with_weapon(__attribute__((unused)) int direction)
@@ -7966,6 +7994,7 @@ static void badgey_combat(void)
 	uint64_t now = rtc_get_ms_since_boot();
 	int direction = -1;
 	static unsigned int seed = 0xabcdef98;
+	static int exit_combat_counter = 0;
 
 	if (now - last_missile_move_time > 100) {
 		move_combat_missiles();
@@ -7977,6 +8006,10 @@ static void badgey_combat(void)
 		move_combat_creatures(&seed);
 		last_ms = now;
 	}
+
+	sparkpool->config.move_particles(sparkpool);
+	if (sparkpool->nparticles > 0)
+		screen_changed = 1;
 
 	if (screen_changed) {
 		draw_combat_screen();
@@ -8040,11 +8073,19 @@ static void badgey_combat(void)
 		awaiting_direction = 0;
 	}
 
-	if (ncombat_creatures == 0) { /* player killed everything? */
+	if (ncombat_creatures == 0 && badgey_state == BADGEY_COMBAT) { /* player killed everything? */
 		nmissiles = 0; /* kill all extant missiles */
-		set_badgey_state(BADGEY_RUN);
+		set_badgey_state(BADGEY_EXIT_COMBAT);
+		exit_combat_counter = 30;
 		/* respawn the overworld creature far away so we don't immediately jump back into combat */
 		respawn_monster(overworld_combat_creature, &seed);
+	}
+
+	if (exit_combat_counter > 0)
+		exit_combat_counter--;
+	if (exit_combat_counter == 0 && badgey_state == BADGEY_EXIT_COMBAT) {
+		set_badgey_state(BADGEY_RUN);
+		sparkpool->nparticles = 0;
 	}
 
 	if (player.hp == 0)
@@ -9017,6 +9058,14 @@ static void badgey_dev_cheats(void)
 /* You will need to rename badgey_cb() something else. */
 void badgey_cb(struct badge_app *app)
 {
+
+	if (!sparkpool) {
+		sparkpool = get_common_particle_pool();
+		sparkpool->nparticles = 0;
+	}
+	if (claim_particle_pool(sparkpool, 0xB4D63333)) {
+		sparkpool->config.maxparticles = MAXSPARKS;
+	}
 	if (app->wake_up)
 		screen_changed = 1;
 
@@ -9081,6 +9130,7 @@ void badgey_cb(struct badge_app *app)
 		badgey_equip();
 		break;
 	case BADGEY_COMBAT:
+	case BADGEY_EXIT_COMBAT:
 		badgey_combat();
 		break;
 	case BADGEY_COLLECT_TREASURE:
