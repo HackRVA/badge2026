@@ -269,7 +269,7 @@ void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
 }
 void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap)
 {
-    unsigned char y, yEnd, x;
+    int y, yStart, yEnd, x;
     unsigned char pixbyte, ci;
     unsigned short pixel;
     const int row_padding = asset->x % 2;
@@ -278,14 +278,13 @@ void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, i
     if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
     if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
 
-    /* clip to end of LCD buffer */
-    yEnd = y_pos + height;
-    if (yEnd >= LCD_YSIZE) yEnd = LCD_YSIZE;
+    /* clip to LCD buffer */
+    yStart = y_pos < 0 ? 0 : y_pos;
+    yEnd = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
 
-    for (y = y_pos; y < yEnd; y++) {
-
-	/* Texture y coord */
-	int ty = (y - y_pos + y_source) % asset->y;
+    for (y = yStart; y < yEnd; y++) {
+        /* Texture y coord */
+        int ty = (y - y_pos + y_source) % asset->y;
 
         for (x = 0; x < width; /* manual inc */ ) {
             int tx = (x + x_source) % asset->x;
@@ -294,6 +293,10 @@ void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, i
             /* 1st pixel */
             if ((x + x_pos) > (LCD_XSIZE-1))
 		break; /* clip x */
+            if((x + x_pos) < 0) {
+                x++;
+                continue;
+            }
 
             ci = ((pixbyte >> 4) & 0xF);
             // if (ci != (G_Fb.transIndex & 0xf)) { /* transparent? */
@@ -307,10 +310,14 @@ void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, i
             /* 2nd pixel */
             if ((x + x_pos) > (LCD_XSIZE-1))
 		break; /* clip x */
+            if((x + x_pos) < 0) {
+                x++;
+                continue;
+            }
 
             ci = pixbyte & 0xF;
             // if (ci != (G_Fb.transIndex & 0xf)) { /* transparent? */
-	    pixel = colormap[ci];
+	        pixel = colormap[ci];
             if (pixel != key_color) {
                 fb_mark_row_changed(x + x_pos, y);
                 BUFFER(y * LCD_XSIZE + x + x_pos) = pixel;
