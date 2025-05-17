@@ -21,9 +21,6 @@
 #include "audio.h"
 #include "led_pwm.h"
 #include "music.h"
-#define DEFINE_MENU_ICON_GLOBALS 1
-#include "menu_icon.h"
-#undef DEFINE_MENU_ICON_GLOBALS
 #include "stacktrace.h"
 #include "key_value_storage.h"
 
@@ -70,24 +67,24 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
-	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, &bba_icon },
+	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
 	{"Microban", VERT_ITEM, FUNCTION, { .func = microban_cb }, NULL },
-	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, &badge_monsters_icon, },
-	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, &bba_icon, },
-	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, &moonpatrol_icon, },
-	{"AA Gunner", VERT_ITEM, FUNCTION, { .func = aagunner_cb }, &aagunner_icon },
-	{"Clue", VERT_ITEM, FUNCTION, { .func = clue_cb }, &clue_icon },
-	// {"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, &bba_icon },
-	{"Asteroids", VERT_ITEM, FUNCTION, { .func = asteroids_cb }, &asteroids_icon, },
-	{"Lunar Rescue",  VERT_ITEM, FUNCTION, { .func = lunarlander_cb}, &lunar_rescue_icon, },
-	{"Battlezone", VERT_ITEM, FUNCTION, { .func = battlezone_cb }, &battlezone_icon, },
-	{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, &slotmachine_icon, },
-	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, &breakout_icon, },
-	{"Simon Says",      VERT_ITEM, FUNCTION, { .func = simonSays_cb }, &breakout_icon, },
+	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, },
+	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
+	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, NULL, },
+	{"AA Gunner", VERT_ITEM, FUNCTION, { .func = aagunner_cb }, NULL, },
+	{"Clue", VERT_ITEM, FUNCTION, { .func = clue_cb }, NULL, },
+	// {"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
+	{"Asteroids", VERT_ITEM, FUNCTION, { .func = asteroids_cb }, NULL, },
+	{"Lunar Rescue",  VERT_ITEM, FUNCTION, { .func = lunarlander_cb}, NULL, },
+	{"Battlezone", VERT_ITEM, FUNCTION, { .func = battlezone_cb }, NULL, },
+	{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, NULL, },
+	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, NULL, },
+	{"Simon Says",      VERT_ITEM, FUNCTION, { .func = simonSays_cb }, NULL, },
 	{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
 	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
-	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, &hacker_sim_icon, },
-	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, &game_of_life_icon, },
+	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, NULL, },
+	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, NULL, },
 	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
 #ifdef BUILD_IMAGE_TEST_PROGRAM
 	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
@@ -101,25 +98,25 @@ static const struct menu_t games_m[] = {
 };
 
 static const struct menu_t settings_m[] = {
-   {"Backlight", VERT_ITEM, MENU, { .menu = backlight_m }, &backlight_icon, },
-   {"LED", VERT_ITEM, MENU, { .menu = LEDlight_m }, &led_icon, },
-   {"Audio", VERT_ITEM|DEFAULT_ITEM, MENU, { .menu = buzzer_m }, &audio_icon, },
-   {"Invert Display", VERT_ITEM, MENU, { .menu = rotate_m, }, &invert_display_icon, },
-   {"User Name", VERT_ITEM, FUNCTION, { .func = username_cb }, &username_icon, },
-   {"Screensaver", VERT_ITEM, MENU, { .menu = screen_lock_m }, &screensaver_icon, },
-   {"ID", VERT_ITEM, MENU, { .menu = myBadgeid_m }, &id_icon, },
-   {"QC",  VERT_ITEM, FUNCTION, { .func = QC_cb }, &qc_icon, },
-   {"Clear NVRAM", VERT_ITEM, FUNCTION, { .func = clear_nvram_cb }, &clear_nvram_icon, },
+   {"Backlight", VERT_ITEM, MENU, { .menu = backlight_m }, NULL, },
+   {"LED", VERT_ITEM, MENU, { .menu = LEDlight_m }, NULL, },
+   {"Audio", VERT_ITEM|DEFAULT_ITEM, MENU, { .menu = buzzer_m }, NULL, },
+   {"Invert Display", VERT_ITEM, MENU, { .menu = rotate_m, }, NULL, },
+   {"User Name", VERT_ITEM, FUNCTION, { .func = username_cb }, NULL, },
+   {"Screensaver", VERT_ITEM, MENU, { .menu = screen_lock_m }, NULL, },
+   {"ID", VERT_ITEM, MENU, { .menu = myBadgeid_m }, NULL, },
+   {"QC",  VERT_ITEM, FUNCTION, { .func = QC_cb }, NULL, },
+   {"Clear NVRAM", VERT_ITEM, FUNCTION, { .func = clear_nvram_cb }, NULL, },
    {"Default menu", VERT_ITEM, FUNCTION, { .func = use_default_menu_cb }, NULL },
    {"Tape Deck menu", VERT_ITEM, FUNCTION, { .func = use_tape_deck_menu_cb }, NULL },
    {"Back",         VERT_ITEM|LAST_ITEM, BACK, {NULL}, NULL, },
 };
 
 const struct menu_t main_m[] = {
-   {"Games",       VERT_ITEM|DEFAULT_ITEM, MENU, { .menu = games_m }, &games_icon, },
-   {"Schedule",    VERT_ITEM, MENU, { .menu = schedule_m }, &schedule_icon, },
-   {"Settings",    VERT_ITEM, MENU, { .menu = settings_m }, &settings_icon, },
+   {"Games",       VERT_ITEM|DEFAULT_ITEM, MENU, { .menu = games_m }, NULL, },
+   {"Schedule",    VERT_ITEM, MENU, { .menu = schedule_m }, NULL, },
+   {"Settings",    VERT_ITEM, MENU, { .menu = settings_m }, NULL, },
    // {"Test SS",	VERT_ITEM, FUNCTION, { .func = test_screensavers_cb }, NULL, },
-   {"About Badge",    VERT_ITEM|LAST_ITEM, FUNCTION, { .func = about_badge_cb }, &about_icon, },
+   {"About Badge",    VERT_ITEM|LAST_ITEM, FUNCTION, { .func = about_badge_cb }, NULL, },
 };
 
