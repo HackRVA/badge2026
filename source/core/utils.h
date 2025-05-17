@@ -153,4 +153,17 @@ static inline size_t minimum_bins(size_t items, size_t bin_size)
     return (items / bin_size) + ((items % bin_size != 0) ? 1 : 0);
 }
 
+/* Cribbed from ccan.org build_assert.h
+ * See: https://github.com/rustyrussell/stats/blob/master/ccan/build_assert/build_assert.h
+ *
+ * BUILD_ASSERT() allows you to make compile time assertions such as:
+ *
+ *	BUILD_ASSERT((sizeof(struct whatever) % 8) == 0)
+ *
+ * and if it's not true, it will fail to compile.
+ *
+ */
+#define BUILD_ASSERT(cond) \
+do { (void) sizeof(char [1 - 2*!(cond)]); } while(0)
+
 #endif /* BADGE_UTILS_H */
