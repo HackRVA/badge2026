@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <pico/time.h>
 #include <hardware/adc.h>
@@ -27,6 +28,7 @@
 #include <hardware/pio.h>
 #include <hardware/sync.h>
 
+#include "analog.h"
 #include "pinout_rp2040.h"
 #include "nau88c10_rp2040.h"
 #include "badge.h"
@@ -43,7 +45,7 @@
  *  @{
  */
 
-#define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX / 4)
+#define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX)
 
 static volatile enum audio_out_mode_ {
     AUDIO_OUT_MODE_OFF = 0,
@@ -188,6 +190,16 @@ void audio_init(void)
     audio_out_init();
 }
 
+void audio_poll(void)
+{
+    /* Only update volume if the voume has changed by more than 2 percentage 
+     * points. This helps filter noise on the ADC input. */
+    uint8_t vol = analog_get_volume_perc();
+    if (abs((int) vol - (int) nau88c10_get_volume(&m_nau88c10_ctx)) > 1) {
+        nau88c10_set_volume(&m_nau88c10_ctx, vol);
+    }
+}
+
 /*- Standby Pin Control ------------------------------------------------------*/
 void audio_stby_ctl(bool enable)
 {
@@ -248,7 +260,6 @@ int audio_in_cb_count()
 {
     return m_audio_in_cb_count;
 }
-
 
 /*- Output -------------------------------------------------------------------*/
 int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))

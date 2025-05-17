@@ -55,6 +55,13 @@ int8_t analog_calc_mcu_temp_C(uint32_t mV)
 
 uint8_t analog_get_volume_perc(void)
 {
-    return analog_get_adc_count(ANALOG_CHAN_VOLUME) * 100U / 4095U;
+    uint16_t count = 4095U - analog_get_adc_count(ANALOG_CHAN_VOLUME);
+    if (count > 4000) {
+        return 100;
+    } else if  (count < 100) {
+        return 0;
+    } else {
+        return (((count - 100) * 99) / (4000 - 100)) + 1;
+    }
 }
 

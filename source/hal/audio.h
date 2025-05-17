@@ -48,6 +48,9 @@ void audio_init_gpio(void);
  */
 void audio_init(void);
 
+/** Update audio engine with any per-frame tasks (like volume). */
+void audio_poll(void);
+
 /** Audio input callback.
  *
  *  @param  samples Input samples to be processed.

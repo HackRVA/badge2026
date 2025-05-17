@@ -118,6 +118,11 @@ void audio_init(void)
 #endif
 }
 
+void audio_poll(void)
+{
+    return;
+}
+
 /*- Input --------------------------------------------------------------------*/
 // FIXME: move this to audio_common.c. -PMW
 static audio_input_callback_t m_audio_in_cb[AUDIO_INPUT_CALLBACKS_MAX];

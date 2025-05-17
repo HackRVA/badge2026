@@ -1330,6 +1330,20 @@ static int prv_nau_set_dacmt(struct nau88c10_ctx *ctx,
     return rc;
 }
 
+static int prv_nau_set_dacgain(struct nau88c10_ctx *ctx,
+                               enum nau88c10_dacgain dacgain)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_VOLUME];
+    reg &= ~NAU88C10_DACGAIN_MASK;
+    reg |= dacgain << NAU88C10_DACGAIN_POS;
+    ctx->reg[NAU88C10_REG_DAC_VOLUME] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_VOLUME);
+    LOG("%sset DACGAIN %d.%d dB", (0 > rc) ? FAILED_TO : NOTHING,
+        (NAU88C10_DACGAIN_0_DBFS - dacgain) / 2,
+        ((NAU88C10_DACGAIN_0_DBFS - dacgain) % 2) * 5);
+    return rc;
+}
+
 static int prv_nau_set_adcpl(struct nau88c10_ctx *ctx,
                              enum nau88c10_adcpl adcpl)
 {
@@ -1524,4 +1538,33 @@ void nau88c10_set_output_muted(struct nau88c10_ctx *ctx, bool muted)
     dacmt = muted ? NAU88C10_DACMT_ENABLE : NAU88C10_DACMT_DISABLE;
     (void) prv_nau_set_dacmt(ctx, dacmt);
 }
+
+uint8_t nau88c10_get_volume(struct nau88c10_ctx *ctx)
+{
+    enum nau88c10_dacgain dacgain;
+    dacgain = (ctx->reg[NAU88C10_REG_DAC_VOLUME] & NAU88C10_DACGAIN_MASK) 
+        >> NAU88C10_DACGAIN_POS;
+    if (NAU88C10_DACGAIN_DIGITAL_MUTE == dacgain) {
+        return 0;
+    } else if (NAU88C10_DACGAIN_0_DBFS == dacgain) {
+        return 100;
+    } else {
+        return dacgain * 100 / NAU88C10_DACGAIN_0_DBFS;
+    }
+}
+
+void nau88c10_set_volume(struct nau88c10_ctx *ctx, uint8_t volume)
+{
+    enum nau88c10_dacgain dacgain;
+    if (0 == volume) {
+        dacgain = NAU88C10_DACGAIN_DIGITAL_MUTE;
+    } else if (100 == volume) {
+        dacgain = NAU88C10_DACGAIN_0_DBFS;
+    } else {
+        dacgain = volume * NAU88C10_DACGAIN_0_DBFS / 100;
+    }
+    (void) prv_nau_set_dacgain(ctx, dacgain);
+}
+
+
 

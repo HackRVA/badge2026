@@ -17,6 +17,7 @@
 #include "default_menu_app.h"
 #include "menu_2025.h"
 #include "screensaver_app.h"
+#include "audio.h"
 
 /*
   inital system data, will be save/restored from flash
@@ -158,7 +159,6 @@ uint64_t ProcessIO(void)
 {
     static const uint64_t frame_interval_us_default = 1000000/BADGE_FRAME_RATE_FPS;
     static struct default_menu_app_context menu_context;
-
     if (app_stack_idx == -1) { /* No apps at all yet? */
 
 	/* Push main menu app first, then initial badge app on top of that */
@@ -172,6 +172,9 @@ uint64_t ProcessIO(void)
     }
     maybe_start_screensaver();
     app_stack[app_stack_idx].app_func(&app_stack[app_stack_idx]);
+
+    /* Update volume. */
+    audio_poll();
 
     return frame_interval_us_default;
 }
