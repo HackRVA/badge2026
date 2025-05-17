@@ -1040,6 +1040,9 @@ static void setup_window_and_renderer(SDL_Window **window, SDL_Renderer **render
         exit(1);
     }
     SDL_SetWindowSize(*window, 800, 600);
+#ifdef __EMSCRIPTEN__
+    SDL_SetWindowSize(*window, 20*600/9, 800);
+#endif
     // SDL_SetWindowFullscreen(*window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 
     *renderer = SDL_CreateRenderer(*window, -1, 0);

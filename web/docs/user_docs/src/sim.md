@@ -1,5 +1,11 @@
 # Simulator
 
+<style>
+main-container{
+    display:block !important;
+}
+</style>
+
 [open sim on it's own page](./simulator.html)
 
 <wasm-simulator></wasm-simulator>
