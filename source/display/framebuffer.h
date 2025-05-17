@@ -128,7 +128,7 @@ void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source,
 void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap);
 
 /* Copy the const colormap into RAM */
-void FbPaletteCycleInit(uint16_t *colormap_dest, uint16_t *colormap_source, size_t length);
+void FbPaletteCycleInit(uint16_t *colormap_dest, const uint16_t *colormap_source, size_t length);
 /* Cycle a region of a color palette by one step. */
 void FbPaletteCycle(uint16_t *colormap, int start_index, int count);
 

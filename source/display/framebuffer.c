@@ -1360,7 +1360,7 @@ void FbDrawObject(const struct point drawing[], int npoints, int color, int x, i
     }
 }
 
-void FbPaletteCycleInit(uint16_t *colormap_dest, uint16_t *colormap_source, size_t length) {
+void FbPaletteCycleInit(uint16_t *colormap_dest, const uint16_t *colormap_source, size_t length) {
     memcpy(colormap_dest, colormap_source, length * sizeof(uint16_t)); 
 }
 
