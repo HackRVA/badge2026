@@ -175,14 +175,12 @@ void audio_init_gpio(void)
 
 static void audio_out_init(void)
 {
-#if PREPRODUCTION_FIRMWARE
+#if PREPRODUCTION_FIRMWARE && 0
     /* Make sure logs can be seen. */
-    busy_wait_until(1000 * 1000);
+    busy_wait_until(2000 * 1000);
 #endif
     nau88c10_reset(&m_nau88c10_ctx);
     nau88c10_up(&m_nau88c10_ctx);
-
-    // TODO - simple wave table synth for beeps? -PMW
 }
 
 void audio_init(void)
