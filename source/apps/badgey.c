@@ -2929,7 +2929,7 @@ static const struct weapon {
 
 static const struct armor {
 	enum item_index i;
-	int protection; /* as a part in 255 */
+	int protection; /* as a part in 256 */
 	int level_requirement;
 } armor[] = {
 	{ LIGHT_ARMOR, 20, 1 },
@@ -3211,7 +3211,7 @@ static const struct creature_generic_data {
 	void (*move)(struct creature *self);
 	int experience_bonus;
 	int damage; /* deals (.damage * level) damage */
-	int armor_protection;
+	int armor_protection; /* out of 256 */
 	unsigned int fire_chance; /* out of 1000 */
 	unsigned int move_chance; /* out of 1000 */
 	char *species;
@@ -3261,7 +3261,7 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = citizen_move,
 		.experience_bonus = 5,
-		.damage = 8,
+		.damage = 4,
 		.armor_protection = 15,
 		.fire_chance = 150,
 		.move_chance = 40,
@@ -3289,7 +3289,7 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_move,
 		.experience_bonus = 5,
-		.damage = 26,
+		.damage = 15,
 		.armor_protection = 25,
 		.fire_chance = 100,
 		.move_chance = 400,
@@ -3303,7 +3303,7 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_move,
 		.experience_bonus = 5,
-		.damage = 26,
+		.damage = 13,
 		.armor_protection = 20,
 		.fire_chance = 100,
 		.move_chance = 500,
@@ -3331,7 +3331,7 @@ static const struct creature_generic_data {
 		.max_hp = 100,
 		.move = generic_monster_move,
 		.experience_bonus = 5,
-		.damage = 13,
+		.damage = 7,
 		.armor_protection = 25,
 		.fire_chance = 250,
 		.move_chance = 300,
@@ -3345,7 +3345,7 @@ static const struct creature_generic_data {
 		.max_hp = 240,
 		.move = generic_monster_move,
 		.experience_bonus = 12,
-		.damage = 10,
+		.damage = 5,
 		.armor_protection = 25,
 		.fire_chance = 200,
 		.move_chance = 350,
@@ -3359,7 +3359,7 @@ static const struct creature_generic_data {
 		.max_hp = 340,
 		.move = generic_monster_move,
 		.experience_bonus = 17,
-		.damage = 20,
+		.damage = 10,
 		.armor_protection = 60,
 		.fire_chance = 170,
 		.move_chance = 600,
@@ -3373,7 +3373,7 @@ static const struct creature_generic_data {
 		.max_hp = 140,
 		.move = generic_monster_move,
 		.experience_bonus = 7,
-		.damage = 8,
+		.damage = 4,
 		.armor_protection = 20,
 		.fire_chance = 100,
 		.move_chance = 260,
@@ -3387,7 +3387,7 @@ static const struct creature_generic_data {
 		.max_hp = 80,
 		.move = generic_monster_move,
 		.experience_bonus = 4,
-		.damage = 8,
+		.damage = 4,
 		.armor_protection = 70,
 		.fire_chance = 80,
 		.move_chance = 650,
@@ -3401,10 +3401,10 @@ static const struct creature_generic_data {
 		.max_hp = 240,
 		.move = generic_monster_move,
 		.experience_bonus = 14,
-		.damage = 17,
+		.damage = 8,
 		.armor_protection = 90,
-		.fire_chance = 150,
-		.move_chance = 350,
+		.fire_chance = 250,
+		.move_chance = 450,
 		.species = "ZUNARO",
 	},
 };
