@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <pico/time.h>
 #include <hardware/adc.h>
@@ -27,6 +28,7 @@
 #include <hardware/pio.h>
 #include <hardware/sync.h>
 
+#include "analog.h"
 #include "pinout_rp2040.h"
 #include "nau88c10_rp2040.h"
 #include "badge.h"
@@ -43,7 +45,7 @@
  *  @{
  */
 
-#define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX / 4)
+#define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX)
 
 static volatile enum audio_out_mode_ {
     AUDIO_OUT_MODE_OFF = 0,
@@ -142,6 +144,10 @@ static void prv_audio_i2s_process(int32_t *in, int32_t *out)
             if (++(beep->elapsed_ms) == beep->duration_ms) {
                 prv_audio_out_beep_complete(beep);
             }
+        } else {
+            for (size_t i = 0; i < STEREO_BUFFER_SIZE; i += 2) {
+                out[i] = 0U;
+            }
         }
     } else {
         /* Nothing is playing. */
@@ -186,6 +192,16 @@ static void audio_out_init(void)
 void audio_init(void)
 {
     audio_out_init();
+}
+
+void audio_poll(void)
+{
+    /* Only update volume if the voume has changed by more than 2 percentage 
+     * points. This helps filter noise on the ADC input. */
+    uint8_t vol = analog_get_volume_perc();
+    if (abs((int) vol - (int) nau88c10_get_volume(&m_nau88c10_ctx)) > 1) {
+        nau88c10_set_volume(&m_nau88c10_ctx, vol);
+    }
 }
 
 /*- Standby Pin Control ------------------------------------------------------*/
@@ -249,16 +265,17 @@ int audio_in_cb_count()
     return m_audio_in_cb_count;
 }
 
-
 /*- Output -------------------------------------------------------------------*/
 int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
 {
     uint32_t period;
+    enum audio_out_mode_ out_mode = AUDIO_OUT_MODE_OFF;
     if ((freq_hz == 0) && (dur_ms == 0)) {
         /* Cancel the current beep. */
         period = UINT16_MAX;
     } else if (freq_hz == 0 && cb != NULL) { 
         /* We're being asked to play a rest. */
+        out_mode = AUDIO_OUT_MODE_BEEP;
         period = UINT16_MAX;
     } else if ((freq_hz < AUDIO_BEEP_FREQ_HZ_MIN)
                || (freq_hz > AUDIO_BEEP_FREQ_HZ_MAX)
@@ -267,12 +284,13 @@ int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
     {
         return -1;
     } else {
-       period = AUDIO_FS / freq_hz;
+        out_mode = AUDIO_OUT_MODE_BEEP;
+        period = AUDIO_FS / freq_hz;
     }
 
     audio_stby_ctl(false);
     uint32_t irqs = save_and_disable_interrupts(); // FIXME: irq locking insufficient with multiple cores. -PMW
-    m_audio_out_mode = AUDIO_OUT_MODE_BEEP;
+    m_audio_out_mode = out_mode;
     m_audio_out_beep.duration_ms = dur_ms;
     m_audio_out_beep.elapsed_ms = 0;
     if (m_audio_out_beep.period != period) {

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "badge.h"
 #include "button.h"
 #include "ir.h"
 #include "colors.h"
@@ -68,7 +69,7 @@ static bool check_button(const struct qc_button *b)
     printf("%.*s\t", len - 1, msg);
 
     if (b->freq != SUPPRESS_BEEP)
-	    audio_out_beep(b->freq, 100);
+	    audio_out_beep(b->freq, 1000 / BADGE_FRAME_RATE_FPS + 2);
 
     led_pwm_enable(BADGE_LED_RGB_RED, b->r);
     led_pwm_enable(BADGE_LED_RGB_GREEN, b->g);
