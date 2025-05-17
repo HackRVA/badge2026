@@ -80,10 +80,10 @@ static int count_menu_items(struct menu_t *m)
 	}
 }
 
-static int menu_has_icons(struct menu_t *m)
+static int is_tape_menu(struct menu_t *m)
 {
 	for (int i = 0; ; i++) {
-		if (m[i].icon)
+		if (m[i].attrib & TAPE_DECK)
 			return 1;
 		if (m[i].attrib & LAST_ITEM)
 			break;
@@ -197,7 +197,7 @@ static void do_selection(void)
 		if (current_menu_stack_idx < MAX_APP_STACK_DEPTH - 1) {
 			struct menu_t *submenu = (struct menu_t *)
 				&m[current_context->current_item].data.menu[0];
-			if (menu_has_icons(submenu)) {
+			if (is_tape_menu(submenu)) {
 				app.app_func = tape_deck_menu_app_cb;
 				current_menu_stack_idx++;
 				app.app_context = &context_stack[current_menu_stack_idx];

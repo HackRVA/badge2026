@@ -68,7 +68,7 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
 	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
-	{"Microban", VERT_ITEM, FUNCTION, { .func = microban_cb }, NULL },
+	{"Microban", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = microban_cb }, NULL },
 	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, },
 	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, NULL, },
@@ -113,7 +113,7 @@ static const struct menu_t settings_m[] = {
 };
 
 const struct menu_t main_m[] = {
-   {"Games",       VERT_ITEM|DEFAULT_ITEM, MENU, { .menu = games_m }, NULL, },
+   {"Games",       VERT_ITEM|DEFAULT_ITEM|TAPE_DECK, MENU, { .menu = games_m }, NULL, },
    {"Schedule",    VERT_ITEM, MENU, { .menu = schedule_m }, NULL, },
    {"Settings",    VERT_ITEM, MENU, { .menu = settings_m }, NULL, },
    // {"Test SS",	VERT_ITEM, FUNCTION, { .func = test_screensavers_cb }, NULL, },

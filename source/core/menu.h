@@ -16,6 +16,7 @@ enum attrib_bits {
     SKIP_BIT, /* skip when scrolling */
     DEFAULT_BIT,
     LAST_BIT,
+    TAPE_DECK,
 };
 
 #define VERT_ITEM    (1 << VERT_BIT)
