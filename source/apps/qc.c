@@ -122,18 +122,18 @@ static bool check_buttons(const struct qc_button *a, size_t n)
 
 static const struct qc_button QC_BTN[] = {
     {BADGE_BUTTON_A, "A", 999, check_button, 0, 255, 0},
-    {BADGE_BUTTON_B, "B", 698, check_button, 0, 0, 255},
+    {BADGE_BUTTON_B, "B", NOTE_F5, check_button, 0, 0, 255},
 
-    {BADGE_BUTTON_UP, "UP", 1046, check_button, 255, 0, 0},
-    {BADGE_BUTTON_DOWN, "DOWN", 740, check_button, 255, 127, 0},
-    {BADGE_BUTTON_LEFT, "LEFT", 784, check_button, 127, 127, 0},
-    {BADGE_BUTTON_RIGHT, "RIGHT", 932, check_button, 127, 255, 0},
+    {BADGE_BUTTON_UP, "UP", NOTE_C6, check_button, 255, 0, 0},
+    {BADGE_BUTTON_DOWN, "DOWN", NOTE_Fs5, check_button, 255, 127, 0},
+    {BADGE_BUTTON_LEFT, "LEFT", NOTE_G5, check_button, 127, 127, 0},
+    {BADGE_BUTTON_RIGHT, "RIGHT", NOTE_Bf5, check_button, 127, 255, 0},
 
-    {BADGE_BUTTON_RECORD, "RECORD", 1000, check_button, 0, 255, 127},
-    {BADGE_BUTTON_PLAY, "PLAY", 1200, check_button, 0, 127, 127},
-    {BADGE_BUTTON_FASTFORWARD, "FASTFORWARD", 1400, check_button, 0, 127, 255},
-    {BADGE_BUTTON_STOP_EJECT, "STOP/EJECT", 1600, check_button, 127, 0, 255},
-    {BADGE_BUTTON_REWIND, "REWIND", 1800, check_button, 127, 0, 127},
+    {BADGE_BUTTON_RECORD, "RECORD", NOTE_Gs6, check_button, 0, 255, 127},
+    {BADGE_BUTTON_PLAY, "PLAY", NOTE_Df6, check_button, 0, 127, 127},
+    {BADGE_BUTTON_FASTFORWARD, "FASTFORWARD", NOTE_D6, check_button, 0, 127, 255},
+    {BADGE_BUTTON_STOP_EJECT, "STOP/EJECT", NOTE_G6, check_button, 127, 0, 255},
+    {BADGE_BUTTON_REWIND, "REWIND", NOTE_Bf6, check_button, 127, 0, 127},
 
 #if BADGE_HAS_ROTARY_BUTTONS
     {BADGE_BUTTON_ENCODER_SW, "ENC", 698, check_button},
