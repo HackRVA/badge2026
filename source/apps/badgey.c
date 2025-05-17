@@ -2888,25 +2888,37 @@ enum item_index {
 	/* Note all the armor must be together, and LIGHT_ARMOR must be first */
 	LIGHT_ARMOR,
 	HEAVY_ARMOR,
+	FLAK_VEST,
+	COMBAT_SUIT,
+	TITANIUM_PLATE,
+	ENERGY_SHIELD,
 
 	/* Note all the weapons must be together, and LASER_CUTLASS must be first */
+	ION_DAGGER,
 	LASER_CUTLASS,
 	BLASTER,
+        PLASMA_PISTOL,
+        GRENADE_GUN,
+        RAILGUN_RIFLE,
+        TESLA_GLAIVE,
+        BEAM_CANNON,
+        VOID_BLADE,
+        GAMMA_RAY_GUN,
 
 	PLA_DOODAD,
 	TSHIRT,
 	SACRAFICTION,
 	BLESSING,
-	SPACESHIP_RENTAL,
+	SPACESHIP,
 	COMPASS,
-	POSITION_FINDER,
-	MAPPING_STONE,
+	NEVERLOST,
+	MAP_GEMSTONE,
 	BADGE_BOM,
 	LED_SCREEN,
-	PLASTIC_DPAD,
+	DPAD,
 	A_BUTTON,
 	B_BUTTON,
-	RP2040CHIP,
+	RP2040_CHIP,
 	CIRCUIT_BOARD,
 	SMALL_SPEAKER,
 	AMP_CHIP,
@@ -2922,18 +2934,32 @@ static const struct weapon {
 	int damage;
 	int level_requirement;
 	unsigned char ranged_weapon;
+	unsigned char exotic;
 } weapon[] = {
-	{ LASER_CUTLASS, 5, 1, 0 },
-	{ BLASTER, 5, 2, 1 },
+	{ ION_DAGGER,			4, 1, 0, 0 },
+        { LASER_CUTLASS,		5, 1, 0, 0 },
+        { BLASTER,			5, 2, 1, 0 },
+        { PLASMA_PISTOL,		7, 2, 1, 0 },
+        { GRENADE_GUN,			10, 3, 1, 1 },
+        { RAILGUN_RIFLE,		12, 3, 1, 1 },
+        { TESLA_GLAIVE,			13, 3, 0, 1 },
+        { BEAM_CANNON,			18, 4, 1, 1 },
+        { VOID_BLADE,			16, 4, 0, 1 },
+        { GAMMA_RAY_GUN,		14, 3, 1, 1 },
 };
 
 static const struct armor {
 	enum item_index i;
 	int protection; /* as a part in 256 */
 	int level_requirement;
+	unsigned char exotic; 
 } armor[] = {
-	{ LIGHT_ARMOR, 20, 1 },
-	{ HEAVY_ARMOR, 50, 2 },
+        { LIGHT_ARMOR,		20, 1, 0, },
+        { HEAVY_ARMOR,		50, 2, 0, },
+	{ FLAK_VEST,		30, 1, 1 },
+	{ COMBAT_SUIT,		70, 2, 1 },
+	{ TITANIUM_PLATE,	120, 3, 1 },
+	{ ENERGY_SHIELD,	150, 4, 1 },
 };
 
 static int shop_to_weapon_index(int shop_item_index)
@@ -2968,12 +2994,24 @@ static const struct shop_item {
 	{ "DRINK", 5, ITEM_TYPE_SUSTENANCE, SHOP_PUB, 0 },
 
 	/* ARMOURY */
-	{ "LIGHT ARMOR", 40, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
-	{ "HEAVY ARMOR", 80, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
+	{ "LIGHT ARMOR",	40, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
+	{ "HEAVY ARMOR",	80, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
+	{ "FLAK_VEST",		100, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
+	{ "COMBAT_SUIT",	200, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 }, 
+	{ "TITANIUM_PLATE",	300, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
+	{ "ENERGY_SHIELD",	600, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
 
 	/* WEAPONS */
-	{ "LASER CUTLASS", 10, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
-	{ "BLASTER", 20, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+	{ "ION DAGGER",		5, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+	{ "LASER CUTLASS",	10, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+	{ "BLASTER",		20, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "PLASMA_PISTOL",	40, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "GRENADE_GUN",	80, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "RAILGUN_RIFLE",	120, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "TESLA_GLAIVE",	220, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "BEAM_CANNON",	240, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "VOID_BLADE",		250, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+        { "GAMMA_RAY_GUN",	500, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
 
 	/* HACKERSPACE */
 	{ "PLA DOODAD", 1, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
@@ -2990,7 +3028,7 @@ static const struct shop_item {
 	{ "COMPASS", 0, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 	{ "NEVERLOST", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 	{ "MAP GEMSTONE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
-	{ "BADGE BoM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
+	{ "BADGE BOM", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 1 },
 	{ "LED SCREEN", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 	{ "DPAD", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 	{ "A-BUTTON", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
@@ -3008,10 +3046,10 @@ static const struct shop_item {
 
 static const unsigned char badge_bom[] = {
 	LED_SCREEN,
-	PLASTIC_DPAD,
+	DPAD,
 	A_BUTTON,
 	B_BUTTON,
-	RP2040CHIP,
+	RP2040_CHIP,
 	CIRCUIT_BOARD,
 	SMALL_SPEAKER,
 	AMP_CHIP,
@@ -4002,8 +4040,8 @@ static void setup_static_treasures(void)
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
 	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
 	add_static_treasure(&ossaria, 7, 5, 44, 200, SOLDER, CHEST_STATUS_BURIED); /* ossaria, klon caverns */
-	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
-	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
+	add_static_treasure(&NW42, -1, 10, 10, 200, DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
+	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040_CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
 	add_static_treasure(&NW42, 12, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* NW42, NORJIG, SIGTRAP */
 	add_static_treasure(&borton, 23, 34, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
 	add_static_treasure(&borton, 26, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED); /* borton, smuggler's cave, */
@@ -4040,8 +4078,8 @@ static void badgey_init(void)
 	player.experience = 0;
 	memset(player.carrying, 0, sizeof(player.carrying));
 	memset(player.known_clues, 0, sizeof(player.known_clues));
-	player.carrying[POSITION_FINDER] = 1;
-	player.carrying[MAPPING_STONE] = 1;
+	player.carrying[NEVERLOST] = 1;
+	player.carrying[MAP_GEMSTONE] = 1;
 	player.carrying[COMPASS] = 1;
 	player.carrying_dirty = 1;
 	player.aboard_ship = -1;
@@ -5105,7 +5143,7 @@ static void draw_hit_points(void)
 
 static void maybe_draw_player_coords(void)
 {
-	if (player.carrying[POSITION_FINDER] <= 0)
+	if (player.carrying[NEVERLOST] <= 0)
 		return;
 
 	char buf[20];
@@ -6322,7 +6360,7 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "EXIT THIS MENU", BADGEY_RUN, 0);
 		if (player.aboard_ship != -1)
 			dynmenu_add_item(&planet_menu, "DISEMBARK SHIP", BADGEY_RUN, 9);
-		if (player.carrying[SPACESHIP_RENTAL])
+		if (player.carrying[SPACESHIP])
 			dynmenu_add_item(&planet_menu, "BLAST OFF", BADGEY_RUN, 1);
 		if (underchar >= '0' && underchar <= '4')
 			dynmenu_add_item(&planet_menu, "ENTER TOWN", BADGEY_RUN, 2);
@@ -6862,8 +6900,21 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 
 	for (size_t i = 0; i < ARRAY_SIZE(shop_item); i++) {
 		int st = shop_item[i].shop_type;
-		if (st < NUMSHOPS)
+		if (st < NUMSHOPS) {
+			/* Don't add exotic armor to every armor shop */
+			if (shop_item[i].item_type == ITEM_TYPE_ARMOR) {
+				int a = shop_to_armor_index(i);
+				if (a >= 0 && armor[a].exotic)
+					continue;
+			}
+			/* Don't add exotic weapons to every armor shop */
+			if (shop_item[i].item_type == ITEM_TYPE_WEAPON) {
+				int w = shop_to_weapon_index(i);
+				if (w >= 0 && weapon[w].exotic)
+					continue;
+			}
 			add_shop_item(st, i);
+		}
 	}
 
 	/* Here is where we will add specialty items to shops based on town */
@@ -7487,7 +7538,7 @@ static void badgey_use_item(void)
 	if (choice != DYNMENU_SELECTION_ABORTED &&
 		choice != (unsigned char) DYNMENU_SELECTION_ABORTED) {
 
-		if (choice == MAPPING_STONE) {
+		if (choice == MAP_GEMSTONE) {
 			set_badgey_state(BADGEY_RUN);
 			set_badgey_state(BADGEY_DISPLAY_MAP);
 			return;
@@ -8703,6 +8754,94 @@ static void sanity_check_aux_cave_entrances(void)
 #endif
 }
 
+#if TARGET_SIMULATOR
+/* Compare two strings like strcpy, except consider - _ and space to be the same
+ * plus a few other anomalous cases
+ */
+static int str_under_cmp(char *s1, char *s2)
+{
+	int l1, l2;
+
+	if (strcmp(s1, "TSHIRT") == 0 && strcmp(s2, "T-SHIRT") == 0)
+		return 0;
+	if (strcmp(s1, "AMP_CHIP") == 0 && strcmp(s2, "AMPLIFIER CHIP") == 0)
+		return 0;
+	if (strcmp(s1, "SOLDER") == 0 && strcmp(s2, "ROLL OF SOLDER") == 0)
+		return 0;
+
+	l1 = strlen(s1);
+	l2 = strlen(s2);
+	if (l1 != l2)
+		return 1;
+
+	for (int i = 0; i < l1; i++) {
+		if (s1[i] == s2[i])
+			continue;
+		if ((s1[i] == ' ' || s1[i] == '_' || s1[i] == '-') &&
+			(s2[i] == ' ' || s2[i] == '_' || s2[i] == '-'))
+			continue;
+		return 1;
+	}
+	return 0;
+} 
+#endif
+
+/* Make sure I didn't bodge up the shop_item[] array */
+static void sanity_check_shop_enums(void)
+{
+#if TARGET_SIMULATOR
+
+#define CHECK_SHOPITEM(v) \
+	do { if (str_under_cmp(#v, shop_item[v].name) != 0) { \
+		fprintf(stderr, "Bad menu item '%s' vs '%s'\n", #v, shop_item[v].name); \
+		raise(SIGTRAP); \
+	} } while(0)
+
+	CHECK_SHOPITEM(SAVE_GAME);
+	CHECK_SHOPITEM(RESTORE_GAME);
+	CHECK_SHOPITEM(FOOD);
+	CHECK_SHOPITEM(DRINK);
+	CHECK_SHOPITEM(LIGHT_ARMOR);
+	CHECK_SHOPITEM(HEAVY_ARMOR);
+	CHECK_SHOPITEM(FLAK_VEST);
+	CHECK_SHOPITEM(COMBAT_SUIT);
+	CHECK_SHOPITEM(TITANIUM_PLATE);
+	CHECK_SHOPITEM(ENERGY_SHIELD);
+	CHECK_SHOPITEM(ION_DAGGER);
+	CHECK_SHOPITEM(LASER_CUTLASS);
+	CHECK_SHOPITEM(BLASTER);
+        CHECK_SHOPITEM(PLASMA_PISTOL);
+        CHECK_SHOPITEM(GRENADE_GUN);
+        CHECK_SHOPITEM(RAILGUN_RIFLE);
+        CHECK_SHOPITEM(TESLA_GLAIVE);
+        CHECK_SHOPITEM(BEAM_CANNON);
+        CHECK_SHOPITEM(VOID_BLADE);
+        CHECK_SHOPITEM(GAMMA_RAY_GUN);
+	CHECK_SHOPITEM(PLA_DOODAD);
+	CHECK_SHOPITEM(TSHIRT);
+	CHECK_SHOPITEM(SACRAFICTION);
+	CHECK_SHOPITEM(BLESSING);
+	CHECK_SHOPITEM(SPACESHIP);
+	CHECK_SHOPITEM(COMPASS);
+	CHECK_SHOPITEM(NEVERLOST);
+	CHECK_SHOPITEM(MAP_GEMSTONE);
+	CHECK_SHOPITEM(BADGE_BOM);
+	CHECK_SHOPITEM(LED_SCREEN);
+	CHECK_SHOPITEM(DPAD);
+	CHECK_SHOPITEM(A_BUTTON);
+	CHECK_SHOPITEM(B_BUTTON);
+	CHECK_SHOPITEM(RP2040_CHIP);
+	CHECK_SHOPITEM(CIRCUIT_BOARD);
+	CHECK_SHOPITEM(SMALL_SPEAKER);
+	CHECK_SHOPITEM(AMP_CHIP);
+	CHECK_SHOPITEM(RESET_BUTTON);
+	CHECK_SHOPITEM(USB_CONNECTOR);
+	CHECK_SHOPITEM(BATTERY);
+	CHECK_SHOPITEM(SOLDER);
+	CHECK_SHOPITEM(RVASEC_BADGE);
+#endif
+}
+
 #if DEV_CHEATS_ENABLED
 static void cheat_teleport(char *cmd)
 {
@@ -8880,6 +9019,7 @@ void badgey_cb(struct badge_app *app)
 		screen_changed = 1;
 
 	sanity_check_aux_cave_entrances();
+	sanity_check_shop_enums();
 
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:
