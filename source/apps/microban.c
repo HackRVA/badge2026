@@ -810,8 +810,8 @@ static void draw_screen(void)
             // FbWriteString(buf);
         }
 
-        FbImageRect4bit_Palette(&NICE_CLEAR, 4, 8, 0, 0, NICE_CLEAR.x, NICE_CLEAR.y, MAGENTA, &nice_clear_cycle);
-        if (tick % 4 == 0) FbPaletteCycle(&nice_clear_cycle, 3, 8);
+        FbImageRect4bit_Palette(&NICE_CLEAR, 4, 8, 0, 0, NICE_CLEAR.x, NICE_CLEAR.y, MAGENTA, nice_clear_cycle);
+        if (tick % 4 == 0) FbPaletteCycle(nice_clear_cycle, 3, 8);
 
         break;
     }
