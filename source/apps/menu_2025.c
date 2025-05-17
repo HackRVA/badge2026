@@ -10,7 +10,7 @@
 #include "cassettepixel.h"
 
 #define TAPE_DECK_MENU_FG_COLOR WHITE
-#define TAPE_DECK_MENU_BG_COLOR PACKRGB888(208, 70, 46)
+#define TAPE_DECK_MENU_BG_COLOR RED
 #define TAPE_DECK_SHELL PACKRGB888(170, 171, 163)
 
 static struct default_menu_app_context context_stack[MAX_APP_STACK_DEPTH];
