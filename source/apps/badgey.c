@@ -2886,7 +2886,8 @@ enum item_index {
 	DRINK,
 
 	/* Note all the armor must be together, and LIGHT_ARMOR must be first */
-	LIGHT_ARMOR,
+#define FIRST_ARMOR LIGHT_ARMOR
+	FIRST_ARMOR,
 	HEAVY_ARMOR,
 	FLAK_VEST,
 	COMBAT_SUIT,
@@ -2894,7 +2895,8 @@ enum item_index {
 	ENERGY_SHIELD,
 
 	/* Note all the weapons must be together, and LASER_CUTLASS must be first */
-	ION_DAGGER,
+#define FIRST_WEAPON ION_DAGGER
+	FIRST_WEAPON,
 	LASER_CUTLASS,
 	BLASTER,
         PLASMA_PISTOL,
@@ -2964,7 +2966,7 @@ static const struct armor {
 
 static int shop_to_weapon_index(int shop_item_index)
 {
-	int x = shop_item_index - LASER_CUTLASS;
+	int x = shop_item_index - FIRST_WEAPON;
 	if (x >= 0 && x < (int) ARRAY_SIZE(weapon))
 		return x;
 	return -1;
@@ -2972,7 +2974,7 @@ static int shop_to_weapon_index(int shop_item_index)
 
 static int shop_to_armor_index(int shop_item_index)
 {
-	int x = shop_item_index - LIGHT_ARMOR;
+	int x = shop_item_index - FIRST_ARMOR;
 	if (x >= 0 && x < (int) ARRAY_SIZE(armor))
 		return x;
 	return -1;
