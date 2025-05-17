@@ -267,7 +267,7 @@ void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
 {
      FbImageRect4bit_Palette(asset, x_pos, y_pos, x_source, y_source, width, height, key_color, asset->colormap);
 }
-void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, uint16_t *colormap)
+void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap)
 {
     unsigned char y, yEnd, x;
     unsigned char pixbyte, ci;
@@ -966,8 +966,8 @@ void FbFilledRectangle(unsigned char width, unsigned char height)
     G_Fb.changed = 1;
 }
 
-/*
-void FbPlaceFilledRectangle(unsigned short color, int x_pos, int y_pos, int width, int height)
+
+void FbPlaceFilledRectangle(int x_pos, int y_pos, int width, int height, unsigned short color)
 {   
     int x_start = x_pos < 0 ?                   0           : x_pos;
     int x_end   = x_pos + width > LCD_XSIZE ?   LCD_XSIZE   : x_pos + width;
@@ -981,7 +981,7 @@ void FbPlaceFilledRectangle(unsigned short color, int x_pos, int y_pos, int widt
     }
     G_Fb.changed = 1;
 }
-*/
+
 
 void FbPoint(unsigned char x, unsigned char y)
 {

@@ -88,6 +88,8 @@ void FbRotWriteString(const char *string);
 void FbRectangle(unsigned char width, unsigned char height);
 void FbCircle(int x, int y, int r);
 
+void FbPlaceFilledRectangle(int x_pos, int y_pos, int width, int height, unsigned short color);
+
 /** @brief Render the asset with its upper left corner at the current frame buffer location.
  *
  * Images can be generated using the tools/asset_converter.py script. */
@@ -123,7 +125,7 @@ void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_so
 void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 
-void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, uint16_t *colormap);
+void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap);
 
 /* Copy the const colormap into RAM */
 void FbPaletteCycleInit(uint16_t *colormap_dest, uint16_t *colormap_source, size_t length);
