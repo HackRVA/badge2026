@@ -1,3 +1,6 @@
 [submodule "source/hal/driver-ST7735S"]
 	path = source/hal/driver-ST7735S
 	url = https://github.com/HackRVA/driver-ST7735S.git
+[submodule "source/hal/i2s/rp2040_i2s_example"]
+	path = source/hal/i2s/rp2040_i2s_example
+	url = https://github.com/HackRVA/rp2040_i2s_example.git

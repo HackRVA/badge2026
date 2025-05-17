@@ -1,0 +1,146 @@
+; i2s_master_full.pio
+;
+; Author: Peter Maxwell Warasila
+; Date:   Tuesday, May 6th, 2025
+;
+; Copyright (c) 2025 Peter Maxwell Warasila
+;
+; SPDX-License-Identifier: MIT
+
+.program i2s_master_full
+; Transmit sck, bclk, lrclk, and dout
+; Receive din
+;
+; 32-bit frames only
+;
+; Clocks:
+;   lrclk - sample rate
+;   bclk - 64 * sample rate
+;   mclk - 256 * sample rate
+;   
+;   This should be clocked at 2 * mclk (e.g. 24.576 MHz).
+
+.side_set 3
+
+public_entry_point:
+                    ;          +---- LRCLK/FS
+                    ;          |+--- BCLK
+                    ;          ||+-- MCLK/SCK
+start_l:            ;          |||
+    out pins, 1         side 0b000  ; shift out on falling edge of bclk
+    set x, 30           side 0b001
+    pull noblock        side 0b000  ; grab new data from fifo
+    nop                 side 0b001
+    in pins, 1          side 0b010  ; shift in on rising edge of bclk
+    nop                 side 0b011
+    push noblock        side 0b010  ; give new sample to fifo
+    nop                 side 0b011
+data_l:             ;          |||
+    out pins, 1         side 0b000  ; shift out on falling edge of bclk
+    nop                 side 0b001
+    nop                 side 0b000
+    nop                 side 0b001
+    in pins, 1          side 0b010  ; shift in on rising edge of bclk
+    nop                 side 0b011
+    nop                 side 0b010
+    jmp x-- data_l      side 0b011
+start_r:            ;          |||
+    out pins, 1         side 0b100  ; shift out on falling edge of bclk
+    set x, 30           side 0b101
+    pull noblock        side 0b100  ; grab new data from fifo
+    nop                 side 0b101
+    in pins, 1          side 0b110  ; shift in on rising edge of bclk
+    nop                 side 0b111
+    push noblock        side 0b110  ; give new sample to fifo
+    nop                 side 0b111
+data_r:             ;          |||
+    out pins, 1         side 0b100  ; shift out on falling edge of bclk
+    nop                 side 0b101
+    nop                 side 0b100
+    nop                 side 0b101
+    in pins, 1          side 0b110  ; shift in on rising edge of bclk
+    nop                 side 0b111
+    nop                 side 0b110
+    jmp x-- data_l      side 0b111
+
+.program i2s_master_full_clever
+; Transmit sck, bclk, lrclk, and dout
+; Receive din
+;
+; 32-bit frames only
+;
+; set pin is lrclk
+;
+; Clocks:
+;   lrclk - sample rate
+;   bclk - 64 * sample rate
+;   mclk - 256 * sample rate
+;   
+;   This should be clocked at 2 * mclk (e.g. 24.576 MHz).
+
+.side_set 2
+
+.wrap_target
+public_entry_point:
+                    ;           +--- BCLK
+                    ;           |+-- MCLK/SCK
+start_l:            ;           ||
+    set pins, 0          side 0b00  ; sync lrclk with bclk and mclk
+    out pins, 1          side 0b01  ; shift out on falling edge of bclk
+    set y, 1             side 0b00  ; indicate next jump is to start_r
+    jmp start_x          side 0b01
+start_r:
+    set pins, 1          side 0b00  ; sync lrclk with bclk and mclk
+    out pins, 1          side 0b01  ; shift out on falling edge of bclk
+    set y, 0             side 0b00  ; indicate next jump is to start_l
+    jmp start_x          side 0b01
+start_x:
+    in pins, 1           side 0b10  ; shift in on rising edge of bclk
+    pull noblock         side 0b11  ; grab new data from fifo
+    push noblock         side 0b10  ; give new sample to fifo
+    set x, 30            side 0b11  ; initialize counter
+data_x:             ;           ||
+    out pins, 1          side 0b00  ; shift out on falling edge of bclk
+    nop                  side 0b01
+    nop                  side 0b00
+    nop                  side 0b01
+    in pins, 1           side 0b10  ; shift in on rising edge of bclk
+    nop                  side 0b11
+    jmp x-- data_loop    side 0b10
+    jmp y-- start_r      side 0b11
+.wrap
+data_loop:
+    jmp data_x           side 0b11
+
+% c-sdk {
+
+static inline void i2s_master_full_init(PIO pio, uint8_t sm, uint8_t offset,
+                                        uint8_t dout_pin, uint8_t din_pin,
+                                        uint8_t mclk_pin, uint8_t bclk_base_pin)
+{
+    pio_gpio_init(pio, dout_pin);
+    pio_gpio_init(pio, din_pin);
+    pio_gpio_init(pio, mclk_pin);
+    pio_gpio_init(pio, bclk_base_pin);
+    pio_gpio_init(pio, bclk_base_pin + 1);
+
+    pio_sm_config cfg = i2s_master_full_program_get_default_config(offset);
+    sm_config_set_out_pins(&cfg, dout_pin, 1);
+    sm_config_set_in_pins(&cfg, din_pin, 1);
+    sm_config_set_sideset_pins(&cfg, clock_base_pin);
+    sm_config_set_out_shift(&cfg, false, false, 32);
+    sm_config_set_in_shift(&cfg, false, false, 32);
+    pio_sm_init(pio, sm, offset, &cfg);
+
+    uint32_t pin_mask = (1U << dout_pin) 
+                        | (1U << mclk_pin) 
+                        | (3U << clock_base_pin);
+    pio_sm_set_pins_with_mask(pio, sm, 0, pin_mask);
+    pio_sm_set_pindirs_with_mask(pio, sm, pin_mask, pin_mask);
+
+    pin_mask = (1U << din_pin);
+    pio_sm_set_pindirs_with_mask(pio, sm, 0, pin_mask);
+}
+
+%}
+

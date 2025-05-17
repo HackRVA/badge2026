@@ -12,9 +12,16 @@
 #endif
 #include <pthread.h>
 #include <string.h>
+#include <errno.h>
 
 #include "audio.h"
 #include "badge.h"
+#include "utils.h"
+
+/* TODO: add logging system? -PMW */
+#ifndef LOG
+#define LOG(...) printf("\r\n[audio] " __VA_ARGS__)
+#endif /* LOG */
 
 #ifdef SIMULATOR_AUDIO
 #define SAMPLE_RATE (48000)
@@ -111,11 +118,71 @@ void audio_init(void)
 #endif
 }
 
+/*- Input --------------------------------------------------------------------*/
+// FIXME: move this to audio_common.c. -PMW
+static audio_input_callback_t m_audio_in_cb[AUDIO_INPUT_CALLBACKS_MAX];
+static int m_audio_in_cb_count;
+int audio_in_add_cb(audio_input_callback_t cb)
+{
+    if (NULL == cb) {
+        LOG("Cannot add NULL input callback.");
+        return -EINVAL;
+    } else if (ARRAY_SIZE(m_audio_in_cb) <= (unsigned) m_audio_in_cb_count) {
+        LOG("No space to add input callback.");
+        return -ENOMEM;
+    } else {
+        for (int i = 0; i < (int) ARRAY_SIZE(m_audio_in_cb); i++) {
+            if (NULL == m_audio_in_cb[i]) {
+                m_audio_in_cb_count++;
+                m_audio_in_cb[i] = cb;
+                LOG("Added input callback. (i: %d, count: %d)",
+                    i, m_audio_in_cb_count);
+                return i;
+            }
+        }
+        LOG("Did not find space to add input callback.");
+        return -ENOMEM;
+    }
+}
+
+int audio_in_remove_cb(int i)
+{
+    if (((int) ARRAY_SIZE(m_audio_in_cb) <= i) || (i < 0)) {
+        LOG("Input entry index out of range.");
+        return -EINVAL;
+    } else if (NULL == m_audio_in_cb[i]) {
+        LOG("Input entry already empty.");
+        return -ENOENT;
+    } else {
+        m_audio_in_cb[i] = NULL;
+        m_audio_in_cb_count--;
+        LOG("Removed input callback. (i: %d, count: %d)", i, m_audio_in_cb_count);
+        return 0;
+    }
+}
+
+int audio_in_cb_count()
+{
+    return m_audio_in_cb_count;
+}
+
+/*- Output -------------------------------------------------------------------*/
 int audio_out_beep_with_cb(
 	uint16_t freq, uint16_t duration, void (*beep_finished)(void))
 {
 #ifdef SIMULATOR_AUDIO
 	float value = -0.025;
+
+	if ((freq == 0) || (duration == 0)) {
+		/* Stop playing beep. */
+		SDL_LockMutex(audio_lock);
+		memset(audio_buffer, 0, sizeof(audio_buffer));
+		user_callback_fn = NULL;
+		audio_buffer_index = 0;
+		samples_left_to_play = 0;
+		SDL_UnlockMutex(audio_lock);
+		return 0;
+	}
 
 	if (duration <= 0)
 		return 0;
