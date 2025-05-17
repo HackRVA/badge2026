@@ -158,6 +158,36 @@ static struct particle_pool *particle_pool = NULL;
 #define kick_drum { NOTE_A2, 10, }
 #define snare_drum { NOTE_B6, 10, }
 
+static enum {
+	AUDIO_THEME,
+	AUDIO_SFX,
+} audio_mode = AUDIO_THEME;
+
+static size_t theme_index = 0;
+static uint64_t theme_note_start = 0;
+
+static struct note *current_sfx = NULL;
+static size_t current_sfx_len = 0;
+static size_t sfx_index = 0;
+static uint64_t sfx_note_start = 0;
+
+static struct note sfx_one[] = {
+	{ NOTE_C5, thirtysecond_note },
+	{ NOTE_Ef5, thirtysecond_note },
+	{ NOTE_G5, thirtysecond_note },
+};
+
+static struct note sfx_two[] = {
+	{NOTE_G5, thirtysecond_note},
+	{NOTE_F5, thirtysecond_note},
+	{NOTE_G5, thirtysecond_note},
+	{NOTE_Bf5, thirtysecond_note},
+	{NOTE_C6, thirtysecond_note},
+	{NOTE_C6, thirtysecond_note},
+	{NOTE_C6, thirtysecond_note},
+	{NOTE_C6, thirtysecond_note},
+};
+
 static struct note puzzle_attack_theme_notes[] = {
 	/* just bass */
   kick_drum,
@@ -819,7 +849,7 @@ enum {
 	MATCH_LEVEL_LIGHTNING = 6,
 };
 
-static bool check_matches(void)
+static int get_match_count(void)
 {
 	int match_count = 0;
 	int match_x[GRID_ROWS * GRID_COLS];
@@ -902,7 +932,7 @@ static bool check_matches(void)
 	}
 #endif
 
-	return (match_count > 0);
+	return match_count;
 }
 
 static bool collapse_grid(void)
@@ -984,6 +1014,47 @@ static void swap_blocks_at_cursor(void)
 	has_grid_changed = 1;
 }
 
+static int theme_duration = 200;
+static int sfx_duration = 0;
+
+static int calculate_tune_duration(struct note *notes, size_t note_count)
+{
+	int total_duration = 0;
+	for (size_t i = 0; i < note_count; ++i) {
+		total_duration += notes[i].duration;
+	}
+	return total_duration;
+}
+
+static void update_audio(uint64_t now)
+{
+	if (audio_mode == AUDIO_SFX) {
+		struct note *n = &current_sfx[sfx_index];
+
+		if (now < sfx_note_start + n->duration)
+		  return;
+
+		sfx_index++;
+
+		if (sfx_index < current_sfx_len) {
+			audio_out_beep(n->freq, n->duration);
+			sfx_note_start = now;
+			return;
+		}
+		audio_mode = AUDIO_THEME;
+		theme_note_start += sfx_duration;
+		return;
+	}
+
+	struct note *n = &puzzle_attack_theme_notes[theme_index];
+	if (now >= theme_note_start + n->duration) {
+		theme_index = (theme_index + 1) % puzzle_attack_theme.num_notes;
+		theme_note_start = now;
+		struct note *next = &puzzle_attack_theme_notes[theme_index];
+		audio_out_beep(next->freq, next->duration);
+	}
+}
+
 static void puzzle_attack_update(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
@@ -994,9 +1065,24 @@ static void puzzle_attack_update(void)
 		last_tick_time = now;
 	}
 	if (now > cycle_cooldown) {
-		cycle_cooldown = rtc_get_ms_since_boot()+EVAL_CYCLE_MS;
-		check_matches();
+		cycle_cooldown = now + EVAL_CYCLE_MS;
+
+		int match_count = get_match_count();
 		register_blocks_for_removal();
+
+		if (match_count > 0 && audio_mode == AUDIO_THEME) {
+			if (match_count > MATCH_LEVEL_LIGHTNING) {
+				current_sfx = sfx_two;
+				current_sfx_len = ARRAYSIZE(sfx_two);
+			} else {
+				current_sfx = sfx_one;
+				current_sfx_len = ARRAYSIZE(sfx_one);
+			}
+			audio_mode = AUDIO_SFX;
+			sfx_index = 0;
+			sfx_note_start = now;
+		}
+		sfx_duration = calculate_tune_duration(current_sfx, current_sfx_len);
 	}
 	if (now > grid_shift_cooldown) {
 		grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
@@ -1322,31 +1408,6 @@ static void draw_screen(void)
 	}
 #endif
 }
-static int calculate_theme_duration(struct note *notes, size_t note_count)
-{
-	int total_duration = 0;
-	for (size_t i = 0; i < note_count; ++i) {
-		total_duration += notes[i].duration;
-	}
-	return total_duration;
-}
-static bool is_playing = false;
-static uint64_t last_music_start_time;
-static int theme_duration = 200;
-static void play_theme(void)
-{
-	uint64_t now = rtc_get_ms_since_boot();
-
-	if (is_playing && now >= last_music_start_time + theme_duration)
-		is_playing = false;
-
-	if (is_playing)
-		return;
-
-	play_tune(&puzzle_attack_theme, NULL, NULL);
-	is_playing = true;
-	last_music_start_time = now;
-}
 
 void puzzle_attack_cb(struct badge_app *app)
 {
@@ -1364,13 +1425,13 @@ void puzzle_attack_cb(struct badge_app *app)
 	switch (puzzle_attack_state) {
 	case PUZZLE_ATTACK_INIT:
 		puzzle_attack_init();
-		theme_duration = calculate_theme_duration(puzzle_attack_theme_notes, puzzle_attack_theme.num_notes);
+		theme_duration = calculate_tune_duration(puzzle_attack_theme_notes, puzzle_attack_theme.num_notes);
 		theme_duration += quarter_note;
 		break;
 	case PUZZLE_ATTACK_RUN:
 		puzzle_attack_update();
 		draw_screen();
-		play_theme();
+		update_audio(rtc_get_ms_since_boot());
 		break;
 	case PUZZLE_ATTACK_SHOW_HELP:
 		FbClear();
@@ -1391,7 +1452,6 @@ void puzzle_attack_cb(struct badge_app *app)
 	case PUZZLE_ATTACK_EXIT:
 		puzzle_attack_state = PUZZLE_ATTACK_INIT;
 		stop_tune();
-		is_playing = false;
 		pop_app();
 		break;
 	default:
