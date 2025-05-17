@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<string.h>
 #include "colors.h"
+#include "utils.h"
 #include "menu.h"
 #include "button.h"
 #include "framebuffer.h"
@@ -163,7 +164,7 @@ static void microban_restore_game(void)
 }
 
 
-
+uint16_t nice_clear_cycle[255];
 
 #define BREAKPOINT_COUNT 7
 static const int PROGRESS_BREAKPOINTS[BREAKPOINT_COUNT] = {1, 30, 60, 90, 120, 150, MAX_LEVELS};
@@ -319,6 +320,8 @@ static void microban_init(void)
             break;
         }
     }
+
+    FbPaletteCycleInit(nice_clear_cycle, NICE_CLEAR_colormap, ARRAY_SIZE(NICE_CLEAR_colormap));
 
 }
 
@@ -772,6 +775,8 @@ static void draw_screen(void)
         if (DrawHud) draw_hud();
         break;
     case WIN: {
+
+
         char buf[20];
         const int unit = 12;
         int x = 8;
@@ -780,7 +785,7 @@ static void draw_screen(void)
         FbColor(YELLOW);
 
         FbMove(x, y);
-        FbWriteString("NICE CLEAR!!");
+        // FbWriteString("NICE CLEAR!!");
         y += unit;
 
         FbMove(x, y);
@@ -790,20 +795,24 @@ static void draw_screen(void)
 
         FbMove(x, y);
         snprintf(buf, sizeof(buf), "in %d moves.", moves);
-        FbWriteString(buf);
+        // FbWriteString(buf);
         y += unit;
 
 
         FbMove(x, y);
-        FbWriteString("try next?");
+        // FbWriteString("try next?");
         y += unit;
 
         if (stats.streak >= 3) {
             y += unit;
             FbMove(x, y);
             snprintf(buf, sizeof(buf), "STREAK: %d!!", stats.streak);
-            FbWriteString(buf);
+            // FbWriteString(buf);
         }
+
+        FbImageRect4bit_Palette(&NICE_CLEAR, 4, 8, 0, 0, NICE_CLEAR.x, NICE_CLEAR.y, MAGENTA, &nice_clear_cycle);
+        if (tick % 4 == 0) FbPaletteCycle(&nice_clear_cycle, 3, 8);
+
         break;
     }
 

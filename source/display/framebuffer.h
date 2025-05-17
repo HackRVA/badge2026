@@ -1,3 +1,4 @@
+#include<stdio.h>
 #ifndef fb_h
 #define fb_h
 
@@ -121,6 +122,15 @@ void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned sho
 void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
+
+void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, uint16_t *colormap);
+
+/* Copy the const colormap into RAM */
+void FbPaletteCycleInit(uint16_t *colormap_dest, uint16_t *colormap_source, size_t length);
+/* Cycle a region of a color palette by one step. */
+void FbPaletteCycle(uint16_t *colormap, int start_index, int count);
+
+
 
 /* FbDrawObject() draws an object at x, y.  The coordinates of drawing[] should be centered at
  * (0, 0).  The coordinates in drawing[] are multiplied by scale, then divided by 1024 (via a shift)

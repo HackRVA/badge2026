@@ -363,6 +363,20 @@ Look at source/apps/clue.c and source/apps/clue_assets/ to see an example
 of a badge app that uses the images produced by the process described
 int tools/README.md
 
+Color Palette Cycling Effect
+----------------------------
+
+A color cycle effect can be done with `FbPaletteCycleInit()` and `FbPaletteCycle()`. First, make a mutable copy of the colormap from your asset:
+```
+uint16_t MYASSET_colormap_cycle[255];
+FbPaletteCycleInit(MYASSET_colormap_cycle, MYASSET_colormap, ARRAY_SIZE(MYASSET_colormap));
+```
+
+Then, in your draw step, cycle the region of the palette (colormap) desired. This example cycles a region of the palette of length 8, starting at index 2. This would require a palette with at least 10 colors. 
+```
+FbPaletteCycle(&MYASSET_colormap_cycle, 2, 8);
+```
+
 Moving the "Cursor"
 -------------------
 

@@ -265,6 +265,10 @@ void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_so
 
 void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
 {
+     FbImageRect4bit_Palette(asset, x_pos, y_pos, x_source, y_source, width, height, key_color, asset->colormap);
+}
+void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, uint16_t *colormap)
+{
     unsigned char y, yEnd, x;
     unsigned char pixbyte, ci;
     unsigned short pixel;
@@ -293,7 +297,7 @@ void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
 
             ci = ((pixbyte >> 4) & 0xF);
             // if (ci != (G_Fb.transIndex & 0xf)) { /* transparent? */
-            pixel = asset->colormap[ci];
+            pixel = colormap[ci];
             if (pixel != key_color) {
                 fb_mark_row_changed(x + x_pos, y);
                 BUFFER(y * LCD_XSIZE + x + x_pos) = pixel;
@@ -306,7 +310,7 @@ void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
 
             ci = pixbyte & 0xF;
             // if (ci != (G_Fb.transIndex & 0xf)) { /* transparent? */
-	    pixel = asset->colormap[ci];
+	    pixel = colormap[ci];
             if (pixel != key_color) {
                 fb_mark_row_changed(x + x_pos, y);
                 BUFFER(y * LCD_XSIZE + x + x_pos) = pixel;
@@ -1346,6 +1350,17 @@ void FbDrawObject(const struct point drawing[], int npoints, int color, int x, i
 	else if (o1 || o2)
 		FbClippedLine(x1, y1, x2, y2);
         i++;
+    }
+}
+
+void FbPaletteCycleInit(uint16_t *colormap_dest, uint16_t *colormap_source, size_t length) {
+    memcpy(colormap_dest, colormap_source, length * sizeof(uint16_t)); 
+}
+
+void FbPaletteCycle(uint16_t *colormap, int start_index, int count)
+{
+    for (int i = start_index; i < start_index + count; i++) {
+        colormap[i] = colormap[((i - start_index) + 1) % count + start_index];
     }
 }
 
