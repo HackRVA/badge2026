@@ -677,8 +677,11 @@ static void aagunner_exit(void)
 	pop_app();
 }
 
-void aagunner_cb(__attribute__((unused)) struct badge_app *app)
+void aagunner_cb(struct badge_app *app)
 {
+
+	if (app->wake_up)
+		screen_changed = 1;
 
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();

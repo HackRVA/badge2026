@@ -133,8 +133,11 @@ static void myprogram_exit(void)
 }
 
 /* You will need to rename myprogram_cb() something else. */
-void myprogram_cb(__attribute__((unused)) struct badge_app *app)
+void myprogram_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (myprogram_state) {
 	case MYPROGRAM_INIT:
 		myprogram_init();

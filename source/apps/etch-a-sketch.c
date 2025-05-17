@@ -148,8 +148,11 @@ static void etch_a_sketch_exit(void)
 	pop_app();
 }
 
-void etch_a_sketch_cb(__attribute__((unused)) struct badge_app *app)
+void etch_a_sketch_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (etch_a_sketch_state) {
 	case ETCH_A_SKETCH_INIT:
 		etch_a_sketch_init();

@@ -73,7 +73,13 @@ static int grid_y;
 
 static int screen_changed = 0;
 
-static int tile_scale[GRID_SIZE][GRID_SIZE] = {{100}};
+static int tile_scale[GRID_SIZE][GRID_SIZE] = {
+	{100,100,100,100},
+	{100,100,100,100},
+	{100,100,100,100},
+	{100,100,100,100},
+};
+
 static bool moved_tiles[GRID_SIZE][GRID_SIZE] = {false};
 static int animation_step = 0;
 static const int animation_duration = 5;
@@ -281,6 +287,7 @@ static void twenty_forty_eight_init(void)
 {
 	FbInit();
 	FbClear();
+	current_menu_item = 0;
 
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	screen_changed = 1;
@@ -326,33 +333,65 @@ static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
 
+	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_SHOW_HELP) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		}
+		return;
+	}
 	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_MENU) {
 		current_menu_item_selected = false;
 		if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 			previous_menu_item();
+			screen_changed = 1;
 		} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 			next_menu_item();
+			screen_changed = 1;
 		} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 			current_menu_item_selected = true;
 			handle_menu_options();
+			screen_changed = 1;
 		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_EXIT;
+			screen_changed = 1;
 		}
 		return;
 	}
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
 		move_tiles(move_left);
+		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 		move_tiles(move_right);
+		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		move_tiles(move_up);
+		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		move_tiles(move_down);
+		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_EXIT;
+		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+		screen_changed = 1;
 	}
 	prev_board = board;
 }
@@ -391,33 +430,48 @@ static void draw_menu(void)
 	}
 }
 
+static void reset_tile_size(int row, int col)
+{
+	tile_scale[row][col] = 100;
+	moved_tiles[row][col] = false;
+}
+
+static void grow_tile(int row, int col)
+{
+	if (!moved_tiles[row][col]) {
+		return;
+	}
+
+	if (animation_step < animation_duration / 2) {
+		return;
+	}
+	tile_scale[row][col] += 20 / (animation_duration / 2);
+}
+
 static void update_tile_animation(void)
 {
+	bool animation_triggered = false;
 	if (animation_step < animation_duration) {
 		for (int row = 0; row < GRID_SIZE; row++) {
 			for (int col = 0; col < GRID_SIZE; col++) {
-				if (moved_tiles[row][col]) {
-					if (animation_step <
-						animation_duration / 2) {
-						tile_scale[row][col] = 80;
-					} else {
-						tile_scale[row][col] += 20 /
-							(animation_duration /
-								2);
-					}
-				}
+				grow_tile(row, col);
+				animation_triggered = true;
 			}
 		}
 		animation_step++;
 	} else {
 		for (int row = 0; row < GRID_SIZE; row++) {
 			for (int col = 0; col < GRID_SIZE; col++) {
-				tile_scale[row][col] = 100;
-				moved_tiles[row][col] = false;
+				if (tile_scale[row][col] == 100) continue;
+				reset_tile_size(row, col);
+				animation_triggered = true;
 			}
 		}
 		animation_step = 0;
 	}
+
+	if (animation_triggered)
+		screen_changed = 1;
 }
 
 static void twenty_forty_eight_update(void)
@@ -525,6 +579,9 @@ static void draw_screen(void)
 	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_GAME_OVER) {
 		draw_game_over_screen();
 	}
+
+	if (!screen_changed) return;
+
 	FbSwapBuffers();
 	screen_changed = 0;
 }
@@ -535,8 +592,11 @@ static void twenty_forty_eight_exit(void)
 	pop_app();
 }
 
-void twenty_forty_eight_cb(__attribute__((unused)) struct menu_t *m)
+void twenty_forty_eight_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	switch (twenty_forty_eight_state) {
 	case TWENTY_FORTY_EIGHT_INIT:
 		twenty_forty_eight_init();

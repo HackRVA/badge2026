@@ -6,6 +6,13 @@
 #include <errno.h>
 #endif
 
+#if TARGET_SIMULATOR
+#define DEV_CHEATS_ENABLED 1
+#else
+#define DEV_CHEATS_ENABLED 0
+#endif
+
+
 /*
  *
  *	Partial list of things remaining to do
@@ -47,11 +54,11 @@ static const int xoff[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 static const int yoff[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 
 static struct dynmenu planet_menu;
-static struct dynmenu_item planet_menu_item[10];
+static struct dynmenu_item planet_menu_item[12];
 static struct dynmenu cave_menu;
-static struct dynmenu_item cave_menu_item[10];
+static struct dynmenu_item cave_menu_item[12];
 static struct dynmenu town_menu;
-static struct dynmenu_item town_menu_item[10];
+static struct dynmenu_item town_menu_item[12];
 static struct dynmenu board_ship_menu;
 static struct dynmenu_item board_ship_menu_item[2];
 static struct dynmenu initial_menu;
@@ -441,25 +448,25 @@ static const char gnarg_map[4096] = {
 	"wwwwwwww....fffmm...m..........fffff.....ww.ffm...........wwwwww"
 	"wwwwwww......fffm..............fffff........ff7mm.........wwwwww"
 	"wwwww........fffm.............fffff..........ff.mmww......wwwwww"
-	"ww....ww2.....ffm...............fffff.........f...www.....wwwwww"
+	"ww....ww......ffm...............fffff.........f...www.....wwwwww"
 	"www....w......f................fffff...............www..wwwwwwww"
 	"wwwwwwww.........................fffff..............wwwwwwwwwwww"
 	"wwwwwwwww..........................ff.................w..wwwwwww"
 	"wwwwwwwwww...www....................ff....................wwwwww"
-	"wwwwwwwwwwwwww..............................ffff...........wwwww"
-	"wwwwwwww.....................................ffff..........wwwww"
-	"wwwwwwww...................................f..ffff..........wwww"
-	"wwwwww.........................................ffff...........ww"
-	"wwwwww........................................f.f.........w...ww"
-	"wwwww...............fffff........................ffff....www..ww"
-	"wwww.............ffff...ffff......................ffff..wwww..ww"
-	"wwww............ff.........fff....................f.....wwwwwwww"
-	"wwww.........ffff............ffff.............f.ffff.....wwwwwww"
-	"wwwww.......ff..................ff...............ffff....wwwwwww"
-	"wwwwww...........................ff...............ffff...wwwwwww"
-	"wwwwwww..........................m8f......................wwwwww"
-	"wwwwwwww.........................mmff........fff..........wwwwww"
-	"wwwwwwww.........................3m...........fff..........wwwww"
+	"wwwwwwwwwwwwwwww............................ffff...........wwwww"
+	"wwwwwwww..f...w..............................ffff..........wwwww"
+	"wwwwwwww......ww...........................f..ffff..........wwww"
+	"wwwwww....f...ww...............................ffff...........ww"
+	"wwwwww..f.....ww..............................f.f.........w...ww"
+	"wwwww.mff.f...ww....fffff........................ffff....www..ww"
+	"wwww...mmff..ww..ffff...ffff......................ffff..wwww..ww"
+	"wwww....mffwww..ff.........fff....................f.....wwwwwwww"
+	"wwww..2.mffwwffff............ffff.............f.ffff.....wwwwwww"
+	"wwwww...mffwff..................ff...............ffff....wwwwwww"
+	"wwwwww...ffww....................ff...............ffff...wwwwwww"
+	"wwwwwww..wwww....................m8f......................wwwwww"
+	"wwwwwwwwwwww.....................mmff........fff..........wwwwww"
+	"wwwwwwwww........................3m...........fff..........wwwww"
 	"wwwwwwww..........................mff.............m........wwwww"
 	"wwwwww............................mff..........fffmm.......wwwww"
 	"www................................mff..........ff9mm......wwwww"
@@ -2867,10 +2874,9 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define ITEM_TYPE_INTANGIBLE 0
 #define ITEM_TYPE_SUSTENANCE 1
 #define ITEM_TYPE_ARMOR 2
-#define ITEM_TYPE_RANGED_WEAPON 3
-#define ITEM_TYPE_MELEE_WEAPON 4
-#define ITEM_TYPE_SOFTWARE 5
-#define ITEM_TYPE_USELESS 6
+#define ITEM_TYPE_WEAPON 3
+#define ITEM_TYPE_SOFTWARE 4
+#define ITEM_TYPE_USELESS 5
 
 /* Must match shop_item[], below */
 enum item_index {
@@ -2878,13 +2884,18 @@ enum item_index {
 	RESTORE_GAME,
 	FOOD,
 	DRINK,
+
+	/* Note all the armor must be together, and LIGHT_ARMOR must be first */
 	LIGHT_ARMOR,
 	HEAVY_ARMOR,
+
+	/* Note all the weapons must be together, and LASER_CUTLASS must be first */
 	LASER_CUTLASS,
 	BLASTER,
+
 	PLA_DOODAD,
 	TSHIRT,
-	SACRAMENT,
+	SACRAFICTION,
 	BLESSING,
 	SPACESHIP_RENTAL,
 	COMPASS,
@@ -2906,6 +2917,41 @@ enum item_index {
 	RVASEC_BADGE,
 };
 
+static const struct weapon {
+	enum item_index i;
+	int damage;
+	int level_requirement;
+	unsigned char ranged_weapon;
+} weapon[] = {
+	{ LASER_CUTLASS, 5, 1, 0 },
+	{ BLASTER, 5, 2, 1 },
+};
+
+static const struct armor {
+	enum item_index i;
+	int protection; /* as a part in 255 */
+	int level_requirement;
+} armor[] = {
+	{ LIGHT_ARMOR, 20, 1 },
+	{ HEAVY_ARMOR, 50, 2 },
+};
+
+static int shop_to_weapon_index(int shop_item_index)
+{
+	int x = shop_item_index - LASER_CUTLASS;
+	if (x >= 0 && x < (int) ARRAY_SIZE(weapon))
+		return x;
+	return -1;
+}
+
+static int shop_to_armor_index(int shop_item_index)
+{
+	int x = shop_item_index - LIGHT_ARMOR;
+	if (x >= 0 && x < (int) ARRAY_SIZE(armor))
+		return x;
+	return -1;
+}
+
 static const struct shop_item {
 	char *name;
 	int price;
@@ -2926,15 +2972,15 @@ static const struct shop_item {
 	{ "HEAVY ARMOR", 80, ITEM_TYPE_ARMOR, SHOP_ARMOURY, 0 },
 
 	/* WEAPONS */
-	{ "LASER CUTLASS", 10, ITEM_TYPE_MELEE_WEAPON, SHOP_WEAPONS, 0 },
-	{ "BLASTER", 20, ITEM_TYPE_RANGED_WEAPON, SHOP_WEAPONS, 0 },
+	{ "LASER CUTLASS", 10, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
+	{ "BLASTER", 20, ITEM_TYPE_WEAPON, SHOP_WEAPONS, 0 },
 
 	/* HACKERSPACE */
 	{ "PLA DOODAD", 1, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 	{ "T-SHIRT", 25, ITEM_TYPE_USELESS, SHOP_HACKERSPACE, 0 },
 
 	/* TEMPLE */
-	{ "SACRAMENT", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
+	{ "SACRAFICTION", 100, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 	{ "BLESSING", 200, ITEM_TYPE_USELESS, SHOP_TEMPLE, 0 },
 
 	/* SPACE SHIP RENTAL */
@@ -2987,7 +3033,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 7
+#define NUM_STATIC_CHESTS 13
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -3013,6 +3059,9 @@ static struct treasure_clue {
 	int x, y;
 	enum clue_type type;
 } clue[] = {
+	/* clues in ossaria, dorvo, town 2 */
+	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, 2, 2, 62, clue_type_pub },
+	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, 2, 2, 62, clue_type_rando },
 	/* clues in BALF (ossaria, town 3) */
 	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, 3, -1, -1, clue_type_rando },
 	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, 3, -1, -1, clue_type_hacker },
@@ -3029,17 +3078,37 @@ static struct treasure_clue {
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_pub },
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_temple },
 	/* clues in KALFO, (NW42, town 13) */
-	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_pub },
-	{ "\nDIG AROUND\nBEHIND TECH NOIR\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_rando },
+	{ "\nDIG AROUND\nBEHIND SCOOTERS\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_pub },
+	{ "\nDIG AROUND\nBEHIND SCOOTERS\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_rando },
 	/* clues in BURNIP, (NW42, town 14) */
-	{ "\nDIG AROUND\nBEHIND SIGTRAP\nIN THE TOWN\nOF NORJIG\n", &NW42, 14, -1, -1, clue_type_rando },
-	{ "\nDIG AROUND\nBEHIND SIGTRAP\nIN THE TOWN\nOF NORJIG\n", &NW42, 14, -1, -1, clue_type_pub },
+	{ "\nDIG AROUND\nBEHIND RED\nDWARF BAR\nIN THE TOWN\nOF NORJIG\n",
+			&NW42, 14, -1, -1, clue_type_rando },
+	{ "\nDIG AROUND\nBEHIND RED\nDWARF BAR\nIN THE TOWN\nOF NORJIG\n",
+			&NW42, 14, -1, -1, clue_type_pub },
 	/* clues in , (BORTON, town 21 JARLS) */
 	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_rando },
 	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_pub },
 	/* clues in, (BORTON, town 22 KORVIN) */
-	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_rando },
-	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT x,y\n", &borton, 22, -1, -1, clue_type_pub },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, 22, -1, -1, clue_type_rando },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, 22, -1, -1, clue_type_pub },
+	/* clues in gnarg, jalta */
+	{ "\nEXPLORE\nEVO MINES\nDIG AT 55,62\n", &gnarg, 40, -1, -1, clue_type_rando },
+	{ "\nSEEK WITHIN\nEVO MINES\nDIG AT 55,62\n", &gnarg, 40, -1, -1, clue_type_pub },
+	/* clues in gnarg, yarnow */
+	{ "\nDELVE INTO\nSPIDER CAVE\nEXCAVATE x, y\n", &gnarg, 44, -1, -1, clue_type_rando },
+	{ "\nSPELUNK IN\nSPIDER CAVE\nDIG AT x, y\n", &gnarg, 44, -1, -1, clue_type_pub },
+	/* clues in gnarg, ilati */
+	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_rando },
+	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_pub },
+	/* clues in skang, spevo */
+	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_rando },
+	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_pub },
+	/* clues in gnarg, fruntz */
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 36,62\n", &gnarg, 43, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 36,62\n", &gnarg, 43, -1, -1, clue_type_pub },
+	/* clues in skang, jalta */
+	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_pub },
 };
 
 #define NCLUES (ARRAY_SIZE(clue))
@@ -3140,6 +3209,12 @@ static void citizen_move(struct creature *self);
 static const struct creature_generic_data {
 	int min_hp, max_hp;
 	void (*move)(struct creature *self);
+	int experience_bonus;
+	int damage; /* deals (.damage * level) damage */
+	int armor_protection;
+	unsigned int fire_chance; /* out of 1000 */
+	unsigned int move_chance; /* out of 1000 */
+	char *species;
 	union {
 		struct citizen_generic {
 			uint8_t min_icon;
@@ -3185,86 +3260,152 @@ static const struct creature_generic_data {
 		.min_hp = 50,
 		.max_hp = 100,
 		.move = citizen_move,
+		.experience_bonus = 5,
+		.damage = 8,
+		.armor_protection = 15,
+		.fire_chance = 150,
+		.move_chance = 40,
+		.species = "HUMAN",
 	},
 	{
 		.guard = {
 				.icon = ICON_GUARD,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 200,
+		.max_hp = 400,
 		.move = generic_move,
+		.experience_bonus = 20,
+		.damage = 16,
+		.armor_protection = 50,
+		.fire_chance = 250,
+		.move_chance = 500,
+		.species = "HUMAN",
 	},
 	{
 		.robot1 = {
 			.icon = ICON_GOLDROBOT,
 		 },
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_move,
+		.experience_bonus = 5,
+		.damage = 26,
+		.armor_protection = 25,
+		.fire_chance = 100,
+		.move_chance = 400,
+		.species = "ROBOT",
 	},
 	{
 		.robot2 = {
 			.icon = ICON_BLACKPROBE,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_move,
+		.experience_bonus = 5,
+		.damage = 26,
+		.armor_protection = 20,
+		.fire_chance = 100,
+		.move_chance = 500,
+		.species = "ROBOT",
 	},
 	{
 		.robot3 = {
 			.icon = ICON_ROBOT3,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_move,
+		.experience_bonus = 5,
+		.damage = 5,
+		.armor_protection = 15,
+		.fire_chance = 100,
+		.move_chance = 300,
+		.species = "ROBOT",
 	},
 	{
 		.byrstran = {
 			.icon = ICON_BYRSTRAN,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 50,
+		.max_hp = 100,
 		.move = generic_monster_move,
+		.experience_bonus = 5,
+		.damage = 13,
+		.armor_protection = 25,
+		.fire_chance = 250,
+		.move_chance = 300,
+		.species = "BYRSTAN",
 	},
 	{
 		.hargon = {
 			.icon = ICON_HARGON,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 120,
+		.max_hp = 240,
 		.move = generic_monster_move,
+		.experience_bonus = 12,
+		.damage = 10,
+		.armor_protection = 25,
+		.fire_chance = 200,
+		.move_chance = 350,
+		.species = "HARGON",
 	},
 	{
 		.rovdan = {
 			.icon = ICON_ROVDAN,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 170,
+		.max_hp = 340,
 		.move = generic_monster_move,
+		.experience_bonus = 17,
+		.damage = 20,
+		.armor_protection = 60,
+		.fire_chance = 170,
+		.move_chance = 600,
+		.species = "ROVDAN",
 	},
 	{
 		.skavo = {
 			.icon = ICON_SKAVO,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 70,
+		.max_hp = 140,
 		.move = generic_monster_move,
+		.experience_bonus = 7,
+		.damage = 8,
+		.armor_protection = 20,
+		.fire_chance = 100,
+		.move_chance = 260,
+		.species = "SKAVO",
 	},
 	{
 		.tarcon = {
 			.icon = ICON_TARCON,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 40,
+		.max_hp = 80,
 		.move = generic_monster_move,
+		.experience_bonus = 4,
+		.damage = 8,
+		.armor_protection = 70,
+		.fire_chance = 80,
+		.move_chance = 650,
+		.species = "TARCON",
 	},
 	{
 		.zunaro = {
 			.icon = ICON_ZUNARO,
 		},
-		.min_hp = 100,
-		.max_hp = 200,
+		.min_hp = 140,
+		.max_hp = 240,
 		.move = generic_monster_move,
+		.experience_bonus = 14,
+		.damage = 17,
+		.armor_protection = 90,
+		.fire_chance = 150,
+		.move_chance = 350,
+		.species = "ZUNARO",
 	},
 };
 
@@ -3290,7 +3431,21 @@ struct creature {
 	struct creature_specific_data csd;
 	uint8_t no_in_party;
 	int hit_points;
+	int level; /* hit point multiplier */
+	unsigned char level_modifier;
+#define MAX_LEVEL 4
 	int16_t clue;
+};
+
+/* adjectives to describe the "levels" of creatures */
+#define NLEVEL_MODIFIERS 6
+static const char *level_modifier[NLEVEL_MODIFIERS][MAX_LEVEL] = {
+	{ "PYGMY ", "", "LARGE ", "GIANT " },
+	{ "SOUTHERN ", "", "NORTHERN ", "GRIZZLY " },
+	{ "LESSER ", "", "GREATER ", "MONSTROUS " },
+	{ "STUNTED ", "", "CRESTED ", "CRAZED " },
+	{ "SICKLY ", "", "MUTANT ", "FRENZIED " },
+	{ "EASTERN ", "", "WESTERN ", "ARCTIC " },
 };
 
 #define MAX_CREATURES 25
@@ -3335,6 +3490,8 @@ static struct player {
 	unsigned char in_shop;
 	int money;
 	int hp;
+	int experience;
+	int level; /* determines max hp, 100 * level */
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char carrying_dirty;
 	unsigned char equipped_weapon, equipped_armor;
@@ -3344,6 +3501,7 @@ static struct player {
 	int last_boarded_ship; /* to keep your ship from sailing off without you */
 #define EQUIPPED_NONE 255
 	int stop_automatic_motion; /* stops automatic motion in caves */
+	uint8_t known_clues[ARRAY_SIZE(clue)];
 } player = {
 	.world = &space,
 	.x = 32,
@@ -3360,6 +3518,8 @@ static struct player {
 	.money = 500,
 	.carrying = { 0 },
 	.hp = 100,
+	.experience = 0,
+	.level = 1,
 	.equipped_weapon = EQUIPPED_NONE,
 	.equipped_armor = EQUIPPED_NONE,
 };
@@ -3389,13 +3549,18 @@ enum badgey_state_t {
 	BADGEY_DIG,
 	BADGEY_USE_ITEM,
 	BADGEY_DISPLAY_MAP,
-	BADGEY_USE_BAGE_BOM,
 	BADGEY_MAYBE_BOARD_SHIP,
 	BADGEY_INVENTORY,
 	BADGEY_USE_BADGE_BOM,
 	BADGEY_SAVE_GAME,
 	BADGEY_RESTORE_GAME,
+	BADGEY_ASSEMBLE_BADGE,
+	BADGEY_REVIEW_CLUES,
+	BADGEY_PLAYER_DIED,
 	BADGEY_EXIT,
+#if DEV_CHEATS_ENABLED
+	BADGEY_DEV_CHEATS,
+#endif
 };
 
 static enum badgey_state_t badgey_state = BADGEY_INITIAL_MENU;
@@ -3408,10 +3573,11 @@ static struct missile {
 	int x, y, vx, vy; /* 24.8 fixed point */
 	int alive;
 	char from_player;
+	int damage;
 } missile[MAX_MISSILES];
 static int nmissiles = 0;
 
-static void add_missile(int x, int y, int vx, int vy, char from_player, int lifetime)
+static void add_missile(int x, int y, int vx, int vy, char from_player, int lifetime, int damage)
 {
 	if (nmissiles >= MAX_MISSILES)
 		return;
@@ -3421,6 +3587,7 @@ static void add_missile(int x, int y, int vx, int vy, char from_player, int life
 	missile[nmissiles].vy = vy;
 	missile[nmissiles].alive = lifetime;
 	missile[nmissiles].from_player = from_player;
+	missile[nmissiles].damage = damage;
 	nmissiles++;
 }
 
@@ -3455,9 +3622,31 @@ static void missile_collision_detection(int m)
 			int cy = 16 * combat_creature[i].y + 8 + 8;
 			int dist2 = (cx - mx) * (cx - mx) + (cy - my) * (cy - my);
 			if (dist2 < 8 * 8) {
-				/* TODO: more sophisticated damage */
-				combat_creature[i].hit_points = 0;
+				int damage = 10;
+				if (player.equipped_weapon != EQUIPPED_NONE) {
+					int w = shop_to_weapon_index(player.equipped_weapon);
+					if (w >= 0)
+						damage = weapon[w].damage;
+				}
+				damage = damage * player.level;
+				int ty = combat_creature[i].type;
+				int protection = creature_generic_data[ty].armor_protection;
+				damage = damage - ((damage * protection) / 256);
+				if (damage < 0)
+					damage = 0;
+				int hp = combat_creature[i].hit_points - damage;
+				if (hp < 0)
+					hp = 0;
+					
+				combat_creature[i].hit_points = hp;
 				missile[m].alive = 0;
+				if (combat_creature[i].hit_points == 0) { /* killed it? */
+					/* player gains experience */
+					int t = combat_creature[i].type;
+					int lvl = combat_creature[i].level;
+					int bonus = creature_generic_data[t].experience_bonus;
+					player.experience += lvl * bonus;
+				}
 				/* TODO: add explosion or something here */
 			}
 		} else { /* missile is from monster */
@@ -3465,11 +3654,23 @@ static void missile_collision_detection(int m)
 			int cy = 16 * player.cby + 8 + 8;
 			int dist2 = (cx - mx) * (cx - mx) + (cy - my) * (cy - my);
 			if (dist2 < 8 * 8) {
-				/* TODO: inflict damage on player */
+				int ai = player.equipped_armor;
+				int protection = 10;
+				int damage = missile[m].damage;
+				if (ai != EQUIPPED_NONE) {
+					int a = shop_to_armor_index(ai);
+					if (a >= 0)
+						protection = armor[a].protection;
+				}
+				damage = damage - ((damage * protection) / 256);
+				if (damage < 0)
+					damage = 0;
+				int hp = player.hp;
+				hp = hp - damage;
+				if (hp < 0)
+					hp = 0;
+				player.hp = hp;
 				missile[m].alive = 0;
-#if TARGET_SIMULATOR
-				printf("Player hit by missile!\n");
-#endif
 			}
 		}
 	}
@@ -3800,11 +4001,17 @@ static void setup_static_treasures(void)
 	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
 	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
+	add_static_treasure(&ossaria, 7, 5, 44, 200, SOLDER, CHEST_STATUS_BURIED); /* ossaria, klon caverns */
 	add_static_treasure(&NW42, -1, 10, 10, 200, PLASTIC_DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
 	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
 	add_static_treasure(&NW42, 12, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* NW42, NORJIG, SIGTRAP */
-	add_static_treasure(&borton, 13, 24, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
+	add_static_treasure(&borton, 23, 34, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
 	add_static_treasure(&borton, 26, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED); /* borton, smuggler's cave, */
+	add_static_treasure(&skang, 36, 1, 42, 200, A_BUTTON, CHEST_STATUS_BURIED); /* skang, tunnels/doom, */
+	add_static_treasure(&skang, 32, 45, 42, 200, RESET_BUTTON, CHEST_STATUS_BURIED); /* skang, torxun */
+	add_static_treasure(&gnarg, 49, 37, 62, 200, B_BUTTON, CHEST_STATUS_BURIED); /* gnarg, spider cave */
+	add_static_treasure(&gnarg, 44, 34, 40, 200, USB_CONNECTOR, CHEST_STATUS_BURIED); /* gnarg, yarnow */
+	add_static_treasure(&gnarg, 45, 55, 62, 200, BATTERY, CHEST_STATUS_BURIED); /* gnarg, evo mines */
 }
 
 static void badgey_init(void)
@@ -3828,7 +4035,11 @@ static void badgey_init(void)
 	player.moving = 0;
 	player.in_shop = 0;
 	player.money = 500;
+	player.hp = 100;
+	player.level = 1;
+	player.experience = 0;
 	memset(player.carrying, 0, sizeof(player.carrying));
+	memset(player.known_clues, 0, sizeof(player.known_clues));
 	player.carrying[POSITION_FINDER] = 1;
 	player.carrying[MAPPING_STONE] = 1;
 	player.carrying[COMPASS] = 1;
@@ -3852,6 +4063,27 @@ static void badgey_continue(void)
 	screen_changed = 1;
 }
 
+static const struct note treasure_tune_notes[] = {
+	/* harmonic minor scale run */
+	{ NOTE_C4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_C5, 100 },
+};
+
+static const struct tune treasure_tune = {
+	ARRAY_SIZE(treasure_tune_notes),
+	treasure_tune_notes,
+};
+
 static void badgey_collect_treasure(int treasure)
 {
 	static int gp = 0;
@@ -3859,7 +4091,9 @@ static void badgey_collect_treasure(int treasure)
 	char buf[100];
 
 	if (treasure != -1) { /* First time through, draw the screen ... */
-		
+
+		int was_buried = (chest[treasure].status == CHEST_STATUS_BURIED);
+
 		gp = chest[treasure].gp;
 		si = chest[treasure].specialty_item;
 		set_badgey_state(BADGEY_COLLECT_TREASURE);
@@ -3888,7 +4122,12 @@ static void badgey_collect_treasure(int treasure)
 
 		FbMove(8, 8);
 		FbWriteString(buf);
+		if (was_buried) {
+			FbMove(8, 72);
+			FbWriteString("NOTE: YOU CAN DIG\nWITH THE REWIND\nBUTTON\n");
+		}
 		FbSwapBuffers();
+		play_tune(&treasure_tune, NULL, NULL);
 		return;
 	}
 	/* Not first time through, just consume a button press ... */
@@ -3922,15 +4161,17 @@ static void badgey_dig(void)
 	static int got_treasure = 0;
 	static enum badgey_state_t prev;
 
-	for (int i = 0; i < nchests; i++) {
-		if (player.x == chest[i].x && player.y == chest[i].y &&
-			chest[i].status == CHEST_STATUS_BURIED) {
-			if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
-				continue; /* chest is in another world, not the current world */
-			prev = previous_badgey_state; /* this is a little hacky... oh well. */
-			badgey_collect_treasure(i);
-			got_treasure = 1;
-			return;
+	if (!got_treasure) {
+		for (int i = 0; i < nchests; i++) {
+			if (player.x == chest[i].x && player.y == chest[i].y &&
+				chest[i].status == CHEST_STATUS_BURIED) {
+				if (i < NUM_STATIC_CHESTS && !chest_in_players_world(i))
+					continue; /* chest is in another world, not the current world */
+				prev = previous_badgey_state; /* this is a little hacky... oh well. */
+				badgey_collect_treasure(i);
+				got_treasure = 1;
+				return;
+			}
 		}
 	}
 
@@ -3946,6 +4187,8 @@ static void badgey_dig(void)
 		FbBackgroundColor(BLACK);
 		FbMove(8, 8);
 		FbWriteString("DIGGITY DIG\n\nYOU DID NOT\nFIND ANYTHING\n");
+		FbMove(8, 72);
+		FbWriteString("NOTE: YOU CAN DIG\nWITH THE REWIND\nBUTTON\n");
 		FbSwapBuffers();
 		screen_changed = 0;
 	}
@@ -4037,6 +4280,9 @@ static void cave_check_buttons(void)
 			set_badgey_state(BADGEY_CAVE_MENU);
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		/* Maybe B-button can do something in the caves ... */
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
+		set_badgey_state(BADGEY_DIG);
+		last_move_dir = NO_MOVE;
 	} else {
 		if (player.stop_automatic_motion)
 			last_move_dir = NO_MOVE;
@@ -4375,6 +4621,12 @@ static void check_buttons(int tick)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		/* maybe B button can do something? */
 		newmoving = 0;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
+		if (player.world->type == WORLD_TYPE_PLANET ||
+			player.world->type == WORLD_TYPE_TOWN) {
+				set_badgey_state(BADGEY_DIG);
+				newmoving = 0;
+		}
 	}
 
 	player.dir = newdir;
@@ -4840,6 +5092,17 @@ static void maybe_draw_up_ladder(int x, int y, int ladder_start, int start_inc, 
 	}
 }
 
+static void draw_hit_points(void)
+{
+	char buf[20];
+	snprintf(buf, sizeof(buf), "HP:%d/%d", player.hp, player.level * 100);
+	int n = strlen(buf);
+	FbColor(WHITE);
+	FbBackgroundColor(BLACK);
+	FbMove(LCD_XSIZE - (n * 8), LCD_YSIZE - 8);
+	FbWriteString(buf);
+}
+
 static void maybe_draw_player_coords(void)
 {
 	if (player.carrying[POSITION_FINDER] <= 0)
@@ -4901,8 +5164,10 @@ static void draw_cave_screen(void)
 		FbMove(5, 5);
 		FbWriteString("ENGRAVED STELA:\n\n");
 		FbWriteString(clue[clue_no].clue_text);
+		player.known_clues[clue_no] = 1;
 		FbColor(WHITE);
 	}
+	draw_hit_points();
 	maybe_draw_player_coords();
 }
 
@@ -5173,6 +5438,8 @@ static const struct tune combat_fanfare = {
 
 static void enter_combat(int cr)
 {
+	static unsigned int seed = 0xffa5a5a5;
+
 	set_badgey_state(BADGEY_COMBAT);
 	screen_changed = 1;
 	play_tune(&combat_fanfare, NULL, NULL);
@@ -5182,11 +5449,17 @@ static void enter_combat(int cr)
 
 	int x = 2;
 	int y = 1;
+	int level = 1 + xorshift(&seed) % (player.level + 1);
+	int level_modifier = xorshift(&seed) % NLEVEL_MODIFIERS;
+	int minhp = level * creature_generic_data[creature[cr].type].min_hp;
+	int maxhp = level * creature_generic_data[creature[cr].type].max_hp;
 	for (int i = 0; i < creature[cr].no_in_party; i++) {
 		combat_creature[i].x = x;
 		combat_creature[i].y = y;
 		combat_creature[i].type = creature[cr].type;
-		combat_creature[i].hit_points = 100; /* TODO: something more sophisticated */
+		combat_creature[i].level = level;
+		combat_creature[i].level_modifier = (unsigned char) level_modifier;
+		combat_creature[i].hit_points = minhp + (xorshift(&seed) % (maxhp - minhp));
 		x = x + 2;
 		if (x > screen_cells_wide - 1) {
 			x = 3;
@@ -5371,7 +5644,7 @@ static const struct town_info {
 	{ "JALTA",
 		town_creek | town_armoury | town_weapons,
 	},
-	{ "SPINU",
+	{ "RICHMOND",
 		town_ponds | town_armoury | town_weapons | town_hackerspace,
 	},
 	{ "ILATI",
@@ -5456,6 +5729,7 @@ static void draw_screen(void)
 	draw_creatures();
 	draw_ships();
 
+	draw_hit_points();
 	maybe_draw_player_coords();
 
 	char ch = player.world->wm[windex(player.x, player.y)];
@@ -5478,7 +5752,6 @@ static void draw_screen(void)
 	}
 
 	screen_changed = 0;
-	FbPushBuffer();
 }
 
 static int ladder_is_here(int x, int y)
@@ -5540,12 +5813,16 @@ static void badgey_cave_menu(void)
 		dynmenu_clear(&cave_menu);
 		dynmenu_init(&cave_menu, cave_menu_item, ARRAY_SIZE(cave_menu_item));
 		dynmenu_set_title(&cave_menu, "", "", "");
+		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
 		if (ladder_is_here(player.x, player.y))
 			dynmenu_add_item(&cave_menu, "CLIMB UP", BADGEY_RUN, 0);
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
 		dynmenu_add_item(&cave_menu, "DIG", BADGEY_USE_ITEM, 4);
-		dynmenu_add_item(&cave_menu, "EXIT THIS MENU", BADGEY_RUN, 2);
+		dynmenu_add_item(&cave_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 5);
 		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
+#if DEV_CHEATS_ENABLED
+		dynmenu_add_item(&cave_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
+#endif
 		menu_setup = 1;
 	}
 
@@ -5595,6 +5872,18 @@ static void badgey_cave_menu(void)
 		set_badgey_state(BADGEY_INITIAL_MENU);
 		menu_setup = 0;
 		break;
+	case 5: /* review clues */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_REVIEW_CLUES);
+		break;
+#if DEV_CHEATS_ENABLED
+	case 254:
+		menu_setup = 0;
+		screen_changed = 1;
+		set_badgey_state(BADGEY_DEV_CHEATS);
+		break;
+#endif
 	}
 }
 
@@ -5647,6 +5936,36 @@ static int find_shopkeeper(int shop_type)
 	return -1;
 }
 
+static int player_has_all_badge_parts(void)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++) {
+		if (!player.carrying[badge_bom[i]])
+			return 0;
+	}
+	return 1;
+}
+
+static int player_in_richmond(void)
+{
+	if (player.town_or_cave_num == 1 && player.old_world[player.world_level] == &gnarg)
+		return 1;
+	return 0;
+}
+
+static const struct note level_up_fanfare_notes[] = {
+	{ NOTE_A3,  100 },
+	{ NOTE_C4,  100 },
+	{ NOTE_Ds4, 120 },
+	{ NOTE_Gs4, 150 },
+	{ NOTE_A4,  300 },
+};
+
+// Level Up Tune Structure
+static struct tune level_up_tune = {
+	.num_notes = ARRAY_SIZE(level_up_fanfare_notes),
+	.note = &level_up_fanfare_notes[0],
+};
+
 static void badgey_talk_to_shopkeeper(void)
 {
 	static int menu_setup = 0;
@@ -5673,6 +5992,11 @@ static void badgey_talk_to_shopkeeper(void)
 				shop_item[item].price, shop_item[item].name);
 			dynmenu_add_item(&town_menu, menu_item, BADGEY_RUN, i);
 		}
+		if (player_in_richmond() &&
+				st == SHOP_HACKERSPACE &&
+				player_has_all_badge_parts()) {
+			dynmenu_add_item(&town_menu, "ASSEMBLE BADGE", BADGEY_RUN, 252);
+		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
 		menu_setup = 1;
@@ -5696,28 +6020,99 @@ static void badgey_talk_to_shopkeeper(void)
 	} else if (choice == 253) { /* stats */
 		screen_changed = 1;
 		set_badgey_state(BADGEY_STATS);
+		menu_setup = 0;
+	} else if (choice == 252) { /* assemble badge! */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_ASSEMBLE_BADGE);
 	} else if (choice >= 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
 		char *clue_text = "";
 		int shopkeeper = find_shopkeeper(st);
-		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE)
+		if (shopkeeper >= 0 && creature[shopkeeper].clue != NO_CLUE) {
 			clue_text = clue[creature[shopkeeper].clue].clue_text;
-
+			player.known_clues[creature[shopkeeper].clue] = 1;
+		}
 		if (player.money < shop_item[shop[st].item[choice]].price) {
 			snprintf(message, sizeof(message), "\n\n"
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
 					" MONEY FOR\n THAT\n");
-		} else {
-			int item = shop[st].item[choice];
-
-			snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
-					shop_item[item].price,
-					shop_item[item].name,
-					clue_text);
-			player.money -= shop_item[item].price;
-			player.carrying[item]++;
-			player.carrying_dirty = 1;
+			goto done_with_shopping;
 		}
+
+		int item = shop[st].item[choice];
+
+		fprintf(stderr, "shop_item[item].name = '%s'\n",
+			shop_item[item].name);
+		if (strcmp(shop_item[item].name, "SACRAFICTION") == 0) {
+			if (player.experience < player.level * 1000) {
+				snprintf(message, sizeof(message), "\n\n"
+					" YOU MUST GAIN\n"
+					" MORE EXPERIENCE\n"
+					" MY CHILD.\n");
+			} else if (player.level < MAX_LEVEL) {
+				/* player levels up */
+				snprintf(message, sizeof(message), "\n\n"
+					" USE YOUR NEW\n"
+					" POWER WISELY\n"
+					" MY CHILD\n");
+				player.money -= shop_item[item].price;
+				player.level++;
+				play_tune(&level_up_tune, NULL, NULL);
+			} else {
+				snprintf(message, sizeof(message), "\n\n"
+					" YOU HAVE ATTAINED\n"
+					" MAXIMUM\n"
+					" ENLIGHTENMENT\n"
+					" MY CHILD\n");
+			}
+			goto done_with_shopping;
+		}
+
+		if (shop_item[item].item_type == ITEM_TYPE_WEAPON) {
+			int w = shop_to_weapon_index(item);
+#if TARGET_SIMULATOR
+			if (w < 0) {
+				fprintf(stderr, "Bad weapon at %s:%d\n", __FILE__, __LINE__);
+				raise(SIGTRAP);
+			}
+#endif
+			if (player.level < weapon[w].level_requirement) {
+				snprintf(message, sizeof(message), "\n\n"
+					"YOU DO NOT HAVE\n"
+					"SUFFICIENT\n"
+					"EXPERIENCE FOR\n"
+					"THAT WEAPON\n");
+				goto done_with_shopping;
+			}
+		}
+
+		if (shop_item[item].item_type == ITEM_TYPE_ARMOR) {
+			int w = shop_to_armor_index(item);
+#if TARGET_SIMULATOR
+			if (w < 0) {
+				fprintf(stderr, "Bad armor at %s:%d\n", __FILE__, __LINE__);
+				raise(SIGTRAP);
+			}
+#endif
+			if (player.level < armor[w].level_requirement) {
+				snprintf(message, sizeof(message), "\n\n"
+					"YOU DO NOT HAVE\n"
+					"SUFFICIENT\n"
+					"EXPERIENCE FOR\n"
+					"THAT ARMOR\n");
+				goto done_with_shopping;
+			}
+		}
+
+		snprintf(message, sizeof(message), "\n\nYOU PAID %2d\nFOR\n%s\n%s",
+				shop_item[item].price,
+				shop_item[item].name,
+				clue_text);
+		player.money -= shop_item[item].price;
+		player.carrying[item]++;
+		player.carrying_dirty = 1;
+done_with_shopping:
 		status_message(message);
 		screen_changed = 1;
 		menu_setup = 0;
@@ -5775,8 +6170,10 @@ static void badgey_talk_to_citizen(void)
 				creature_name[creature[c].name], creature_info[i]);
 		FbMove(0, 0);
 		FbWriteString(buf);
-		if (creature[c].clue != NO_CLUE)
+		if (creature[c].clue != NO_CLUE) {
 			FbWriteString(clue[creature[c].clue].clue_text);
+			player.known_clues[creature[c].clue] = 1;
+		}
 		FbSwapBuffers();
 		screen_changed = 0;
 	}
@@ -5825,9 +6222,13 @@ static void badgey_town_menu(void)
 		dynmenu_add_item(&town_menu, "EQUIP ARMOR", BADGEY_STATS, 6);
 		dynmenu_add_item(&town_menu, "USE ITEM", BADGEY_USE_ITEM, 7);
 		dynmenu_add_item(&town_menu, "DIG", BADGEY_RUN, 8);
+		dynmenu_add_item(&town_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 10);
 		dynmenu_add_item(&town_menu, "INVENTORY", BADGEY_INVENTORY, 9);
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 3);
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 4);
+#if DEV_CHEATS_ENABLED
+		dynmenu_add_item(&town_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
+#endif
 		menu_setup = 1;
 	}
 
@@ -5863,6 +6264,14 @@ static void badgey_town_menu(void)
 	case 9: /* inventory */
 		set_badgey_state(BADGEY_INVENTORY);
 		break;
+	case 10: /* clues */
+		set_badgey_state(BADGEY_REVIEW_CLUES);
+		break;
+#if DEV_CHEATS_ENABLED
+	case 254:
+		set_badgey_state(BADGEY_DEV_CHEATS);
+		break;
+#endif
 	default:
 		set_badgey_state(BADGEY_RUN);
 		break;
@@ -5923,9 +6332,13 @@ static void badgey_planet_menu(void)
 		dynmenu_add_item(&planet_menu, "EQUIP ARMOR", BADGEY_STATS, 4);
 		dynmenu_add_item(&planet_menu, "USE ITEM", BADGEY_USE_ITEM, 5);
 		dynmenu_add_item(&planet_menu, "DIG", BADGEY_RUN, 6);
+		dynmenu_add_item(&planet_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 11);
 		dynmenu_add_item(&planet_menu, "INVENTORY", BADGEY_INVENTORY, 10);
 		dynmenu_add_item(&planet_menu, "STATS", BADGEY_STATS, 7);
 		dynmenu_add_item(&planet_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 8);
+#if DEV_CHEATS_ENABLED
+		dynmenu_add_item(&planet_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
+#endif
 		menu_setup = 1;
 	}
 
@@ -6000,7 +6413,30 @@ static void badgey_planet_menu(void)
 	case 10: /* inventory */
 		set_badgey_state(BADGEY_INVENTORY);
 		break;
+	case 11: /* review clues */
+		set_badgey_state(BADGEY_REVIEW_CLUES);
+		break;
+#if DEV_CHEATS_ENABLED
+	case 254:
+		set_badgey_state(BADGEY_DEV_CHEATS);
+		break;
+#endif
 	}
+}
+
+static void maybe_heal_player(void)
+{
+	static int time = 0;
+
+	time++;
+	if (time == 30) { /* gain 1 hp per second */
+		if (player.hp < player.level * 100)
+			player.hp++;
+		time = 0;
+	}
+
+	if (player.hp == 0)
+		set_badgey_state(BADGEY_PLAYER_DIED);
 }
 
 static void badgey_run(void)
@@ -6020,12 +6456,22 @@ static void badgey_run(void)
 			water_scroll = 0;
 	}
 
+	maybe_heal_player();
+
 	draw_screen();
 	FbPushBuffer();
 	if (player.in_cave)
 		cave_check_buttons();
 	else
 		check_buttons(tick);
+}
+
+/* This is to skip over cave numbers when indexing into hackerspacename[] or pubname[]
+ * using town or cave numbers
+ */
+static int town_num_to_name_index(int town_num)
+{
+	return (town_num / 10) * 5 + (town_num % 10);
 }
 
 const char *hackerspacename[] = {
@@ -6042,10 +6488,10 @@ const char *hackerspacename[] = {
 	"GROKHAUS",
 
 	"KAOSDORF",
-	"HACKRVA",
+	"REZISTOR",
 	"SIGTRAP",
 	"PAGEFAULT",
-	"CPU_THREEPIO",
+	"CPU_3PO",
 
 	"TXRXLABS",
 	"FORKBOMB",
@@ -6054,7 +6500,7 @@ const char *hackerspacename[] = {
 	"NULLPTR",
 
 	"VOIDSTAR",
-	"REZISTOR",
+	"HACKRVA",
 	"NERDCLUB",
 	"SIGSEGV",
 	"OHMS_LAW",
@@ -6628,10 +7074,11 @@ static void generate_town(int town_number)
 	memcpy(l, towninfo[town].name, strlen(towninfo[town].name));
 
 	/* Generate buildings */
-	generate_building(pubname[town], SHOP_PUB, roadchar, &seed);
+	generate_building(pubname[town_num_to_name_index(town)], SHOP_PUB, roadchar, &seed);
 	generate_building("INN", SHOP_INN, roadchar, &seed);
 	if (towninfo[town].feature & town_hackerspace)
-		generate_building(hackerspacename[town], SHOP_HACKERSPACE, roadchar, &seed);
+		generate_building(hackerspacename[town_num_to_name_index(town)],
+			SHOP_HACKERSPACE, roadchar, &seed);
 	if (towninfo[town].feature & town_weapons)
 		generate_building(weapons_store_name[town % 5], SHOP_WEAPONS, roadchar, &seed);
 	if (towninfo[town].feature & town_armoury)
@@ -6723,14 +7170,30 @@ static void print_cave(char *map)
 {
 #if TARGET_SIMULATOR
 	for (int i = 0; i < 64; i++) {
+		if ((i % 5) == 0)
+			printf("%3d ", i);
+		else
+			printf("    ");
 		for (int j = 0; j < 64; j++) {
-			if (j == 32 && i == 62)
+			if (j == 32 && i == 62) {
 				printf("X");
-			else
-				printf("%c", map[windex(j, i)]);
+			} else {
+				if (map[windex(j, i)] == '#' && (j % 10) == 0)
+					printf("|");
+				else
+					printf("%c", map[windex(j, i)]);
+			}
 		}
 		printf("\n");
 	}
+	printf("    ");
+	for (int i = 0; i < 64; i++) {
+		if ((i % 5) == 0)
+			printf("%02d", i);
+		else if ((i % 5) != 1)
+			printf(" ");
+	}
+	printf("\n");
 #endif
 }
 
@@ -6901,7 +7364,11 @@ static void badgey_stats(void)
 
 	if (screen_changed) {
 		FbMove(0, 0);
-		snprintf(buf, sizeof(buf), "HP: %d\n", player.hp);
+		snprintf(buf, sizeof(buf), "HP: %d/%d\n", player.hp, player.level * 100);
+		FbWriteString(buf);
+		snprintf(buf, sizeof(buf), "EXP: %d\n", player.experience);
+		FbWriteString(buf);
+		snprintf(buf, sizeof(buf), "LVL: %d\n", player.level);
 		FbWriteString(buf);
 		snprintf(buf, sizeof(buf), "GP: %d\n", player.money);
 		FbWriteString(buf);
@@ -6936,19 +7403,16 @@ static void badgey_stats(void)
 static void badgey_equip(void)
 {
 	static int menu_setup = 0;
-	int count = 0;
-	unsigned char t1, t2;
+	int t1, count = 0;
 	static struct dynmenu item_menu;
 	static struct dynmenu_item item_menu_item[15];
 	char *title;
 
 	if (badgey_state == BADGEY_EQUIP_ARMOR) {
 		t1 = ITEM_TYPE_ARMOR;
-		t2 = t1;
 		title = "EQUIP ARMOR";
 	} else if (badgey_state == BADGEY_EQUIP_WEAPON) {
-		t1 = ITEM_TYPE_RANGED_WEAPON;
-		t2 = ITEM_TYPE_MELEE_WEAPON;
+		t1 = ITEM_TYPE_WEAPON;
 		title = "EQUIP WEAPON";
 	}
 
@@ -6961,8 +7425,7 @@ static void badgey_equip(void)
 				player.carrying_dirty = 1;
 				continue;
 			}
-			if (shop_item[i].item_type == t1 ||
-				shop_item[i].item_type == t2) {
+			if (shop_item[i].item_type == t1) {
 				dynmenu_add_item(&item_menu, shop_item[i].name, badgey_state, i);
 				count++;
 				if (count >= (int) ARRAY_SIZE(item_menu_item) - 1)
@@ -7324,10 +7787,15 @@ static void move_combat_creature(int i, unsigned int *seed)
 	int vx = 0;
 	int mx, my;
 
-	int n = (xorshift(seed) % 100);
-	if (n > 60)
+	int ty = combat_creature[i].type;
+
+	unsigned int n = (xorshift(seed) % 1000);
+	if (n > creature_generic_data[ty].move_chance)
 		return;
 
+	int lvl = combat_creature[i].level;
+	int damage = lvl * creature_generic_data[ty].damage;
+	unsigned int fire_chance = creature_generic_data[ty].fire_chance;
 	if (player.cbx == combat_creature[i].x) {
 		if (player.cby > combat_creature[i].y)
 			vy = 1;
@@ -7335,7 +7803,8 @@ static void move_combat_creature(int i, unsigned int *seed)
 			vy = -1;
 		mx = (16 * combat_creature[i].x + 8) * 256;
 		my = (16 * combat_creature[i].y + 8) * 256;
-		add_missile(mx, my, 0, 2048 * vy, 0, 100);
+		if ((xorshift(seed) % 1000) < fire_chance)
+			add_missile(mx, my, 0, 2048 * vy, 0, 100, damage);
 		return;
 	} else if (player.cby == combat_creature[i].y) {
 		if (player.cbx > combat_creature[i].x)
@@ -7344,7 +7813,8 @@ static void move_combat_creature(int i, unsigned int *seed)
 			vx = -1;
 		mx = (16 * combat_creature[i].x + 8) * 256;
 		my = (16 * combat_creature[i].y + 8) * 256;
-		add_missile(mx, my, 2048 * vx, 0, 0, 100);
+		if ((xorshift(seed) % 1000) < fire_chance)
+			add_missile(mx, my, 2048 * vx, 0, 0, 100, damage);
 		return;
 	}
 	int nx = combat_creature[i].x;
@@ -7386,10 +7856,28 @@ static void draw_combat_field(void)
 
 static void draw_combat_creatures(void)
 {
-
 	for (int i = 0; i < ncombat_creatures; i++) {
 		struct creature *c = &combat_creature[i];
 		draw_creature_at_xy(16 * c->x + 8, 16 * c->y + 8, c->type, 0);
+	}
+	if (ncombat_creatures > 0) {
+		int level = combat_creature[0].level - 1;
+		int lm = combat_creature[0].level_modifier;
+		char buffer[25];
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		snprintf(buffer, sizeof(buffer), "%s%s",
+			level_modifier[lm][level],
+			creature_generic_data[combat_creature[0].type].species);
+		int n = strlen(buffer);
+		if (n > 19)
+			n = 19;
+		buffer[n] = '\0';
+		int spaces = (20 - n) / 2;
+		FbMove(0, 0);
+		for (int i = 0; i < spaces; i++)
+			FbWriteString(" ");
+		FbWriteString(buffer);
 	}
 }
 
@@ -7405,11 +7893,15 @@ static void draw_combat_screen(void)
 	draw_combat_creatures();
 	draw_combat_missiles();
 	draw_combat_player();
+	draw_hit_points();
 }
 
 static void player_strike_with_weapon(__attribute__((unused)) int direction)
 {
-	add_missile((16 * player.cbx + 8) * 256, (16 * player.cby + 8) * 256, 2048 * xo4[direction], 2048 * yo4[direction], 1, 100);
+	int damage = 50; /* TODO: something better */
+	add_missile((16 * player.cbx + 8) * 256,
+			(16 * player.cby + 8) * 256,
+			2048 * xo4[direction], 2048 * yo4[direction], 1, 100, damage);
 }
 
 static void badgey_combat(void)
@@ -7501,6 +7993,9 @@ static void badgey_combat(void)
 		/* respawn the overworld creature far away so we don't immediately jump back into combat */
 		respawn_monster(overworld_combat_creature, &seed);
 	}
+
+	if (player.hp == 0)
+		set_badgey_state(BADGEY_PLAYER_DIED);
 }
 
 static void badgey_abandon_confirm(void)
@@ -7535,6 +8030,7 @@ static void badgey_abandon_confirm(void)
 static void badgey_exit(void)
 {
 	set_badgey_state(BADGEY_INITIAL_MENU); /* So that when we start again, we do not immediately exit */
+	stop_tune();
 	pop_app();
 }
 
@@ -7542,13 +8038,15 @@ static void badgey_initial_menu(void)
 {
 	static int menu_setup = 0;
 
+	FbColor(WHITE);
+	FbBackgroundColor(BLACK);
 	if (!menu_setup) {
 		dynmenu_clear(&initial_menu);
 		dynmenu_init(&initial_menu, initial_menu_item, ARRAY_SIZE(initial_menu_item));
 		dynmenu_set_title(&initial_menu, "RVASEC QUEST", "", "");
 		dynmenu_add_item(&initial_menu, "INTRO", 0, 0);
+		dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
 		if (game_in_progress) {
-			dynmenu_add_item(&initial_menu, "PAUSE GAME", 0, 1);
 			dynmenu_add_item(&initial_menu, "RESUME GAME", 1, 2);
 			dynmenu_add_item(&initial_menu, "SAVE GAME", 1, 4);
 		}
@@ -7560,11 +8058,14 @@ static void badgey_initial_menu(void)
 	if (!dynmenu_let_user_choose(&initial_menu))
 		return;
 
+	stop_tune();
+
 	switch (dynmenu_get_user_choice(&initial_menu)) {
 	case 0: /* intro */
 		set_badgey_state(BADGEY_INTRO);
 		break;
 	case 1: /* pause game */
+		stop_tune();
 		pop_app();
 		break;
 	case 2: /* resume game */
@@ -7585,6 +8086,41 @@ static void badgey_initial_menu(void)
 		menu_setup = 0;
 		break;
 	}
+}
+
+static const struct note theme_tune_notes[] = {
+	/* harmonic minor scale run */
+	{ NOTE_A3, 400 },
+	{ 0, 1 },
+	{ NOTE_A3, 350 },
+	{ NOTE_B3, 150 },
+	{ NOTE_C4, 400 },
+	{ NOTE_A3, 400 },
+	{ NOTE_D4, 400 },
+	{ NOTE_E4, 400 },
+	{ NOTE_F4, 400 },
+	{ NOTE_D4, 400 },
+
+	{ NOTE_B3, 400 },
+	{ 0, 1 },
+	{ NOTE_B3, 350 },
+	{ NOTE_Cs4, 150 },
+	{ NOTE_D4, 400 },
+	{ NOTE_B3, 400 },
+	{ NOTE_Af3, 400 },
+	{ NOTE_B3, 400 },
+	{ NOTE_F3, 400 },
+	{ NOTE_Af3, 400 },
+};
+
+static const struct tune theme_tune = {
+	ARRAY_SIZE(theme_tune_notes),
+	theme_tune_notes,
+};
+
+static void theme_finished(__attribute__((unused)) void *x)
+{
+	play_tune(&theme_tune, theme_finished, NULL);
 }
 
 static void badgey_intro(void)
@@ -7608,6 +8144,7 @@ static void badgey_intro(void)
 	FbWriteString("your way to RICHMOND\n");
 	FbWriteString("Good luck!");
 	FbSwapBuffers();
+	play_tune(&theme_tune, theme_finished, NULL);
 	set_badgey_state(BADGEY_INTRO_WAIT);
 }
 
@@ -7634,6 +8171,8 @@ struct badgey_state {
 	int dir;
 	int money;
 	int hp;
+	int exp;
+	int level;
 	unsigned char carrying[ARRAY_SIZE(shop_item)];
 	unsigned char equipped_weapon, equipped_armor;
 	int aboard_ship;
@@ -7645,6 +8184,7 @@ struct badgey_state {
 	int last_boarded_ship_y;
 
 	int8_t chest_status[NUM_STATIC_CHESTS];
+	uint8_t known_clues[ARRAY_SIZE(clue)];
 };
 
 static const struct badgey_world *world_list[] = {
@@ -7695,6 +8235,8 @@ static void badgey_serialize_state(struct badgey_state *state)
 	state->dir = player.dir;
 	state->money = player.money;
 	state->hp = player.hp;
+	state->exp = player.experience;
+	state->level = player.level;
 	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
 		state->carrying[i] = player.carrying[i];
 	state->equipped_weapon = player.equipped_weapon;
@@ -7710,6 +8252,9 @@ static void badgey_serialize_state(struct badgey_state *state)
 
 	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
 		state->chest_status[i] = (int8_t) chest[i].status;
+
+	for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++)
+		state->known_clues[i] = player.known_clues[i];
 
 	unsigned char *x = (unsigned char *) state;
 	uint32_t checksum = 0;
@@ -7750,6 +8295,8 @@ static void badgey_deserialize_state(struct badgey_state *state)
 	player.seedx = state->seedx;
 	player.seedy = state->seedy;
 	player.dir = state->dir;
+	player.hp = state->hp;
+	player.experience = state->exp;
 	player.money = state->money;
 	for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++)
 		player.carrying[i] = state->carrying[i];
@@ -7788,6 +8335,9 @@ static void badgey_deserialize_state(struct badgey_state *state)
 
 	for (int i = 0; i < NUM_STATIC_CHESTS; i++)
 		chest[i].status = state->chest_status[i];
+
+	for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++)
+		player.known_clues[i] = state->known_clues[i];
 }
 
 static void badgey_save_game(void)
@@ -7867,6 +8417,228 @@ static void badgey_restore_game(void)
 	status_message("Saved game\nrestored from\nflash memory");
 }
 
+static const struct note badge_assembly_tune_notes[] = {
+	{ NOTE_C5, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_C4, 100 },
+
+	{ NOTE_C4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_D4, 100 },
+	{ NOTE_Ef4, 100 },
+	{ NOTE_F4, 100 },
+	{ NOTE_G4, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_C5, 100 },
+	{ NOTE_Af4, 100 },
+	{ NOTE_B4, 100 },
+	{ NOTE_C5, 100 },
+};
+
+static const struct tune badge_assembly_tune = {
+	ARRAY_SIZE(badge_assembly_tune_notes),
+	badge_assembly_tune_notes,
+};
+
+static void badgey_assemble_badge(void)
+{
+	if (player_has_all_badge_parts() && !player.carrying[RVASEC_BADGE]) {
+		/* take away all the badge parts and Badge BoM. */
+		for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++) {
+			player.carrying[badge_bom[i]] = 0;
+		}
+		player.carrying[BADGE_BOM] = 0;
+		player.carrying[RVASEC_BADGE] = 1;
+
+		FbClear();
+		FbColor(WHITE);	
+		FbBackgroundColor(BLACK);
+
+		FbMove(3, 3);
+		FbWriteString("CONGRATS!\nYOU HAVE\nASSEMBLED AN\nRVASEC BADGE!\nWOOHOO!\n");
+		FbSwapBuffers();
+		play_tune(&badge_assembly_tune, NULL, NULL);
+		return;
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		set_badgey_state(previous_badgey_state);
+	}
+}
+
+static int find_next_known_clue(int c, int dir)
+{
+	int current_clue = -1;
+	int count = 0;
+	for (int i = c + dir; ; i += dir) {
+		if (i >= (int) ARRAY_SIZE(player.known_clues))
+			i = 0;
+		if (i < 0)
+			i = ARRAY_SIZE(player.known_clues) - 1;
+		if (player.known_clues[i]) {
+			current_clue = i;
+			break;
+		}
+		count++;
+		if (count > (int) ARRAY_SIZE(player.known_clues)) {
+			current_clue = -1;
+			break;
+		}
+	}
+	return current_clue;
+}
+
+static void badgey_review_clues(void)
+{
+	static int current_clue = 0;
+	static int last_clue = -2;
+	char buffer[256];
+
+	if (!player.known_clues[current_clue])
+		current_clue = find_next_known_clue(current_clue, 1);
+	if (current_clue == -1 || !player.known_clues[current_clue]) {
+		snprintf(buffer, sizeof(buffer),
+			"UNFORTUNATELY\nIT APPEARS THAT\nYOU DO NOT\nHAVE A CLUE\n");
+		current_clue = 0;
+	} else {
+		char *who_told;
+
+		switch (clue[current_clue].type) {
+		case clue_type_engraving:
+			who_told = "FROM AN ENGRAVING:";
+			break;
+		case clue_type_rando:
+			who_told = "SOMEONE TOLD ME:";
+			break;
+		case clue_type_hacker:
+			who_told = "A HACKER TOLD ME:";
+			break;
+		case clue_type_pub:
+			who_told = "A BARKEEPER TOLD ME:";
+			break;
+		case clue_type_temple:
+			who_told = "A GOOROO TOLD ME:";
+			break;
+		case clue_type_spaceship_rental:
+			who_told = "RENTAL AGENT TOLD\nME:";
+			break;
+		}
+		snprintf(buffer, sizeof(buffer), "%s\n\n%s\n", who_told,
+				clue[current_clue].clue_text);
+	}
+
+	if (current_clue != last_clue) {
+		FbClear();
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		FbMove(3, 3);
+		FbWriteString(buffer);
+
+		int clue_count = 0;
+		for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++) {
+			if (player.known_clues[i])
+				clue_count++;
+		}
+
+		snprintf(buffer, sizeof(buffer), "TOTAL CLUES: %d\n", clue_count);
+		FbMove(3, LCD_YSIZE - 8);
+		FbWriteString(buffer);
+		FbSwapBuffers();
+		last_clue = current_clue;
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+		current_clue = find_next_known_clue(current_clue, -1);
+		return;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+		current_clue = find_next_known_clue(current_clue, 1);
+		return;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		set_badgey_state(BADGEY_RUN);
+		last_clue = -2;
+	}
+}
+
+static const struct note funeral_march_notes[] = {
+	{ NOTE_C3, 400 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 400 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 200 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 400 },
+	{ NOTE_REST, 200 },
+	{ NOTE_Ds3, 400 },
+	{ NOTE_D3, 200 },
+	{ NOTE_REST, 1 },
+	{ NOTE_D3, 400 },
+	{ NOTE_C3, 200 },
+	{ NOTE_REST, 1 },
+	{ NOTE_C3, 400 },
+	{ NOTE_B2, 200 },
+	{ NOTE_C3, 400 },
+};
+
+static const struct tune funeral_march = {
+	ARRAY_SIZE(funeral_march_notes),
+	funeral_march_notes,
+};
+
+static void badgey_player_died(void)
+{
+	static int first_time = 1;
+
+	if (first_time) {
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		FbClear();
+		FbMove(0, 10);
+		FbWriteString("OH NO!\n");
+		FbWriteString("YOU HAVE DIED!\n");
+		FbSwapBuffers();
+		play_tune(&funeral_march, NULL, NULL);
+		first_time = 0;
+	}
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		first_time = 1;
+		game_in_progress = 0;
+		set_badgey_state(BADGEY_INITIAL_MENU);
+	}
+}
+
 #if TARGET_SIMULATOR
 static void sanity_check_one_cave_entrance(const struct badgey_world *w, int x, int y)
 {
@@ -7931,10 +8703,184 @@ static void sanity_check_aux_cave_entrances(void)
 #endif
 }
 
-/* You will need to rename badgey_cb() something else. */
-void badgey_cb(__attribute__((unused)) struct badge_app *app)
+#if DEV_CHEATS_ENABLED
+static void cheat_teleport(char *cmd)
 {
+	int d;
+	char townchar;
+
+	if (strlen(cmd) < 3) {
+		fprintf(stderr, "Bad teleport command '%s'\n", cmd);
+		return;
+	}
+	fprintf(stderr, "%s\n", cmd);
+	int rc = sscanf(cmd, "t %d", &d);
+
+	if (rc == 1) {
+		if (d < 0 || d > 49) {
+			fprintf(stderr, "Bad town or cave number %d\n", d);
+			return;
+		}
+		goto teleport;
+	}
+
+	if (rc != 1) {
+		int i;
+		for (i = 1; (cmd[i] == ' ' || cmd[i] == '\t') && cmd[i] != '\0'; i++)
+			/* empty loop body */ ;
+		char *b = &cmd[i];
+		for (int i = 0; i < (int) ARRAY_SIZE(towninfo); i++) {
+			if (strcasecmp(b, towninfo[i].name) == 0) {
+				d = i;
+				goto teleport;
+			}
+		}
+		fprintf(stderr, "No such town/cave: '%s'\n", b);
+		return;
+	}
+teleport:
+
+	/* set player up on the right planet */
+	player.world_level = 1;
+	player.old_world[1] = &space;
+	player.old_world[0] = NULL;
+	player.wx[0] = 55; /* this is wrong, should be coords of the right planet, not ossaria */
+	player.wy[0] = 4;
+	player.in_town = 0;
+	player.in_cave = 0;
+	player.town_or_cave_num = 0;
+	player.seedx = 0;
+	player.seedy = 0;
+	player.dir = 0;
+	player.moving = 0;
+	player.in_shop = 0;
+
+	/* find which planet */
+	switch (d) {
+	case 0 ... 9:
+		player.world = &ossaria;
+		break;
+	case 10 ... 19:
+		player.world = &NW42;
+		break;
+	case 20 ... 29:
+		player.world = &borton;
+		break;
+	case 30 ... 39:
+		player.world = &skang;
+		break;
+	case 40 ... 49:
+		player.world = &gnarg;
+		break;
+	}
+
+	/* find the coords of the town/cave */
+
+	fprintf(stderr, "Teleporting to planet %s, %s\n", player.world->name, towninfo[d].name);
+	townchar = (d % 10) + '0';
+
+	for (int y = 0; y < 64; y++) {
+		for (int x = 0; x < 64; x++) {
+			if (player.world->wm[windex(x, y)] == townchar) {
+				player.x = x;
+				player.y = y;
+				fprintf(stderr, "Coords = %d, %d\n", x, y);
+				set_badgey_state(BADGEY_RUN);
+				return;
+			}
+		}
+	}
+	fprintf(stderr, "Didn't find the town or cave, possible bug?\n");
+	return;
+}
+
+static void cheat_move(char *cmd)
+{
+	int x, y;
+
+	int rc = sscanf(cmd, "%*c %d %d", &x, &y);
+	if (rc == 2) {
+		player.x = x;
+		player.y = y;
+		set_badgey_state(BADGEY_RUN);
+	} else {
+		printf("Bad cmd: %s\n", cmd);
+	}
+}
+
+static void cheat_planets(void)
+{
+	fprintf(stderr, "PLANETS\n");
+	for (int i = 0; i < (int) ARRAY_SIZE(world_list) - 1; i++) {
+		fprintf(stderr, "%d planet %s\n", i, world_list[i]->name);
+	}
+}
+
+static void cheat_caves_and_towns(void)
+{
+	fprintf(stderr, "TOWNS AND CAVES:\n");
+	for (int i = 0; i < (int) ARRAY_SIZE(towninfo); i++) {
+		fprintf(stderr, "%d %20s (%s)\n", i, towninfo[i].name,
+				(i % 10) < 5 ? "town" : "cave");
+	}
+}
+
+static void cheat_help(void)
+{
+	fprintf(stderr, "\n");
+	fprintf(stderr, "? help\n");
+	fprintf(stderr, "p list planets\n");
+	fprintf(stderr, "c list caves/towns\n");
+	fprintf(stderr, "m move x, y\n");
+	fprintf(stderr, "t teleports to town or cave, by name or number\n");
+	fprintf(stderr, "t teleport town-name|cave-name\n");
+	fprintf(stderr, "q quit\n\n");
+}
+
+static void badgey_dev_cheats(void)
+{
+	char input[255];
+	char *x;
+
+	fprintf(stderr, "badgey cheat: ");
+	x = fgets(input, sizeof(input), stdin);
+	if (x != NULL) {
+		input[sizeof(input) - 1] = '\0';
+		int n = strlen(input);
+		if (n >= 1 && (input[n - 1] == '\n' || input[n - 1] == '\r'))
+			input[n - 1] = '\0'; /* cut off trailing newline */
+		switch (input[0]) {
+		case '?':
+			cheat_help();
+			break;
+		case 'c':
+			cheat_caves_and_towns();
+			break;
+		case 'p':
+			cheat_planets();
+			break;
+		case 'm':
+			cheat_move(input);
+			break;
+		case 't':
+			cheat_teleport(input);
+			break;
+		case 'q':
+			set_badgey_state(BADGEY_RUN);
+			break;
+		}
+	}
+}
+#endif
+
+/* You will need to rename badgey_cb() something else. */
+void badgey_cb(struct badge_app *app)
+{
+	if (app->wake_up)
+		screen_changed = 1;
+
 	sanity_check_aux_cave_entrances();
+
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:
 		badgey_initial_menu();
@@ -8022,6 +8968,20 @@ void badgey_cb(__attribute__((unused)) struct badge_app *app)
 	case BADGEY_RESTORE_GAME:
 		badgey_restore_game();
 		break;
+	case BADGEY_ASSEMBLE_BADGE:
+		badgey_assemble_badge();
+		break;
+	case BADGEY_REVIEW_CLUES:
+		badgey_review_clues();
+		break;
+	case BADGEY_PLAYER_DIED:
+		badgey_player_died();
+		break;
+#if DEV_CHEATS_ENABLED
+	case BADGEY_DEV_CHEATS:
+		badgey_dev_cheats();
+		break;
+#endif
 	default:
 		break;
 	}

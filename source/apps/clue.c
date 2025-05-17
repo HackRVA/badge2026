@@ -1303,8 +1303,11 @@ static void clue_check_for_incoming_packets(void)
     hal_restore_interrupts(interrupt_state);
 }
 
-void clue_cb(__attribute__((unused)) struct badge_app *app)
+void clue_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	if (scan_for_incoming_packets)
 		clue_check_for_incoming_packets();
 	switch (clue_state) {

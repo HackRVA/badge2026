@@ -6,62 +6,6 @@
  * i think the board is too small and it would be
  * too difficultif you lose when the top row is populated.
  *
- *
- *
- * data optimization notes:
- *
- * original implementation was based around blocks being
- *struct block {
- *	enum BLOCK_TYPE type;
- *	bool remove_animation_active;
- *	int remove_animation_progress;
- *};
- * Size: 12 bytes, alignment 4 bytes
- *
- * #define GRID_COLS 6
- * #define GRID_ROWS 10
- *
- * 720 bytes for the entire board?
- *
- * each cell can be in one of 6 states
- *	EMPTY_BLOCK = -1,
- *	CIRCLE_BLOCK,
- *	SQUARE_BLOCK,
- *	TRIANGLE_BLOCK,
- *	HEART_BLOCK,
- *	STAR_BLOCK,
- *
- * we can represent that as 3 bits
- * e.g.
- * enum BLOCK_TYPE {
- *	CIRCLE_BLOCK = 0,   // 000
- *	SQUARE_BLOCK = 1,   // 001
- *	TRIANGLE_BLOCK = 2, // 010
- *	HEART_BLOCK = 3,    // 011
- *	STAR_BLOCK = 4,	    // 100
- *  // some unused
- *	EMPTY_BLOCK = 7	    // 111
- *};
- *
- * i guess if we got rid of 2 block types it would fit nicely into 2 bits.
- * ... but that might make the gameplay more boring.
- * maybe we could add 2 block types
- *
- *
- * since we have need 3 bits to represent the type and we know the grid size
- * is 6*10
- * 3*6*10 = 180
- * we can represent the grid as 180 bits.
- * 3*64=192 -- so we have some extra space
- *
- * we can track any removal/is_hovering/animation state separately.
- *
- * - type bits (pack into uint64_t types[3];  3×64=192 bits)
- * - remove mask (uint64_t)
- * - animation_progress bits (uint64_t progress[3];)
- *
- *   ~56 bytes for the entire board
- *
  * --
  *  Dustin Firebaugh
  */
@@ -81,10 +25,19 @@
 #include "ui.h"
 #include "xorshift.h"
 #include "particle.h"
+#include "audio.h"
+#include "music.h"
 
 #define IS_ENDLESS_PLAY_DISABLED 0
 #define ENABLE_LIGHTNING 1
 #define DEBUG_LIGHTNING 0
+
+#define EVAL_CYCLE_MS 5000
+#define GRID_SHIFT_MS 6000
+#define COLLAPSE_GRID_MS 1000
+static uint64_t collapse_cooldown;
+static uint64_t cycle_cooldown;
+static uint64_t grid_shift_cooldown;
 
 static int has_screen_changed = 0;
 static int has_grid_changed = 1;
@@ -123,12 +76,12 @@ static struct palette default_palette = {
 };
 
 enum BLOCK_TYPE {
-	CIRCLE_BLOCK = 0,   /* 000 */
-	SQUARE_BLOCK = 1,   /* 001 */
-	TRIANGLE_BLOCK = 2, /* 010 */
-	HEART_BLOCK = 3,    /* 011 */
-	STAR_BLOCK = 4,	    /* 100 */
-	EMPTY_BLOCK = 7	    /* 111 */
+	CIRCLE_BLOCK = 0,	/* 000 */
+	SQUARE_BLOCK = 1,	/* 001 */
+	TRIANGLE_BLOCK = 2,	/* 010 */
+	HEART_BLOCK = 3,	/* 011 */
+	STAR_BLOCK = 4,	/* 100 */
+	EMPTY_BLOCK = 7	/* 111 */
 };
 
 static const uint8_t circle_bitmap[] = {
@@ -184,66 +137,344 @@ static const uint8_t star_bitmap[] = {
 #define GRID_ROWS 10
 #define CELL_COUNT (GRID_COLS * GRID_ROWS)
 
-static uint64_t grid[3];
-static uint64_t blocks_to_be_removed;
-static uint64_t removal_animation_state[3];
+static uint8_t block_type[CELL_COUNT];
+static bool removal_state[CELL_COUNT];
+static uint8_t removal_progress[CELL_COUNT];
 
 static struct particle_pool *particle_pool = NULL;
 #define PARTICLE_GRAVITY 16
 #define PARTICLE_MAX_INITIAL_VELOCITY 800
 
-/*
- * since grid and removal_animation_state are both 3*64
- * we can use the same functions to manipulate them
- */
-static inline void bit_set(uint64_t *arr, int bit, uint64_t v)
-{
-	int idx = bit >> 6;
-	int ofs = bit & 63;
-	uint64_t mask = ((uint64_t)1) << ofs;
+#define ARRAYSIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-	arr[idx] = (arr[idx] & ~mask) | ((v & 1) << ofs);
-}
-static inline uint64_t bit_get(const uint64_t *arr, int bit)
-{
-	int idx = bit >> 6;
-	int ofs = bit & 63;
-	uint64_t mask = ((uint64_t)1) << ofs;
+#define whole_note (2000)
+#define half_note (whole_note / 2)
+#define quarter_note (whole_note / 4)
+#define dotted_quarter ((3 * whole_note) / 8)
+#define eighth_note (whole_note / 8)
+#define sixteenth_note (whole_note / 16)
+#define thirtysecond_note (whole_note / 32)
 
-	return (arr[idx] & mask) ? 1 : 0;
-}
-static inline void field_set(uint64_t *arr, int base, uint8_t v)
-{
-	for (int i = 0; i < 3; i++)
-		bit_set(arr, base + i, (v >> i) & 1);
-}
-static inline uint8_t field_get(const uint64_t *arr, int base)
-{
-	uint8_t v = 0;
-	for (int i = 0; i < 3; i++)
-		v |= bit_get(arr, base + i) << i;
-	return v;
-}
-static inline void set_cell(
-	int x, int y, enum BLOCK_TYPE block_type, bool r, uint8_t p)
-{
+#define kick_drum { NOTE_A2, 10, }
+#define snare_drum { NOTE_B6, 10, }
+
+static struct note puzzle_attack_theme_notes[] = {
+	/* just bass */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+        { NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+
+
+	/* both */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_F4, thirtysecond_note, },
+		{ NOTE_G4, thirtysecond_note, },
+		{ NOTE_Bf4, thirtysecond_note, },
+		{ NOTE_C5, thirtysecond_note, },
+		{ NOTE_Ef5, thirtysecond_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+		{ NOTE_G5, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+		{ NOTE_C5, eighth_note, },
+		{ NOTE_C6, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_REST, sixteenth_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_F5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+  snare_drum,
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, eighth_note, },
+		{ NOTE_REST, sixteenth_note, },
+
+	/* both */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_F4, thirtysecond_note, },
+		{ NOTE_G4, thirtysecond_note, },
+		{ NOTE_Bf4, thirtysecond_note, },
+		{ NOTE_C5, thirtysecond_note, },
+		{ NOTE_Ef5, thirtysecond_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+		{ NOTE_G5, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+		{ NOTE_C5, eighth_note, },
+		{ NOTE_C6, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_REST, sixteenth_note, },
+		{ NOTE_F5, eighth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_F5, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+		{ NOTE_Bf5, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+		{ NOTE_G5, sixteenth_note, },
+  kick_drum,
+		{ NOTE_G5, thirtysecond_note, },
+		{ NOTE_Bf5, thirtysecond_note, },
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, sixteenth_note, },
+		{ NOTE_C5, sixteenth_note, },
+  snare_drum,
+		{ NOTE_F5, sixteenth_note, },
+		{ NOTE_Ef5, eighth_note, },
+		{ NOTE_REST, sixteenth_note, },
+
+	/* just bass */
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_F3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, eighth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_G3, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Bf3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Ef3, sixteenth_note, },
+        { NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+  kick_drum,
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_C3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  snare_drum,
+	{ NOTE_Ef3, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+	{ NOTE_Bf2, sixteenth_note, },
+	{ NOTE_REST, sixteenth_note, },
+  kick_drum,
+	{ NOTE_REST, quarter_note, },
+  snare_drum,
+	{ NOTE_REST, quarter_note, },
+};
+
+static struct tune puzzle_attack_theme = {
+	.num_notes = ARRAYSIZE(puzzle_attack_theme_notes),
+	.note = &puzzle_attack_theme_notes[0],
+};
+
+static inline enum BLOCK_TYPE block_get_type(int x, int y) {
 	int idx = y * GRID_COLS + x;
-	field_set(grid, idx * 3, (uint8_t)block_type);
-	bit_set(&blocks_to_be_removed, idx, r);
-	field_set(removal_animation_state, idx * 3, p);
+	return (enum BLOCK_TYPE)block_type[idx];
+}
+
+static inline bool is_marked_for_removal(int x, int y) {
+	int idx = y * GRID_COLS + x;
+	return removal_state[idx];
+}
+
+static inline uint8_t get_removal_progress(int x, int y) {
+	int idx = y * GRID_COLS + x;
+	return removal_progress[idx];
+}
+
+static inline void set_cell(int x, int y, enum BLOCK_TYPE t, bool r, uint8_t p) {
+	int idx = y * GRID_COLS + x;
+	block_type[idx] = t;
+	removal_state[idx] = r;
+	removal_progress[idx] = p;
 	has_grid_changed = 1;
-}
-static inline enum BLOCK_TYPE block_get_type(int x, int y)
-{
-	return (enum BLOCK_TYPE)field_get(grid, (y * GRID_COLS + x) * 3);
-}
-static inline bool get_remove_state(int x, int y)
-{
-	return bit_get(&blocks_to_be_removed, y * GRID_COLS + x);
-}
-static inline uint8_t get_removal_progress(int x, int y)
-{
-	return field_get(removal_animation_state, (y * GRID_COLS + x) * 3);
 }
 
 #define BLOCK_SIZE 8
@@ -270,7 +501,6 @@ static int score = 0;
 static int tick = 0;
 static uint64_t last_tick_time = 0;
 static unsigned int xorshift_state = 0;
-static int hang_time = 4;
 
 #define NUM_MENU_ITEMS 4
 #define MENU_ITEM_SPACING 30
@@ -291,14 +521,11 @@ static void insert_row(void)
 }
 static void init_grid(void)
 {
-	for (int i = 0; i < 3; i++) {
-		grid[i] = 0;
-		removal_animation_state[i] = 0;
+	for (int i = 0; i < CELL_COUNT; i++) {
+		block_type[i] = EMPTY_BLOCK;
+		removal_state[i] = false;
+		removal_progress[i] = 0;
 	}
-	blocks_to_be_removed = 0;
-	for (int y = 0; y < GRID_ROWS; y++)
-		for (int x = 0; x < GRID_COLS; x++)
-			set_cell(x, y, EMPTY_BLOCK, false, 0);
 	insert_row();
 }
 
@@ -307,7 +534,7 @@ static void shift_grid_up(void)
 	for (int y = 1; y < GRID_ROWS; y++)
 		for (int x = 0; x < GRID_COLS; x++) {
 			enum BLOCK_TYPE t = block_get_type(x, y);
-			bool r = get_remove_state(x, y);
+			bool r = is_marked_for_removal(x, y);
 			uint8_t p = get_removal_progress(x, y);
 			set_cell(x, y - 1, t, r, p);
 		}
@@ -356,6 +583,21 @@ static void handle_menu_options(void)
 static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
+	if (puzzle_attack_state == PUZZLE_ATTACK_SHOW_HELP) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
+			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		return;
+	}
 	if (puzzle_attack_state == PUZZLE_ATTACK_MENU) {
 		current_menu_item_selected = false;
 		if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
@@ -678,7 +920,7 @@ static bool collapse_grid(void)
 						EMPTY_BLOCK)
 					d++;
 				if (d > 0) {
-					bool r = get_remove_state(x, y);
+					bool r = is_marked_for_removal(x, y);
 					uint8_t p = get_removal_progress(x, y);
 					set_cell(x, y + d, t, r, p);
 					set_cell(x, y, EMPTY_BLOCK, false, 0);
@@ -704,7 +946,7 @@ static void update_remove_animations(void)
 		for (int x = 0; x < GRID_COLS; x++) {
 			if (block_get_type(x, y) == EMPTY_BLOCK)
 				continue;
-			if (get_remove_state(x, y)) {
+			if (is_marked_for_removal(x, y)) {
 				uint8_t p = get_removal_progress(x, y) + 1;
 				if (p > REMOVE_BLOCK_ANIMATION_END)
 					set_cell(x, y, EMPTY_BLOCK, false, 0);
@@ -713,13 +955,6 @@ static void update_remove_animations(void)
 						true, p);
 			}
 		}
-}
-
-static void check_matches_and_collapse(void)
-{
-	collapse_grid();
-	check_matches();
-	register_blocks_for_removal();
 }
 
 /*
@@ -752,19 +987,22 @@ static void swap_blocks_at_cursor(void)
 static void puzzle_attack_update(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
-	int count = (now / 1000) % 60;
-	static int last_count = -1;
-	if (count != last_count) {
-		last_count = count;
-		if (--tick <= 0) {
-			check_matches_and_collapse();
-			tick = hang_time;
-		}
-		if (count % 5 == 0) {
-			shift_grid_up();
-			insert_row();
-			shift_cursor_up();
-		}
+	if (now > collapse_cooldown) {
+		collapse_grid();
+		collapse_cooldown = rtc_get_ms_since_boot()+COLLAPSE_GRID_MS;
+		tick = (tick + 1) % 60;
+		last_tick_time = now;
+	}
+	if (now > cycle_cooldown) {
+		cycle_cooldown = rtc_get_ms_since_boot()+EVAL_CYCLE_MS;
+		check_matches();
+		register_blocks_for_removal();
+	}
+	if (now > grid_shift_cooldown) {
+		grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
+		shift_grid_up();
+		insert_row();
+		shift_cursor_up();
 	}
 
 	particle_pool->config.move_particles(particle_pool);
@@ -803,9 +1041,10 @@ static void puzzle_attack_init(void)
 	FbClear();
 	selected_outline_color = palette_color_from_index(default_palette, 7);
 	init_grid();
-	last_tick_time = rtc_get_ms_since_boot();
-	tick = hang_time;
 	score = 0;
+	cycle_cooldown = rtc_get_ms_since_boot()+EVAL_CYCLE_MS;
+	grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
+	collapse_cooldown = rtc_get_ms_since_boot()+COLLAPSE_GRID_MS;
 }
 
 static void draw_bitmap(
@@ -848,7 +1087,7 @@ static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
 		block.outline_color =
 			palette_color_from_index(default_palette, 9);
 
-	if (get_remove_state(grid_x, grid_y))
+	if (is_marked_for_removal(grid_x, grid_y))
 		block.fill_color = palette_color_from_index(default_palette,
 			2 + get_removal_progress(grid_x, grid_y));
 
@@ -937,6 +1176,25 @@ static void draw_score(void)
 
 static void draw_tick(void)
 {
+	unsigned int now = rtc_get_ms_since_boot();
+	unsigned int elapsed = now - (cycle_cooldown - EVAL_CYCLE_MS);
+	if (elapsed > EVAL_CYCLE_MS) elapsed = EVAL_CYCLE_MS;
+
+	int fill_percent = (int)((elapsed * 100) / EVAL_CYCLE_MS);
+
+	struct ui_progress_bar pb = {
+		.x = 1,
+		.y = 18,
+		.width = 40,
+		.height = 12,
+		.outline_size = 2,
+		.fill_color = palette_color_from_index(default_palette,12),
+		.empty_color = palette_color_from_index(default_palette,0),
+		.outline_color = palette_color_from_index(default_palette,13),
+		.fill = ui_progress_bar_calculate_fill_percentage(fill_percent),
+	};
+	ui_progress_bar_draw(pb);
+#if 0
 	char buf[8];
 	snprintf(buf, sizeof(buf), "%3d", tick);
 	FbMove(10, 20);
@@ -944,6 +1202,7 @@ static void draw_tick(void)
 		default_palette, SCORE_COLOR_INDEX + 1));
 	FbWriteString(buf);
 	has_screen_changed = 1;
+#endif
 }
 
 static void draw_game_over_screen(char *msg)
@@ -1063,9 +1322,37 @@ static void draw_screen(void)
 	}
 #endif
 }
-
-void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
+static int calculate_theme_duration(struct note *notes, size_t note_count)
 {
+	int total_duration = 0;
+	for (size_t i = 0; i < note_count; ++i) {
+		total_duration += notes[i].duration;
+	}
+	return total_duration;
+}
+static bool is_playing = false;
+static uint64_t last_music_start_time;
+static int theme_duration = 200;
+static void play_theme(void)
+{
+	uint64_t now = rtc_get_ms_since_boot();
+
+	if (is_playing && now >= last_music_start_time + theme_duration)
+		is_playing = false;
+
+	if (is_playing)
+		return;
+
+	play_tune(&puzzle_attack_theme, NULL, NULL);
+	is_playing = true;
+	last_music_start_time = now;
+}
+
+void puzzle_attack_cb(struct badge_app *app)
+{
+	if (app->wake_up)
+		has_screen_changed = 1;
+
 #define PUZZLE_ATTACK_POOL_SIG 0xC111456
 	if (particle_pool == NULL){
 		particle_pool = get_common_particle_pool();
@@ -1077,10 +1364,13 @@ void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
 	switch (puzzle_attack_state) {
 	case PUZZLE_ATTACK_INIT:
 		puzzle_attack_init();
+		theme_duration = calculate_theme_duration(puzzle_attack_theme_notes, puzzle_attack_theme.num_notes);
+		theme_duration += quarter_note;
 		break;
 	case PUZZLE_ATTACK_RUN:
 		puzzle_attack_update();
 		draw_screen();
+		play_theme();
 		break;
 	case PUZZLE_ATTACK_SHOW_HELP:
 		FbClear();
@@ -1100,6 +1390,8 @@ void puzzle_attack_cb(__attribute__((unused)) struct menu_t *m)
 		break;
 	case PUZZLE_ATTACK_EXIT:
 		puzzle_attack_state = PUZZLE_ATTACK_INIT;
+		stop_tune();
+		is_playing = false;
 		pop_app();
 		break;
 	default:

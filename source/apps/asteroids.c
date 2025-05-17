@@ -555,8 +555,11 @@ static void asteroids_exit(void)
 	pop_app();
 }
 
-void asteroids_cb(__attribute__((unused)) struct badge_app *app)
+void asteroids_cb(struct badge_app *app)
 {
+	if (app->wake_up)
+		screen_changed = 1;
+
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();
 		sparkpool->nparticles = 0;

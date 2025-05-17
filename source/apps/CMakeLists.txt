@@ -15,11 +15,11 @@ target_sources(${PRODUCT} PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/pong.c
         ${CMAKE_CURRENT_LIST_DIR}/qc.c
         ${CMAKE_CURRENT_LIST_DIR}/smashout.c
+        ${CMAKE_CURRENT_LIST_DIR}/simonSays.c
         # ${CMAKE_CURRENT_LIST_DIR}/tank-vs-tank.c
         ${CMAKE_CURRENT_LIST_DIR}/username.c
         ${CMAKE_CURRENT_LIST_DIR}/gulag.c
         ${CMAKE_CURRENT_LIST_DIR}/rvasec_splash.c
-        ${CMAKE_CURRENT_LIST_DIR}/simonSays.c
         ${CMAKE_CURRENT_LIST_DIR}/slot_machine.c
         ${CMAKE_CURRENT_LIST_DIR}/test-screensavers.c
         ${CMAKE_CURRENT_LIST_DIR}/moon-patrol.c
@@ -31,10 +31,12 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/aagunner.c
 	${CMAKE_CURRENT_LIST_DIR}/default_menu_app.c
 	${CMAKE_CURRENT_LIST_DIR}/carousel_menu_app.c
+	${CMAKE_CURRENT_LIST_DIR}/menu_2025.c
 	${CMAKE_CURRENT_LIST_DIR}/screensaver_app.c
+	${CMAKE_CURRENT_LIST_DIR}/drum_machine.c
         )
-add_subdirectory(clue_assets)
 add_subdirectory(simonSays_assets)
+add_subdirectory(clue_assets)
 add_subdirectory(new_badge_monsters_assets)
 add_subdirectory(new_badge_monsters)
 target_include_directories(${PRODUCT} PUBLIC .)

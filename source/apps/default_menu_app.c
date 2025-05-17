@@ -20,7 +20,6 @@ void init_default_menu_app_context(struct default_menu_app_context *c, struct me
 	c->current_item = 0;
 	c->selected_item = -1;
 	c->screen_changed = 1;
-
 }
 
 void default_menu_app_cb(struct badge_app *app);
@@ -98,14 +97,13 @@ static void move_down(void)
 
 static void go_back(void)
 {
-	if (current_menu_stack_idx > -1) {
+	if (current_menu_stack_idx > -1)
 		current_menu_stack_idx--;
-		pop_app();
-		if (current_menu_stack_idx >= 0)
-			current_context = &context_stack[current_menu_stack_idx];
-		else
-			current_context = default_menu_app.app_context;
-	}
+	pop_app();
+	if (current_menu_stack_idx >= 0)
+		current_context = &context_stack[current_menu_stack_idx];
+	else
+		current_context = default_menu_app.app_context;
 }
 
 static void display_menu_item_description(struct badge_app *app)
