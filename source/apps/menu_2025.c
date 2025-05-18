@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "colors.h"
 #include "button.h"
@@ -280,8 +281,6 @@ static void check_buttons(void)
 		move_right();
 }
 
-
-
 static void draw_screen(void)
 {
 	struct menu_t *m = current_context->menu;
@@ -299,11 +298,16 @@ static void draw_screen(void)
 		FbMove(0, 0);
 		FbImageRect(&cassettepixel, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
 
-		int len = strlen(item->name);
+		char s_upper[sizeof(item->name)];
+		memcpy(s_upper, item->name, sizeof(item->name));
+		int len = strnlen(s_upper, sizeof(s_upper));
+		for (int i = 0; i < len; i++) {
+			s_upper[i] = toupper(s_upper[i]);
+		}
 		FbMove((LCD_XSIZE - 8 * len) / 2, 21);
 		FbBackgroundColor(TAPE_DECK_MENU_BG_COLOR);
 		FbColor(TAPE_DECK_MENU_FG_COLOR);
-		FbWriteString(item->name);
+		FbWriteString(s_upper);
 	} else {
 		switch (anim_direction) {
 		case anim_up: /* camera moving up, tape moving down */

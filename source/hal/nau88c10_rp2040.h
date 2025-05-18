@@ -48,6 +48,10 @@ void nau88c10_up(struct nau88c10_ctx *ctx);
 void nau88c10_set_output_muted(struct nau88c10_ctx *ctx, bool muted);
 uint8_t nau88c10_get_volume(struct nau88c10_ctx *ctx);
 void nau88c10_set_volume(struct nau88c10_ctx *ctx, uint8_t volume);
+bool nau88c10_get_speaker_enabled(struct nau88c10_ctx *ctx);
+void nau88c10_set_speaker_enabled(struct nau88c10_ctx *ctx, bool en);
+bool nau88c10_get_headphone_enabled(struct nau88c10_ctx *ctx);
+void nau88c10_set_headphone_enabled(struct nau88c10_ctx *ctx, bool en);
 
 #endif /* NAU88C10_RP2040_H */
 

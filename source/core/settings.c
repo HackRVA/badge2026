@@ -12,6 +12,7 @@
 #include "key_value_storage.h"
 #include "test-screensavers.h"
 #include "dynmenu.h"
+#include "utils.h"
 
 #define PING_REQUEST      0x1000
 #define PING_RESPONSE     0x2000
@@ -203,32 +204,34 @@ void LEDlight_cb(struct badge_app *app) /* LED brightness */
     pop_app();
 }
 
-void buzzer_config_cb(struct badge_app *app);
+void audio_out_cfg_cb(struct badge_app *app);
 
-const struct menu_t buzzer_config_m[] = {
-    {"Audio: On",   0|VERT_ITEM,     FUNCTION, { .func = buzzer_config_cb}, NULL },
-    {"Audio: Off",  1|VERT_ITEM,     FUNCTION, { .func = buzzer_config_cb}, NULL },
+const struct menu_t audio_out_cfg_m[] = {
+    {"Speaker and HP",  0 | VERT_ITEM,  FUNCTION, { .func = audio_out_cfg_cb}, NULL },
+    {"HP only",         1 | VERT_ITEM,  FUNCTION, { .func = audio_out_cfg_cb}, NULL },
+    {"Speaker only",    2 | VERT_ITEM,  FUNCTION, { .func = audio_out_cfg_cb}, NULL },
+    {"Off",             3 | VERT_ITEM,  FUNCTION, { .func = audio_out_cfg_cb}, NULL },
     {"Back", VERT_ITEM|LAST_ITEM| DEFAULT_ITEM, BACK, {NULL}, NULL },
 };
 
 /*
   not const menu_t ...  because the config status is stored in buzzer_m[0].name[]
 */
-struct menu_t buzzer_m[] = {
-    {"Audio: On",   VERT_ITEM,     MENU, {buzzer_config_m}, NULL },
+struct menu_t audio_m[] = {
+    {"Speaker and HP", VERT_ITEM, MENU, {audio_out_cfg_m}, NULL },
     {"Back", VERT_ITEM|LAST_ITEM|DEFAULT_ITEM, BACK, {NULL}, NULL },
 };
 
-void buzzer_config_cb(struct badge_app *app)
+void audio_out_cfg_cb(struct badge_app *app)
 {
     struct menu_t *dstMenu, *selectedMenu;
 
-    dstMenu = &buzzer_m[0];
+    dstMenu = &audio_m[0];
     selectedMenu = &app->menu[app->current_selection];
 
     strcpy(dstMenu->name, selectedMenu->name);
 
-    badge_system_data()->mute = selectedMenu->attrib & 0x1; /* low order bits of attrib can store values */
+    badge_system_data()->audio_out_cfg = selectedMenu->attrib & 0x3; /* low order bits of attrib can store values */
 
     save_settings();
     pop_app();
@@ -277,11 +280,10 @@ void setup_settings_menus(void) {
     }
 
     // Set up buzzer on/off menu
-    if (systemData->mute) {
-        memcpy(buzzer_m[0].name, buzzer_config_m[1].name, sizeof(buzzer_m[0].name));
-    } else {
-        memcpy(buzzer_m[0].name, buzzer_config_m[0].name, sizeof(buzzer_m[0].name));
-    }
+    int i = (systemData->audio_out_cfg > ARRAY_SIZE(audio_out_cfg_m)) 
+        ? 0 : systemData->audio_out_cfg;
+    memcpy(audio_m[0].name, audio_out_cfg_m[i].name, 
+           sizeof(audio_m[0].name));
 }
 
 enum clear_nvram_state {

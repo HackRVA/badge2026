@@ -202,13 +202,18 @@ void audio_poll(void)
     if (abs((int) vol - (int) nau88c10_get_volume(&m_nau88c10_ctx)) > 1) {
         nau88c10_set_volume(&m_nau88c10_ctx, vol);
     }
+
+    /* Check for new audio output configuration. */
+    uint8_t aoc = badge_system_data()->audio_out_cfg;
+    nau88c10_set_speaker_enabled(&m_nau88c10_ctx, (aoc & 0x1) == 0);
+    nau88c10_set_headphone_enabled(&m_nau88c10_ctx, (aoc & 0x2) == 0);
 }
 
 /*- Standby Pin Control ------------------------------------------------------*/
 void audio_stby_ctl(bool enable)
 {
     /* Always take the opamp out of standby if requested */
-    if (!enable && !badge_system_data()->mute)
+    if (!enable && !badge_system_data()->audio_out_cfg)
     {
 	// TODO - bring the codec out of sleep. -PMW
     }

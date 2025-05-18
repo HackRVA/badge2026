@@ -15,7 +15,7 @@ extern "C" {
 extern struct menu_t backlight_m[];
 extern struct menu_t rotate_m[];
 extern struct menu_t LEDlight_m[];
-extern struct menu_t buzzer_m[];
+extern struct menu_t audio_m[];
 extern struct menu_t screen_lock_m[];
 extern struct menu_t myBadgeid_m[];
 

@@ -30,7 +30,7 @@ SYSTEM_DATA G_sysData = {
 	.achievements={ 0 },
 	.ledBrightness=255,
 	.backlight=192,
-	.mute=0
+	.audio_out_cfg=0
 };
 
 unsigned char  NextUSBOut=0;

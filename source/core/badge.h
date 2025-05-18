@@ -46,7 +46,7 @@ typedef struct {
     */
     unsigned char ledBrightness;  /* 1 byte */
     unsigned char backlight;      /* 1 byte */
-    bool mute;
+    uint8_t audio_out_cfg;
     bool display_inverted;
     bool display_rotated;
     bool screensaver_inverted;

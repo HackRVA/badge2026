@@ -1566,5 +1566,42 @@ void nau88c10_set_volume(struct nau88c10_ctx *ctx, uint8_t volume)
     (void) prv_nau_set_dacgain(ctx, dacgain);
 }
 
+bool nau88c10_get_speaker_enabled(struct nau88c10_ctx *ctx)
+{
+    return NAU88C10_SPKMXEN_ENABLE 
+        == ((ctx->reg[NAU88C10_REG_POWER_MANAGEMENT_3] & NAU88C10_SPKMXEN_MASK)
+            >> NAU88C10_SPKMXEN_POS);
+}
+
+void nau88c10_set_speaker_enabled(struct nau88c10_ctx *ctx, bool en)
+{
+    if (en && !nau88c10_get_speaker_enabled(ctx)) {
+        (void) prv_nau_set_spkmxen(ctx, NAU88C10_SPKMXEN_ENABLE);
+        (void) prv_nau_set_nspken(ctx, NAU88C10_NSPKEN_ENABLE);
+        (void) prv_nau_set_pspken(ctx, NAU88C10_PSPKEN_ENABLE);
+    } else if (!en && nau88c10_get_speaker_enabled(ctx)) {
+        (void) prv_nau_set_pspken(ctx, NAU88C10_PSPKEN_DISABLE);
+        (void) prv_nau_set_nspken(ctx, NAU88C10_NSPKEN_DISABLE);
+        (void) prv_nau_set_spkmxen(ctx, NAU88C10_SPKMXEN_DISABLE);
+    }
+}
+
+bool nau88c10_get_headphone_enabled(struct nau88c10_ctx *ctx)
+{
+    return NAU88C10_MOUTMXEN_ENABLE 
+        == ((ctx->reg[NAU88C10_REG_POWER_MANAGEMENT_3] & NAU88C10_MOUTMXEN_MASK)
+            >> NAU88C10_MOUTMXEN_POS);
+}
+
+void nau88c10_set_headphone_enabled(struct nau88c10_ctx *ctx, bool en)
+{
+    if (en && !nau88c10_get_headphone_enabled(ctx)) {
+        (void) prv_nau_set_moutmxen(ctx, NAU88C10_MOUTMXEN_ENABLE);
+        (void) prv_nau_set_mouten(ctx, NAU88C10_MOUTEN_ENABLE);
+    } else if (!en && nau88c10_get_headphone_enabled(ctx)) {
+        (void) prv_nau_set_mouten(ctx, NAU88C10_MOUTEN_DISABLE);
+        (void) prv_nau_set_moutmxen(ctx, NAU88C10_MOUTMXEN_DISABLE);
+    }
+}
 
 
