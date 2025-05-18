@@ -59,7 +59,7 @@ static void mixer_loop(
 		SDL_LockMutex(audio_lock);
 	}
 
-	if (badge_system_data()->mute) {
+	if (badge_system_data()->audio_out_cfg) {
 		memset(out, 0, len);
 	} else {
 		for (int i = 0; i < framesPerBuffer; i++) {
