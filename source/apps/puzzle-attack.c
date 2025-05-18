@@ -32,15 +32,18 @@
 #define ENABLE_LIGHTNING 1
 #define DEBUG_LIGHTNING 0
 
+#define TICK 1000
+#define COLLAPSE_GRID_MS TICK
 #define EVAL_CYCLE_MS 5000
 #define GRID_SHIFT_MS 6000
-#define COLLAPSE_GRID_MS 1000
+#define PARTICLE_LIFETIME_MS 3000
+
 static uint64_t collapse_cooldown;
 static uint64_t cycle_cooldown;
 static uint64_t grid_shift_cooldown;
 
-static int has_screen_changed = 0;
-static int has_grid_changed = 1;
+static bool initial_run = true;
+static int screen_changed = 0;
 
 static enum puzzle_attack_state_t {
 	PUZZLE_ATTACK_INIT = 0,
@@ -145,7 +148,9 @@ static struct particle_pool *particle_pool = NULL;
 #define PARTICLE_GRAVITY 16
 #define PARTICLE_MAX_INITIAL_VELOCITY 800
 
-#define ARRAYSIZE(x) (sizeof(x) / sizeof((x)[0]))
+static uint64_t current_particle_start_time = 0;
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #define whole_note (2000)
 #define half_note (whole_note / 2)
@@ -155,7 +160,7 @@ static struct particle_pool *particle_pool = NULL;
 #define sixteenth_note (whole_note / 16)
 #define thirtysecond_note (whole_note / 32)
 
-#define kick_drum { NOTE_A2, 10, }
+#define kick_drum { NOTE_A3, 10, }
 #define snare_drum { NOTE_B6, 10, }
 
 static enum {
@@ -480,7 +485,7 @@ static struct note puzzle_attack_theme_notes[] = {
 };
 
 static struct tune puzzle_attack_theme = {
-	.num_notes = ARRAYSIZE(puzzle_attack_theme_notes),
+	.num_notes = ARRAY_SIZE(puzzle_attack_theme_notes),
 	.note = &puzzle_attack_theme_notes[0],
 };
 
@@ -504,7 +509,6 @@ static inline void set_cell(int x, int y, enum BLOCK_TYPE t, bool r, uint8_t p) 
 	block_type[idx] = t;
 	removal_state[idx] = r;
 	removal_progress[idx] = p;
-	has_grid_changed = 1;
 }
 
 #define BLOCK_SIZE 8
@@ -570,7 +574,6 @@ static void shift_grid_up(void)
 		}
 	for (int x = 0; x < GRID_COLS; x++)
 		set_cell(x, GRID_ROWS - 1, EMPTY_BLOCK, false, 0);
-	has_grid_changed = 1;
 }
 static void shift_cursor_up(void)
 {
@@ -590,6 +593,7 @@ static void next_menu_item(void)
 static void reset_game(void)
 {
 	puzzle_attack_state = PUZZLE_ATTACK_INIT;
+	initial_run = true;
 	score = 0;
 }
 static void handle_menu_options(void)
@@ -614,47 +618,64 @@ static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
 	if (puzzle_attack_state == PUZZLE_ATTACK_SHOW_HELP) {
-		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches))
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_MENU;
-		else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_MENU;
-		else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_MENU;
-		else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_MENU;
-		else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_MENU;
-		else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_MENU;
+			screen_changed = 1;
+		}
 		return;
 	}
 	if (puzzle_attack_state == PUZZLE_ATTACK_MENU) {
 		current_menu_item_selected = false;
-		if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
+		if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 			previous_menu_item();
-		else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 			next_menu_item();
-		else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 			current_menu_item_selected = true;
 			handle_menu_options();
-		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 			puzzle_attack_state = PUZZLE_ATTACK_EXIT;
+			screen_changed = 1;
+		}
 		return;
 	}
-	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) && cursor_x > 0)
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) && cursor_x > 0) {
 		cursor_x--;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) &&
-		cursor_x < GRID_COLS - 2)
+		screen_changed = 1;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) && cursor_x < GRID_COLS - 2) {
 		cursor_x++;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) && cursor_y > 0)
+		screen_changed = 1;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) && cursor_y > 0) {
 		cursor_y--;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) &&
-		cursor_y < GRID_ROWS - 1)
+		screen_changed = 1;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) && cursor_y < GRID_ROWS - 1) {
 		cursor_y++;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
+		screen_changed = 1;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		swap_requested = true;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
+		screen_changed = 1;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		puzzle_attack_state = PUZZLE_ATTACK_MENU;
+		screen_changed = 1;
+	}
 }
 
 static bool is_part_of_match(int x, int y)
@@ -802,7 +823,7 @@ static void draw_lightning(void)
 	}
 
 	if (--lightning_frames_left <= 0)
-	  lightning_active = false;
+		lightning_active = false;
 }
 
 /*
@@ -870,6 +891,7 @@ static int get_match_count(void)
 		score += match_count;
 
 	if (match_count > MATCH_LEVEL_PARTICLES) {
+		current_particle_start_time = rtc_get_ms_since_boot();
 		int spacing = BLOCK_SIZE + BLOCK_SPACING;
 		int origin_x = (LCD_XSIZE / 2) - (GRID_COLS * spacing / 2);
 		int origin_y = 1 * 1 + 2;
@@ -1011,7 +1033,7 @@ static void swap_blocks_at_cursor(void)
 	set_cell(x, y, b, false, 0);
 	set_cell(x + 1, y, a, false, 0);
 
-	has_grid_changed = 1;
+	screen_changed = 1;
 }
 
 static int theme_duration = 200;
@@ -1063,6 +1085,18 @@ static void puzzle_attack_update(void)
 		collapse_cooldown = rtc_get_ms_since_boot()+COLLAPSE_GRID_MS;
 		tick = (tick + 1) % 60;
 		last_tick_time = now;
+		screen_changed = 1;
+	}
+
+	/*
+	* even though we draw the screen less frequently now,
+	* let's draw it atleast once every TICK
+	*/
+	if (now < (now % TICK == 0)) {
+		screen_changed = 1;
+	}
+	if (now < current_particle_start_time + PARTICLE_LIFETIME_MS) {
+		screen_changed = 1;
 	}
 	if (now > cycle_cooldown) {
 		cycle_cooldown = now + EVAL_CYCLE_MS;
@@ -1073,10 +1107,10 @@ static void puzzle_attack_update(void)
 		if (match_count > 0 && audio_mode == AUDIO_THEME) {
 			if (match_count > MATCH_LEVEL_LIGHTNING) {
 				current_sfx = sfx_two;
-				current_sfx_len = ARRAYSIZE(sfx_two);
+				current_sfx_len = ARRAY_SIZE(sfx_two);
 			} else {
 				current_sfx = sfx_one;
-				current_sfx_len = ARRAYSIZE(sfx_one);
+				current_sfx_len = ARRAY_SIZE(sfx_one);
 			}
 			audio_mode = AUDIO_SFX;
 			sfx_index = 0;
@@ -1089,6 +1123,7 @@ static void puzzle_attack_update(void)
 		shift_grid_up();
 		insert_row();
 		shift_cursor_up();
+		screen_changed = 1;
 	}
 
 	particle_pool->config.move_particles(particle_pool);
@@ -1119,18 +1154,20 @@ static void puzzle_attack_update(void)
 
 static void puzzle_attack_init(void)
 {
+	uint64_t now = rtc_get_ms_since_boot();
 	if (xorshift_state == 0)
-		random_insecure_bytes(
-			(uint8_t *)&xorshift_state, sizeof(xorshift_state));
+		random_insecure_bytes((uint8_t *)&xorshift_state, sizeof(xorshift_state));
+
 	puzzle_attack_state = PUZZLE_ATTACK_MENU;
+	screen_changed = 1;
 	FbInit();
 	FbClear();
 	selected_outline_color = palette_color_from_index(default_palette, 7);
 	init_grid();
 	score = 0;
-	cycle_cooldown = rtc_get_ms_since_boot()+EVAL_CYCLE_MS;
-	grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
-	collapse_cooldown = rtc_get_ms_since_boot()+COLLAPSE_GRID_MS;
+	cycle_cooldown = now + EVAL_CYCLE_MS;
+	grid_shift_cooldown = now + GRID_SHIFT_MS;
+	collapse_cooldown = now + COLLAPSE_GRID_MS;
 }
 
 static void draw_bitmap(
@@ -1144,7 +1181,6 @@ static void draw_bitmap(
 			}
 		}
 	}
-	has_screen_changed = 1;
 }
 
 static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
@@ -1208,7 +1244,6 @@ static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
 	default:
 		break;
 	}
-	has_screen_changed = 1;
 }
 
 static void draw_cursor(int sp)
@@ -1221,7 +1256,6 @@ static void draw_cursor(int sp)
 	FbMove(start_x, start_y);
 	FbRoundedRect(((BLOCK_SIZE + 3) * 2) + 1, BLOCK_SIZE + 3,
 		CURSOR_OUTLINE_SIZE);
-	has_screen_changed = 1;
 }
 
 static void draw_play_area(void)
@@ -1257,16 +1291,19 @@ static void draw_score(void)
 	FbMove(10, 10);
 	FbColor(palette_color_from_index(default_palette, SCORE_COLOR_INDEX));
 	FbWriteString(buf);
-	has_screen_changed = 1;
 }
 
 static void draw_tick(void)
 {
+
 	unsigned int now = rtc_get_ms_since_boot();
 	unsigned int elapsed = now - (cycle_cooldown - EVAL_CYCLE_MS);
 	if (elapsed > EVAL_CYCLE_MS) elapsed = EVAL_CYCLE_MS;
 
-	int fill_percent = (int)((elapsed * 100) / EVAL_CYCLE_MS);
+	int total_steps = EVAL_CYCLE_MS / TICK;
+	int steps_elapsed = elapsed / TICK;
+
+	int fill_percent = (steps_elapsed * 100) / total_steps;
 
 	struct ui_progress_bar pb = {
 		.x = 1,
@@ -1287,7 +1324,6 @@ static void draw_tick(void)
 	FbColor(palette_color_from_index(
 		default_palette, SCORE_COLOR_INDEX + 1));
 	FbWriteString(buf);
-	has_screen_changed = 1;
 #endif
 }
 
@@ -1342,7 +1378,6 @@ static void draw_menu(void)
 		ui_button_draw_outline(button, button.outline_color);
 		ui_button_draw_label(button, button.text_color);
 	}
-	has_screen_changed = 1;
 }
 
 static void draw_help_screen(void)
@@ -1363,7 +1398,7 @@ static void draw_help_screen(void)
 		FbMove(ui_center_text_x(lines[i], 0, LCD_XSIZE), y);
 		FbWriteString(lines[i]);
 	}
-	has_screen_changed = 1;
+	screen_changed = 1;
 }
 
 static void draw_grid(void)
@@ -1382,16 +1417,12 @@ static void draw_grid(void)
 					BLOCK_SIZE, f);
 			}
 		}
-	has_screen_changed = 1;
 }
 
 static void draw_screen(void)
 {
 	FbClear();
-	if (has_grid_changed) {
-		draw_grid();
-		has_grid_changed = 0;
-	}
+	draw_grid();
 	draw_cursor(BLOCK_SIZE + BLOCK_SPACING);
 	draw_score();
 	draw_tick();
@@ -1405,14 +1436,17 @@ static void draw_screen(void)
 		FbColor(WHITE);
 		FbMove(0, 0);
 		FbFilledRectangle(LCD_XSIZE, LCD_YSIZE);
+		screen_changed = 1;
 	}
+	if (lightning_active)
+		screen_changed = 1;
 #endif
 }
 
 void puzzle_attack_cb(struct badge_app *app)
 {
 	if (app->wake_up)
-		has_screen_changed = 1;
+		screen_changed = 1;
 
 #define PUZZLE_ATTACK_POOL_SIG 0xC111456
 	if (particle_pool == NULL){
@@ -1422,6 +1456,8 @@ void puzzle_attack_cb(struct badge_app *app)
 	if (claim_particle_pool(particle_pool, PUZZLE_ATTACK_POOL_SIG )) {
 		particle_pool->config.gravityy = (int)PARTICLE_GRAVITY;
 	}
+
+	check_buttons();
 	switch (puzzle_attack_state) {
 	case PUZZLE_ATTACK_INIT:
 		puzzle_attack_init();
@@ -1430,16 +1466,21 @@ void puzzle_attack_cb(struct badge_app *app)
 		break;
 	case PUZZLE_ATTACK_RUN:
 		puzzle_attack_update();
-		draw_screen();
 		update_audio(rtc_get_ms_since_boot());
+		draw_screen();
 		break;
 	case PUZZLE_ATTACK_SHOW_HELP:
 		FbClear();
 		draw_help_screen();
+		screen_changed = 1;
 		break;
 	case PUZZLE_ATTACK_MENU:
+		if (initial_run)
+			screen_changed = 1;
+
 		FbClear();
 		draw_menu();
+		initial_run = false;
 		break;
 	case PUZZLE_ATTACK_WIN_SCREEN:
 		FbClear();
@@ -1451,16 +1492,19 @@ void puzzle_attack_cb(struct badge_app *app)
 		break;
 	case PUZZLE_ATTACK_EXIT:
 		puzzle_attack_state = PUZZLE_ATTACK_INIT;
+		initial_run = true;
 		stop_tune();
 		pop_app();
 		break;
 	default:
 		break;
 	}
-	check_buttons();
-	if (has_screen_changed) {
-		has_grid_changed = 1;
+	if (screen_changed) {
+#if 0
+		printf("screen_changed\n");
+#endif
 		FbSwapBuffers();
-		has_screen_changed = 0;
+		screen_changed = 0;
+		app->wake_up = 0;
 	}
 }
