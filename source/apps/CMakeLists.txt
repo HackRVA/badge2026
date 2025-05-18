@@ -25,8 +25,11 @@ target_sources(${PRODUCT} PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/moon-patrol.c
         ${CMAKE_CURRENT_LIST_DIR}/badgey.c
         ${CMAKE_CURRENT_LIST_DIR}/image-test.c
-	      ${CMAKE_CURRENT_LIST_DIR}/2048.c
-	      ${CMAKE_CURRENT_LIST_DIR}/puzzle-attack.c
+	${CMAKE_CURRENT_LIST_DIR}/2048.c
+	${CMAKE_CURRENT_LIST_DIR}/puzzle-attack.c
+	${CMAKE_CURRENT_LIST_DIR}/badgemon.c
+	${CMAKE_CURRENT_LIST_DIR}/badgemon_menu.c
+	${CMAKE_CURRENT_LIST_DIR}/badgemon_unlock.c
         # ${CMAKE_CURRENT_LIST_DIR}/badge-app-template.c
 	${CMAKE_CURRENT_LIST_DIR}/aagunner.c
 	${CMAKE_CURRENT_LIST_DIR}/default_menu_app.c
