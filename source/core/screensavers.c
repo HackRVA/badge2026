@@ -13,7 +13,7 @@
 #include "new_badge_monsters/new_badge_monsters.h"
 #include <string.h>
 
-#define SCREEN_ORIENTATION_LANDSCAPE 0 /* 0 = portrait, 1 = landscape */
+#define SCREEN_ORIENTATION_LANDSCAPE 1 /* 0 = portrait, 1 = landscape */
 
 #define DEFINE_IMAGE_ASSET_DATA
 #include "holly.h"
@@ -179,11 +179,11 @@ void nametag_screensaver(void)
 #if SCREEN_ORIENTATION_LANDSCAPE
 # define WRITEF FbRotWriteString
 	FbMove(LCD_XSIZE - 20, 10);
-	WRITEF("HELLO MY NAME IS\n");
+	WRITEF("HELLO!\nMY NAME IS\n");
 #else
 # define WRITEF FbWriteString
 	FbMove(10, 20);
-	WRITEF("HELLO\nMY NAME IS\n");
+	WRITEF("HELLO!\nMY NAME IS\n");
 #endif
 	strncpy(name, badge_system_data()->name, 11);
 	name[10] = '\0';
