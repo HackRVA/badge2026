@@ -4,6 +4,8 @@
 #include "ui.h"
 
 #define PI 3.14159265358979323846
+#define CHAR_W 8
+#define CHAR_H 8
 
 static void draw_button_fill(struct ui_button button, unsigned short color)
 {
@@ -157,97 +159,86 @@ void ui_progress_bar_draw(struct ui_progress_bar bar)
 	draw_progress_bar_outline(bar);
 }
 
-void ui_draw_spinner_outline(struct ui_spinner spinner)
-{
-	FbColor(spinner.outline_color);
-	FbMove(spinner.x - spinner.width / 2, spinner.y - spinner.height / 2);
-	FbRoundedRect(spinner.width, spinner.height, spinner.outline_size);
+static void draw_text_box_fill(struct ui_text_box box) {
+	FbColor(box.fill_color);
+	FbMove(box.x + box.outline_size,
+		box.y + box.outline_size);
+	FbFilledRectangle(
+		box.width  - box.outline_size * 2,
+		box.height - box.outline_size * 2);
 }
 
-static void draw_spinner_bar(int x, int y, int bar_width, int bar_height,
-	unsigned short fill_color, unsigned short empty_color, double start_pct,
-	double end_pct, double spinner_pct, int reverse)
-{
-	double effective_pct = spinner_pct < start_pct ? 0.0
-		: spinner_pct > end_pct
-		? 1.0
-		: (spinner_pct - start_pct) / (end_pct - start_pct);
+static void draw_text_box_outline(struct ui_text_box box) {
+	FbColor(box.outline_color);
+	FbMove(box.x, box.y);
+	FbRoundedRect(box.width, box.height, box.outline_size);
+}
 
-	int fill_length = (int)(effective_pct *
-		(bar_width > bar_height ? bar_width : bar_height));
 
-	FbColor(fill_color);
-	if (bar_width > bar_height) {
-		if (reverse) {
-			FbMove(x + bar_width - fill_length, y);
-			FbFilledRectangle(fill_length, bar_height);
-		} else {
-			FbMove(x, y);
-			FbFilledRectangle(fill_length, bar_height);
-		}
-	} else {
-		if (reverse) {
-			FbMove(x, y);
-			FbFilledRectangle(bar_width, fill_length);
-		} else {
-			FbMove(x, y + bar_height - fill_length);
-			FbFilledRectangle(bar_width, fill_length);
-		}
-	}
+/* draw_text_box_text attempts to word wrap and keep text inside the box */
+static void draw_text_box_text(struct ui_text_box box) {
+	int inner_w = box.width  - box.outline_size * 2;
+	int inner_h = box.height - box.outline_size * 2;
+	int max_cols = inner_w / CHAR_W;
+	int max_lines = inner_h / CHAR_H;
 
-	if (fill_length < (bar_width > bar_height ? bar_width : bar_height)) {
-		FbColor(empty_color);
-		if (bar_width > bar_height) {
-			if (reverse) {
-				FbMove(x, y);
-				FbFilledRectangle(
-					bar_width - fill_length, bar_height);
-			} else {
-				FbMove(x + fill_length, y);
-				FbFilledRectangle(
-					bar_width - fill_length, bar_height);
+	/* temporary buffer for one line */
+	char linebuf[256];
+	int line = 0;
+	const char *p = box.text;
+	while (*p && line < max_lines) {
+		/* skip leading spaces */
+		while (*p == ' ') p++;
+
+		const char *word_start = p;
+		int last_space_idx = -1;
+		int chars = 0;
+		/* accumulate until line full or end */
+		while (*p && chars < max_cols) {
+			if (*p == ' ') {
+				last_space_idx = chars;
 			}
-		} else {
-			if (reverse) {
-				FbMove(x, y + fill_length);
-				FbFilledRectangle(
-					bar_width, bar_height - fill_length);
-			} else {
-				FbMove(x, y);
-				FbFilledRectangle(
-					bar_width, bar_height - fill_length);
-			}
+			linebuf[chars++] = *p++;
 		}
+
+		int len;
+		if (*p && chars == max_cols && last_space_idx >= 0) {
+			/* break at last space */
+			len = last_space_idx;
+			/* rewind p to after that space */
+			p = word_start + last_space_idx + 1;
+		} else {
+			len = chars;
+		}
+		linebuf[len] = '\0';
+
+		FbMove(
+			box.x + box.outline_size,
+			box.y + box.outline_size + line * CHAR_H);
+		FbColor(box.text_color);
+		int prev_t = FbGetTransparentIndex();
+		FbTransparentIndex(0);
+		FbWriteString(linebuf);
+		FbTransparentIndex(prev_t);
+
+		line++;
 	}
 }
 
-void ui_draw_spinner_bars(struct ui_spinner spinner)
-{
-	int half_width = spinner.width / 2;
-	int half_height = spinner.height / 2;
-	int bar_thickness = spinner.outline_size + 2;
-	int offset = spinner.outline_size / 2 + bar_thickness / 2 - 2;
-
-	draw_spinner_bar(spinner.x - half_width + offset,
-		spinner.y - half_height + offset, spinner.width - 2 * offset,
-		bar_thickness, spinner.fill_color, spinner.bg_color, 0.0, 0.25,
-		spinner.percentage, 0);
-	draw_spinner_bar(spinner.x + half_width - offset - bar_thickness,
-		spinner.y - half_height + offset, bar_thickness,
-		spinner.height - 2 * offset, spinner.fill_color,
-		spinner.bg_color, 0.25, 0.50, spinner.percentage, 1);
-	draw_spinner_bar(spinner.x - half_width + offset,
-		spinner.y + half_height - offset - bar_thickness,
-		spinner.width - 2 * offset, bar_thickness, spinner.fill_color,
-		spinner.bg_color, 0.50, 0.75, spinner.percentage, 1);
-	draw_spinner_bar(spinner.x - half_width + offset,
-		spinner.y - half_height + offset, bar_thickness,
-		spinner.height - 2 * offset, spinner.fill_color,
-		spinner.bg_color, 0.75, 1.0, spinner.percentage, 0);
+void ui_text_box_fill(struct ui_text_box box) {
+	draw_text_box_fill(box);
 }
 
-void ui_spinner_draw(struct ui_spinner spinner)
-{
-	ui_draw_spinner_bars(spinner);
-	ui_draw_spinner_outline(spinner);
+void ui_text_box_draw_outline(struct ui_text_box box) {
+	draw_text_box_outline(box);
+}
+
+void ui_text_box_draw_text(struct ui_text_box box) {
+	draw_text_box_text(box);
+}
+
+void ui_text_box_draw(struct ui_text_box box) {
+	draw_text_box_fill(box);
+	draw_text_box_outline(box);
+	draw_text_box_text(box);
 }

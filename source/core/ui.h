@@ -23,17 +23,20 @@ struct ui_progress_bar {
 	int fill;
 };
 
-struct ui_spinner {
-	int x;
-	int y;
-	int width;
-	int height;
-	int outline_size;
-	float percentage;
-	unsigned short fill_color;
-	unsigned short bg_color;
+struct ui_text_box {
+	int x, y;
+	int width, height;
+	unsigned short outline_size;
 	unsigned short outline_color;
+	unsigned short fill_color;
+	unsigned short text_color;
+	const char *text;
 };
+
+void ui_text_box_fill(struct ui_text_box box);
+void ui_text_box_draw_outline(struct ui_text_box box);
+void ui_text_box_draw_text(struct ui_text_box box);
+void ui_text_box_draw(struct ui_text_box box);
 
 int ui_center_text_x(const char *text, int container_x, int container_width);
 int ui_center_text_y(int container_y, int container_height);
@@ -71,9 +74,5 @@ int ui_progress_bar_calculate_fill_percentage(int percent);
 void ui_progress_bar_draw_fill(struct ui_progress_bar bar);
 void ui_progress_bar_draw_outline(struct ui_progress_bar bar);
 void ui_progress_bar_draw(struct ui_progress_bar bar);
-
-void ui_spinner_draw(struct ui_spinner spinner);
-void ui_draw_spinner_bars(struct ui_spinner spinner);
-void ui_draw_spinner_outline(struct ui_spinner spinner);
 
 #endif
