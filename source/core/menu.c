@@ -56,6 +56,7 @@
 #include "drum_machine.h"
 #include "badgemon_menu.h"
 #include "badgemon_unlock.h"
+#include "mixtape.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -76,6 +77,7 @@ static const struct menu_t games_m[] = {
 	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, },
 	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, NULL, },
+	{"mixtape",VERT_ITEM, FUNCTION, { .func = mixtape_cb}, NULL, },
 	{"AA Gunner", VERT_ITEM, FUNCTION, { .func = aagunner_cb }, NULL, },
 	{"Clue", VERT_ITEM, FUNCTION, { .func = clue_cb }, NULL, },
 	// {"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
