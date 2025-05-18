@@ -206,7 +206,6 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
         case INIT:
             ir_add_callback(ir_callback, IR_APP0);
             qc_audio_in_cb_idx = audio_in_add_cb(qc_mic_cb);
-            FbTransparentIndex(0);
             FbBackgroundColor(BLACK);
             FbColor(GREEN);
             FbClear();
@@ -223,7 +222,6 @@ void QC_cb(__attribute__((unused)) struct badge_app *app)
 
         case RUN:
 	    /* Reset every frame. */
-            FbTransparentIndex(0);
             FbColor(GREEN);
             FbClear();
             FbMove(8, 8);
