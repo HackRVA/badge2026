@@ -198,7 +198,7 @@ void audio_poll(void)
 {
     /* Only update volume if the voume has changed by more than 2 percentage 
      * points. This helps filter noise on the ADC input. */
-    uint8_t vol = analog_get_volume_perc();
+    uint8_t vol = analog_get_volume();
     if (abs((int) vol - (int) nau88c10_get_volume(&m_nau88c10_ctx)) > 1) {
         nau88c10_set_volume(&m_nau88c10_ctx, vol);
     }

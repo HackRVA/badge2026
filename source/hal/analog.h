@@ -34,7 +34,7 @@ uint32_t analog_get_chan_mV(enum analog_channel chan);
 
 int8_t analog_calc_mcu_temp_C(uint32_t mV);
 
-uint8_t analog_get_volume_perc(void);
+uint8_t analog_get_volume(void);
 
 #if TARGET_SIMULATOR
 /* For use by simulator, not badge apps */

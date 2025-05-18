@@ -37,6 +37,7 @@ struct nau88c10_cfg {
 struct nau88c10_ctx {
     const struct nau88c10_cfg *cfg;
     uint16_t reg[0x50U];
+    uint8_t vol; /**< Volume. Range from 0 - 255. */
     __attribute__((aligned(8))) struct pio_i2s pio_i2s;
 };
 

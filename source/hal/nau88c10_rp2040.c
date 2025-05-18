@@ -31,6 +31,9 @@
 #define NAU88C10_I2C_ADDR       (0x1AU)
 #define NAU88C10_I2C_TIMEOUT_US (5000U)
 
+#define NAU88C10_VOL_KNEE_VAL   (64)
+#define NAU88C10_VOL_KNEE_GAIN  (NAU88C10_DACGAIN_NEG_DBFS(30))
+
 /*- Private Types ------------------------------------------------------------*/
 enum nau88c10_reg {
     NAU88C10_REG_SOFTWARE_RESET         = 0x00U,
@@ -483,7 +486,7 @@ enum nau88c10_dacgain {
 #define NAU88C10_DACGAIN_POS    (0)
 #define NAU88C10_DACGAIN_MASK   (0xFFU << NAU88C10_DACGAIN_POS)
 #define NAU88C10_DACGAIN_NEG_DBFS(NDBFS) \
-    (NAU88C10_DACGAIN_LSB_PER_0_5_DB * 2U * (NDBFS))
+    (NAU88C10_DACGAIN_0_DBFS - (NAU88C10_DACGAIN_LSB_PER_0_5_DB * 2U * (NDBFS)))
 
 /** ADC Polarity. */
 enum nau88c10_adcpl {
@@ -717,14 +720,106 @@ struct nau88c10_eq_cfg {
     enum nau88c10_eqxcf eq5cf;
 };
 
-/* ADC Input Boost (from PGA) */
+/** DAC Limiter Attack Time.
+ *
+ *  Attack time per 6 dB gain change.
+ *
+ *  @note   All times nominal for 44.1 kHz sample rate.
+ */
+enum nau88c10_daclimatk {
+    NAU88C10_DACLIMATK_68_US    = 0U,   /**< 68 microseconds. */
+    NAU88C10_DACLIMATK_136_US   = 1U,   /**< 136 microseconds. */
+    NAU88C10_DACLIMATK_272_US   = 2U,   /**< 272 microseconds. @note Default value. */
+    NAU88C10_DACLIMATK_544_US   = 3U,   /**< 544 microseconds. */
+    NAU88C10_DACLIMATK_1_1_MS   = 4U,   /**< 1.1 milliseconds. */
+    NAU88C10_DACLIMATK_2_2_MS   = 5U,   /**< 2.2 milliseconds. */
+    NAU88C10_DACLIMATK_4_4_MS   = 6U,   /**< 4.4 milliseconds. */
+    NAU88C10_DACLIMATK_8_7_MS   = 7U,   /**< 8.7 milliseconds. */
+    NAU88C10_DACLIMATK_17_4_MS  = 8U,   /**< 17.4 milliseconds. */
+    NAU88C10_DACLIMATK_35_MS    = 9U,   /**< 35 milliseconds. */
+    NAU88C10_DACLIMATK_69_6_MS  = 10U,  /**< 69.6 milliseconds. */
+    NAU88C10_DACLIMATK_139_MS   = 11U,  /**< 139 microseconds. */
+};
+
+#define NAU88C10_DACLIMATK_POS  (0)
+#define NAU88C10_DACLIMATK_MASK (0xFU << NAU88C10_DACLIMATK_POS)
+
+/** DAC Limiter Decay Time.
+ *
+ *  Decay time per 6 dB gain change.
+ *
+ *  @note   All times nominal for 44.1 kHz sample rate.
+ */
+enum nau88c10_daclimdcy {
+    NAU88C10_DACLIMDCY_544_US   = 0U,   /**< 544 microseconds. */
+    NAU88C10_DACLIMDCY_1_1_MS   = 1U,   /**< 1.1 milliseconds. */
+    NAU88C10_DACLIMDCY_2_2_MS   = 2U,   /**< 2.2 milliseconds. */
+    NAU88C10_DACLIMDCY_4_4_MS   = 3U,   /**< 4.4 milliseconds. @note Default value. */
+    NAU88C10_DACLIMDCY_8_7_MS   = 4U,   /**< 8.7 milliseconds. */
+    NAU88C10_DACLIMDCY_17_4_MS  = 5U,   /**< 17.4 milliseconds. */
+    NAU88C10_DACLIMDCY_35_MS    = 6U,   /**< 35 milliseconds. */
+    NAU88C10_DACLIMDCY_69_6_MS  = 7U,   /**< 69.6 milliseconds. */
+    NAU88C10_DACLIMDCY_139_MS   = 8U,   /**< 139 microseconds. */
+    NAU88C10_DACLIMDCY_278_5_MS = 9U,   /**< 278.5 milliseconds. */
+    NAU88C10_DACLIMDCY_557_MS   = 10U,  /**< 557 microseconds. */
+    NAU88C10_DACLIMDCY_1_1_S    = 11U,  /**< 1.1 seconds. */
+};
+
+#define NAU88C10_DACLIMDCY_POS  (4)
+#define NAU88C10_DACLIMDCY_MASK (0xFU << NAU88C10_DACLIMDCY_POS)
+
+/** DAC Limiter Enable. */
+enum nau88c10_daclimen {
+    NAU88C10_DACLIMEN_DISABLED  = 0U,
+    NAU88C10_DACLIMEN_ENABLED   = 1U,
+};
+
+#define NAU88C10_DACLIMEN_POS   (8)
+#define NAU88C10_DACLIMEN_MASK  (0x1U << NAU88C10_DACLIMEN_POS)
+
+/** DAC Limiter Boost. */
+enum nau88c10_daclimbst {
+    NAU88C10_DACLIMBST_0_DB         = 0,
+    NAU88C10_DACLIMBST_PLUS_1_DB    = 1,
+    NAU88C10_DACLIMBST_PLUS_2_DB    = 2,
+    NAU88C10_DACLIMBST_PLUS_3_DB    = 3,
+    NAU88C10_DACLIMBST_PLUS_4_DB    = 4,
+    NAU88C10_DACLIMBST_PLUS_5_DB    = 5,
+    NAU88C10_DACLIMBST_PLUS_6_DB    = 6,
+    NAU88C10_DACLIMBST_PLUS_7_DB    = 7,
+    NAU88C10_DACLIMBST_PLUS_8_DB    = 8,
+    NAU88C10_DACLIMBST_PLUS_9_DB    = 9,
+    NAU88C10_DACLIMBST_PLUS_10_DB   = 10,
+    NAU88C10_DACLIMBST_PLUS_11_DB   = 11,
+    NAU88C10_DACLIMBST_PLUS_12_DB   = 12,
+    NAU88C10_DACLIMBST_MAX          = NAU88C10_DACLIMBST_PLUS_12_DB,
+};
+
+#define NAU88C10_DACLIMBST_POS  (0)
+#define NAU88C10_DACLIMBST_MASK (0xFU << NAU88C10_DACLIMBST_POS)
+
+/** DAC Limiter Threshold Level. */
+enum nau88c10_daclimthl {
+    NAU88C10_DACLIMTHL_0_DB         = 0,
+    NAU88C10_DACLIMTHL_MINUS_1_DB   = 1,
+    NAU88C10_DACLIMTHL_MINUS_2_DB   = 2,
+    NAU88C10_DACLIMTHL_MINUS_3_DB   = 3,
+    NAU88C10_DACLIMTHL_MINUS_4_DB   = 4,
+    NAU88C10_DACLIMTHL_MINUS_5_DB   = 5,
+    NAU88C10_DACLIMTHL_MINUS_6_DB   = 6,
+};
+
+#define NAU88C10_DACLIMTHL_POS  (4)
+#define NAU88C10_DACLIMTHL_MASK (0x7U << NAU88C10_DACLIMTHL_POS)
+
+/** ADC Input Boost (from PGA) */
 enum nau88c10_pgabst {
     NAU88C10_PGABST_0_DB    = 0U,   /**< +0 dB from PGA to ADC. */
     NAU88C10_PGABST_20_DB   = 1U,   /**< +20 dB from PGA to ADC. */
 };
 
-#define NAU88C10_PGABST_POS     (5)
-#define NAU88C10_PGABST_MASK    (0x7U << NAU88C10_HPF_POS)
+#define NAU88C10_PGABST_POS     (8)
+#define NAU88C10_PGABST_MASK    (0x1U << NAU88C10_PGABST_POS)
 
 /*- Private Variables --------------------------------------------------------*/
 static const char NOTHING[] = "";
@@ -1338,7 +1433,7 @@ static int prv_nau_set_dacgain(struct nau88c10_ctx *ctx,
     reg |= dacgain << NAU88C10_DACGAIN_POS;
     ctx->reg[NAU88C10_REG_DAC_VOLUME] = reg;
     int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_VOLUME);
-    LOG("%sset DACGAIN %d.%d dB", (0 > rc) ? FAILED_TO : NOTHING,
+    LOG("%sset DACGAIN -%d.%d dB", (0 > rc) ? FAILED_TO : NOTHING,
         (NAU88C10_DACGAIN_0_DBFS - dacgain) / 2,
         ((NAU88C10_DACGAIN_0_DBFS - dacgain) % 2) * 5);
     return rc;
@@ -1414,6 +1509,67 @@ static int prv_nau_set_hpfen(struct nau88c10_ctx *ctx,
     int rc = prv_nau_send_reg(ctx, NAU88C10_REG_ADC_CTRL);
     LOG("%sset HPFEN %s", (0 > rc) ? FAILED_TO : NOTHING, 
         hpfen ? ENABLED : DISABLED);
+    return rc;
+}
+
+static int prv_nau_set_daclimatk(struct nau88c10_ctx *ctx,
+                                 enum nau88c10_daclimatk daclimatk)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_LIMITER_1];
+    reg &= ~NAU88C10_DACLIMATK_MASK;
+    reg |= daclimatk << NAU88C10_DACLIMATK_POS;
+    ctx->reg[NAU88C10_REG_DAC_LIMITER_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_LIMITER_1);
+    LOG("%sset DACLIMATK %d", (0 > rc) ? FAILED_TO : NOTHING, daclimatk);
+    return rc;
+}
+
+static int prv_nau_set_daclimdcy(struct nau88c10_ctx *ctx,
+                                 enum nau88c10_daclimdcy daclimdcy)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_LIMITER_1];
+    reg &= ~NAU88C10_DACLIMDCY_MASK;
+    reg |= daclimdcy << NAU88C10_DACLIMDCY_POS;
+    ctx->reg[NAU88C10_REG_DAC_LIMITER_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_LIMITER_1);
+    LOG("%sset DACLIMDCY %d", (0 > rc) ? FAILED_TO : NOTHING, daclimdcy);
+    return rc;
+}
+
+static int prv_nau_set_daclimen(struct nau88c10_ctx *ctx,
+                                enum nau88c10_daclimen daclimen)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_LIMITER_1];
+    reg &= ~NAU88C10_DACLIMEN_MASK;
+    reg |= daclimen << NAU88C10_DACLIMEN_POS;
+    ctx->reg[NAU88C10_REG_DAC_LIMITER_1] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_LIMITER_1);
+    LOG("%sset DACLIMEN %s", (0 > rc) ? FAILED_TO : NOTHING, 
+        daclimen ? ENABLED : DISABLED);
+    return rc;
+}
+
+static int prv_nau_set_daclimbst(struct nau88c10_ctx *ctx,
+                                 enum nau88c10_daclimbst daclimbst)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_LIMITER_2];
+    reg &= ~NAU88C10_DACLIMBST_MASK;
+    reg |= daclimbst << NAU88C10_DACLIMBST_POS;
+    ctx->reg[NAU88C10_REG_DAC_LIMITER_2] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_LIMITER_2);
+    LOG("%sset DACLIMBST +%d dB", (0 > rc) ? FAILED_TO : NOTHING, daclimbst);
+    return rc;
+}
+
+static int prv_nau_set_daclimthl(struct nau88c10_ctx *ctx,
+                                 enum nau88c10_daclimthl daclimthl)
+{
+    uint16_t reg = ctx->reg[NAU88C10_REG_DAC_LIMITER_2];
+    reg &= ~NAU88C10_DACLIMTHL_MASK;
+    reg |= daclimthl << NAU88C10_DACLIMTHL_POS;
+    ctx->reg[NAU88C10_REG_DAC_LIMITER_2] = reg;
+    int rc = prv_nau_send_reg(ctx, NAU88C10_REG_DAC_LIMITER_2);
+    LOG("%sset DACLIMTHL -%d dB", (0 > rc) ? FAILED_TO : NOTHING, daclimthl);
     return rc;
 }
 
@@ -1511,6 +1667,9 @@ void nau88c10_up(struct nau88c10_ctx *ctx)
         || (0 > prv_nau_set_automt(ctx, NAU88C10_AUTOMT_ENABLE))
         || (0 > prv_nau_set_dacos(ctx, NAU88C10_DACOS_64X))
         || (0 > prv_nau_set_deemp(ctx, NAU88C10_DEEMP_48_KHZ))
+        || (0 > prv_nau_set_daclimbst(ctx, NAU88C10_DACLIMBST_PLUS_6_DB))
+        || (0 > prv_nau_set_daclimthl(ctx, NAU88C10_DACLIMTHL_MINUS_3_DB))
+        || (0 > prv_nau_set_daclimen(ctx, NAU88C10_DACLIMEN_ENABLED))
         // TODO: configure eq -PMW
         // TODO: configure mixer (if needed?) -PMW
     ) {
@@ -1541,16 +1700,7 @@ void nau88c10_set_output_muted(struct nau88c10_ctx *ctx, bool muted)
 
 uint8_t nau88c10_get_volume(struct nau88c10_ctx *ctx)
 {
-    enum nau88c10_dacgain dacgain;
-    dacgain = (ctx->reg[NAU88C10_REG_DAC_VOLUME] & NAU88C10_DACGAIN_MASK) 
-        >> NAU88C10_DACGAIN_POS;
-    if (NAU88C10_DACGAIN_DIGITAL_MUTE == dacgain) {
-        return 0;
-    } else if (NAU88C10_DACGAIN_0_DBFS == dacgain) {
-        return 100;
-    } else {
-        return dacgain * 100 / NAU88C10_DACGAIN_0_DBFS;
-    }
+    return ctx->vol;
 }
 
 void nau88c10_set_volume(struct nau88c10_ctx *ctx, uint8_t volume)
@@ -1558,12 +1708,21 @@ void nau88c10_set_volume(struct nau88c10_ctx *ctx, uint8_t volume)
     enum nau88c10_dacgain dacgain;
     if (0 == volume) {
         dacgain = NAU88C10_DACGAIN_DIGITAL_MUTE;
-    } else if (100 == volume) {
+    } else if (UINT8_MAX == volume) {
         dacgain = NAU88C10_DACGAIN_0_DBFS;
+    } else if (NAU88C10_VOL_KNEE_VAL < volume) {
+
+        dacgain = 
+            ((volume - NAU88C10_VOL_KNEE_VAL) 
+             * (NAU88C10_DACGAIN_0_DBFS - NAU88C10_VOL_KNEE_GAIN)
+             / (UINT8_MAX - NAU88C10_VOL_KNEE_VAL)) 
+            + NAU88C10_VOL_KNEE_GAIN;
     } else {
-        dacgain = volume * NAU88C10_DACGAIN_0_DBFS / 100;
+        dacgain = volume * NAU88C10_VOL_KNEE_GAIN / NAU88C10_VOL_KNEE_VAL;
     }
+
     (void) prv_nau_set_dacgain(ctx, dacgain);
+    ctx->vol = volume;
 }
 
 bool nau88c10_get_speaker_enabled(struct nau88c10_ctx *ctx)

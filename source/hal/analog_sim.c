@@ -56,9 +56,9 @@ int8_t analog_calc_mcu_temp_C(uint32_t mV)
     return 27 - ((raw - 0.706f) / 0.001721f);
 }
 
-uint8_t analog_get_volume_perc(void)
+uint8_t analog_get_volume(void)
 {
-    return analog_values.value[ANALOG_CHAN_VOLUME] * 100U / 3300U;
+    return analog_values.value[ANALOG_CHAN_VOLUME] * UINT8_MAX / 3300U;
 }
 
 void analog_sensors_set_values(struct analog_sim_values values)

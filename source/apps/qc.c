@@ -150,7 +150,7 @@ bool qc_analog(void)
     int len;
     char msg[16];
 
-    uint8_t volume_perc = analog_get_volume_perc();
+    uint8_t volume_perc = analog_get_volume();
     len = snprintf(msg, sizeof(msg), "Vol:%u\n", volume_perc);
     FbWriteString(msg);
     printf("%.*s\t", len - 1, msg);
