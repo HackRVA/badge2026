@@ -6,6 +6,7 @@
 #include "NICE_CLEAR.h"
 #include "microban_levels.h"
 #include "microban_levels_rects.h"
+#include "microban_busstop.h"
 
 #endif
 

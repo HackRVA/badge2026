@@ -727,6 +727,25 @@ static void draw_level_menu(void) {
     screen_changed = 1;
 }
 
+
+static void DrawStingDropshadow(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+    FbBackgroundColor(G_Fb.transIndex);
+    FbColor(background_color);
+    FbMove(x - 2, y + 1);
+    FbWriteString(string);
+    FbMove(x - 2, y);
+    FbWriteString(string);
+    FbMove(x - 1, y + 1);
+    FbWriteString(string);
+    FbMove(x - 1, y);
+    FbWriteString(string);
+
+    FbMove(x, y);
+    FbColor(text_color);
+    FbWriteString(string);
+}
+
+
 static void draw_screen(void)
 {
     if (!screen_changed)
@@ -780,38 +799,47 @@ static void draw_screen(void)
         char buf[20];
         const int unit = 12;
         int x = 8;
-        int y = 16;
+        int y = 4;
 
+        FbBackgroundColor(G_Fb.transIndex);
         FbColor(YELLOW);
 
-        FbMove(x, y);
+        int nice_x = tick*8 - LCD_XSIZE + 4;
+        if (nice_x > 4) nice_x = 4;
+        int clear_x = LCD_XSIZE - tick*8 + 4;
+        if (clear_x < 4) clear_x = 4;
+        FbImageRect4bit_Palette(&NICE_CLEAR, nice_x, y, 0, 1, NICE_CLEAR.x, 24, MAGENTA, nice_clear_cycle);
+        FbImageRect4bit_Palette(&NICE_CLEAR, clear_x, y + 24, 0, 25, NICE_CLEAR.x, 24, MAGENTA, nice_clear_cycle);
+        if (tick % 4 == 0) FbPaletteCycle(nice_clear_cycle, 3, 8);
+
+        if (nice_x < 4) break;
+
+        y += NICE_CLEAR.y + 4;
+
+
+        // FbMove(x, y);
         // FbWriteString("NICE CLEAR!!");
+        // y += unit;
+
+        // FbMove(x, y);
+        snprintf(buf, sizeof(buf), "room %d complete.", stats.level_number);
+        DrawStingDropshadow(buf, x, y, YELLOW, BLACK);
         y += unit;
 
-        FbMove(x, y);
-        snprintf(buf, sizeof(buf), "room %d complete", stats.level_number);
-        FbWriteString(buf);
-        y += unit;
-
-        FbMove(x, y);
-        snprintf(buf, sizeof(buf), "in %d moves.", moves);
-        // FbWriteString(buf);
+        snprintf(buf, sizeof(buf), "moves: %d", moves);
+        DrawStingDropshadow(buf, x, y, YELLOW, BLACK);
         y += unit;
 
 
-        FbMove(x, y);
+        // FbMove(x, y);
         // FbWriteString("try next?");
-        y += unit;
+        // y += unit;
 
         if (stats.streak >= 3) {
             y += unit;
-            FbMove(x, y);
             snprintf(buf, sizeof(buf), "STREAK: %d!!", stats.streak);
-            // FbWriteString(buf);
+            DrawStingDropshadow(buf, x, y, nice_clear_cycle[4], BLACK);
         }
-
-        FbImageRect4bit_Palette(&NICE_CLEAR, 4, 8, 0, 0, NICE_CLEAR.x, NICE_CLEAR.y, MAGENTA, nice_clear_cycle);
-        if (tick % 4 == 0) FbPaletteCycle(nice_clear_cycle, 3, 8);
 
         break;
     }
@@ -833,6 +861,12 @@ static void draw_screen(void)
     case LEVEL_MENU: 
         break;
     }
+
+
+    // int bus_x = (LCD_XSIZE - microban_busstop.x) / 2;
+    // int bus_y = (LCD_YSIZE - microban_busstop.y) / 2;
+    // FbPlaceFilledRectangle(bus_x - 1, bus_y - 1, microban_busstop.x + 2, microban_busstop.y + 2, BLACK);
+    // FbImagePlace(&microban_busstop, bus_x, bus_y, MAGENTA);
     
     FbSwapBuffers();
     screen_changed = 1;
@@ -842,26 +876,44 @@ static void draw_screen(void)
 
 static void microban_run(void)
 {   
+    enum microban_state_run old_state = run_state;
     tick += 1;
     check_buttons();
     switch (run_state) {
     case GAMEPLAY:
         process_input_GAMEPLAY();
-        draw_screen();
         break;
     case PAUSE:
         process_input_PAUSE();
-        draw_screen();
         break;
     case WIN:
         process_input_WIN();
-        draw_screen();
         break;
     case LEVEL_MENU:
         process_input_LEVEL_MENU();
+        break;
+    }
+
+    if (old_state != run_state) {
+        tick = 0;
+    }
+
+    switch (run_state) {
+    case GAMEPLAY:
+        draw_screen();
+        break;
+    case PAUSE:
+        draw_screen();
+        break;
+    case WIN:
+        draw_screen();
+        break;
+    case LEVEL_MENU:
         draw_level_menu();
         break;
     }
+    FbBackgroundColor(BLACK);
+
 }
 
 
