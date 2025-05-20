@@ -62,27 +62,7 @@ static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
 
-	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_RECORD, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_PLAY, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_FASTFORWARD, down_latches))
-		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
-	else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches))
+	if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
 		badgemon_unlock_state = BADGEMON_UNLOCK_EXIT;
 
 	return;
@@ -97,7 +77,7 @@ static void draw_screen(void)
 	ui_button_draw_outline(message_box, palette_color_from_index(default_palette, current_color_index));
 
 	FbColor(WHITE);
-	char *press_any = "press any button";
+	char *press_any = "press b";
 	char *to_continue = "to continue";
 
 	FbMove(ui_center_text_x(press_any, 0, LCD_XSIZE), 100);
