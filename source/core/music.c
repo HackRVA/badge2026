@@ -41,6 +41,11 @@ void play_tune(const struct tune *tune, void (*finished_callback)(void *kookie),
 			current_tune->note[current_note].duration, next_note);
 }
 
+void play_dynamic_tune(const struct dynamic_tune *tune, void (*finished_callback)(void *kookie), void *kookie)
+{
+	play_tune((const struct tune *) tune, finished_callback, kookie);
+}
+
 void stop_tune(void)
 {
 	stop_the_music = 1;

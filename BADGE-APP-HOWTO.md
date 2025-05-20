@@ -933,7 +933,7 @@ You could play the scale with this code:
 ```c
 	#include "music.h"
 
-	static struct scale_notes = {
+	static struct note scale_notes = {
 		{ NOTE_A3, 100 },
 		{ NOTE_B3, 100 },
 		{ NOTE_C4, 100 },
@@ -1004,6 +1004,10 @@ The first time, you'd call it like:
 ```
 
 Look into gulag.c for an example of how to create a kind of "explosiony" sound.
+
+NOTE: if you are trying to dynamically construct your tune at runtime, you
+can't use 'struct tune', as the note field is const.  In that case,
+use struct dynamic_tune, and play_dynamic_tune.
 
 # Microphone
 

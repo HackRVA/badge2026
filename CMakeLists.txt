@@ -38,6 +38,41 @@ if (${BUILD_IMAGE_TEST_PROGRAM} STREQUAL "yes")
    add_compile_definitions(BUILD_IMAGE_TEST_PROGRAM)
 endif()
 
+
+# The wasm build needs to build png-to-badge-asset ahead of time.
+add_executable(png-to-badge-asset IMPORTED GLOBAL)
+if (${TARGET} STREQUAL "WASM")
+    set(PNG_TOOL_BIN "${CMAKE_BINARY_DIR}/tools/png-to-badge-asset")
+    if (NOT EXISTS "${PNG_TOOL_BIN}")
+       message(FATAL_ERROR
+       "png-to-badge-asset not found at ${PNG_TOOL_BIN}. "
+       "the build_wasm script should copy it before running this."
+     )
+    endif()
+    set_target_properties(png-to-badge-asset PROPERTIES
+        IMPORTED_LOCATION "${PNG_TOOL_BIN}"
+    )
+else()
+include(ExternalProject)
+
+ExternalProject_Add(png_tool_ep
+    SOURCE_DIR    ${CMAKE_SOURCE_DIR}/tools
+    BINARY_DIR    ${CMAKE_BINARY_DIR}/tools-build
+    CMAKE_ARGS    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    INSTALL_COMMAND ""
+)
+
+ExternalProject_Get_Property(png_tool_ep BINARY_DIR)
+set(PNG_TOOL_BIN "${BINARY_DIR}/tools/png-to-badge-asset")
+
+set_target_properties(png-to-badge-asset PROPERTIES
+    IMPORTED_LOCATION "${PNG_TOOL_BIN}"
+)
+
+add_dependencies(png-to-badge-asset png_tool_ep)
+endif()
+include(${CMAKE_SOURCE_DIR}/tools/target_add_png_badge_asset.cmake)
+
 # Initialize the SDK
 if (${TARGET} STREQUAL "PICO")
     add_compile_definitions(TARGET_PICO)
@@ -81,7 +116,6 @@ if (${TARGET} STREQUAL "SIMULATOR" OR ${TARGET} STREQUAL "SDL_SIMULATOR")
 endif()
 
 if (${TARGET} STREQUAL "WASM")
-	add_compile_options(-sUSE_SDL=2 -sUSE_LIBPNG)
 	add_compile_options(
 		-sUSE_SDL=2
 		-sUSE_LIBPNG

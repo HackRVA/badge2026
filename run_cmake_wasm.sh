@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+mkdir -p tools-build
+pushd tools-build
+cmake ../tools -DCMAKE_BUILD_TYPE=Release
+cmake --build .
+popd
+
+mkdir -p build_wasm/tools
+cp tools-build/tools/png-to-badge-asset build_wasm/tools/
+
 EMSDK_DIR="./build_wasm/_deps/emsdk-src"
 
 if [ ! -d "$EMSDK_DIR" ]; then
@@ -32,7 +41,7 @@ cd ./build_wasm/
 which emcmake || { echo "Error: emcmake still not found."; exit 1; }
 
 echo "Running emcmake cmake ..."
-emcmake cmake .. -DTARGET=WASM -DCMAKE_EXPORT_COMPILE_COMMANDS=1 || exit 1
+emcmake cmake .. -DTARGET=WASM || exit 1
 
 echo "Building with emmake ..."
 emmake make

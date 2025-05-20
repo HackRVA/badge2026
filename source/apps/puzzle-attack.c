@@ -27,6 +27,7 @@
 #include "particle.h"
 #include "audio.h"
 #include "music.h"
+#include "key_value_storage.h"
 
 #define IS_ENDLESS_PLAY_DISABLED 0
 #define ENABLE_LIGHTNING 1
@@ -1077,6 +1078,67 @@ static void update_audio(uint64_t now)
 	}
 }
 
+void badgemon_unlock_cb(__attribute__((unused)) struct menu_t *m);
+static struct badge_app badgemon_unlock_app = {
+	.app_func = (void (*)(struct badge_app *))badgemon_unlock_cb,
+	.app_context = 0,
+	.menu = NULL,
+	.current_selection = 0,
+	.wake_up = 0,
+};
+
+
+/* this is kind of a proof of concept */
+/* we can reduce the amount of monsters here to allow room for other apps to unlock */
+#define UNLOCKABLE_MONSTER_COUNT 16
+
+static const char *monster_keys[UNLOCKABLE_MONSTER_COUNT] = {
+	"monster/beetlejuice",
+	"monster/chet",
+	"monster/chucky",
+	"monster/drago",
+	"monster/ed rooney",
+	"monster/freddy krueger",
+	"monster/gopher",
+	"monster/gremlin",
+	"monster/hans gruber",
+	"monster/jack torrance",
+	"monster/jason",
+	"monster/joker",
+	"monster/khan",
+	"monster/richarad vernon",
+	"monster/skeltor",
+	"monster/stay puft",
+};
+
+static int badge_monsters_unlocked = 0;
+static int badge_monster_last_unlock_milestone = 0;
+/* TODO: this number needs to be higher because with the
+* interval set at 20 it interrupts gameplay too much
+*/
+static int badge_monster_unlock_interval = 20;
+
+static void unlock_next_badge_monster(void)
+{
+	if (badge_monsters_unlocked >= UNLOCKABLE_MONSTER_COUNT)
+		return;
+
+	const char *key = monster_keys[badge_monsters_unlocked];
+	flash_kv_store_int(key, 1);
+
+	badge_monsters_unlocked++;
+	push_app(badgemon_unlock_app);
+}
+
+
+static void unlock_badge_monster(void)
+{
+	while (score >= badge_monster_last_unlock_milestone + badge_monster_unlock_interval) {
+		badge_monster_last_unlock_milestone += badge_monster_unlock_interval;
+		unlock_next_badge_monster();
+	}
+}
+
 static void puzzle_attack_update(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
@@ -1103,6 +1165,7 @@ static void puzzle_attack_update(void)
 
 		int match_count = get_match_count();
 		register_blocks_for_removal();
+		unlock_badge_monster();
 
 		if (match_count > 0 && audio_mode == AUDIO_THEME) {
 			if (match_count > MATCH_LEVEL_LIGHTNING) {
@@ -1155,6 +1218,17 @@ static void puzzle_attack_update(void)
 static void puzzle_attack_init(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
+
+	badge_monsters_unlocked = 0;
+	for (int i = 0; i < UNLOCKABLE_MONSTER_COUNT; i++) {
+		int val = 0;
+		flash_kv_get_int(monster_keys[i], &val);
+		if (val)
+			badge_monsters_unlocked++;
+	}
+
+	badge_monster_last_unlock_milestone = badge_monsters_unlocked * badge_monster_unlock_interval;
+
 	if (xorshift_state == 0)
 		random_insecure_bytes((uint8_t *)&xorshift_state, sizeof(xorshift_state));
 

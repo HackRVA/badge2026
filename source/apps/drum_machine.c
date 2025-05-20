@@ -9,6 +9,7 @@
 #include "dynmenu.h"
 #include "utils.h"
 #include "key_value_storage.h"
+#include "music.h"
 
 /* Program states.  Initial state is DRUM_MACHINE_INIT */
 enum drum_machine_state_t {
@@ -17,6 +18,7 @@ enum drum_machine_state_t {
 	DRUM_MACHINE_SAVE,
 	DRUM_MACHINE_LOAD,
 	DRUM_MACHINE_ERROR,
+	DRUM_MACHINE_SET_TEMPO,
 	DRUM_MACHINE_EXIT,
 };
 
@@ -36,6 +38,27 @@ static struct drum_song {
 } drum_song = { 0 };
 
 static char drum_machine_err_msg[100];
+
+#define BASS_FREQ 110
+#define SNARE_FREQ 2100
+#define CRASH_FREQ 5000
+#define TOM1_FREQ 440
+#define TOM2_FREQ 550
+#define OHH_FREQ 3700
+#define CHH_FREQ 3800
+#define RIDE_FREQ 1000
+
+#define BASS_DUR 16
+#define SNARE_DUR 16
+#define CRASH_DUR 16
+#define TOM1_DUR 16
+#define TOM2_DUR 16
+#define OHH_DUR 16
+#define CHH_DUR 16
+#define RIDE_DUR 16
+
+static struct note drumtune_hits[2 * 16 * MAX_DRUM_PATTERNS];
+static struct dynamic_tune drumtune;
 
 #define DRUM_CRASH (1 << 0)
 #define DRUM_RIDE (1 << 1)
@@ -78,16 +101,17 @@ struct drum_button {
 
 static const struct drum_button_list {
 	int nbuttons;
-	struct drum_button btn[8];
+	struct drum_button btn[9];
 } pattern_buttons = {
-	8,
+	9,
 	{
 		{ 10, 100, "PREV" },
 		{ 60, 100, "NEXT" },
+		{ 110, 100, "COPY" },
 		{ 10, 110, "STOP" },
 		{ 60, 110, "PLAY" },
-		{ 110, 110, "COPY" },
-		{ 10, 120, "PASTE" },
+		{ 110, 110, "PASTE" },
+		{ 10, 120, "TEMPO" },
 		{ 60, 120, "SONG" },
 		{ 110, 120, "QUIT" },
 	},
@@ -95,14 +119,14 @@ static const struct drum_button_list {
 int current_pattern_button = -1;
 
 static const struct drum_button_list song_buttons = {
-	3,
+	6,
 	{
 		{ 0, 108, "SAVE" },
 		{ 50, 108, "LOAD" },
 		{ 100, 108, "PATTERN" },
-		{ 0, 0, "" },
-		{ 0, 0, "" },
-		{ 0, 0, "" },
+		{ 0, 118, "PLAY" },
+		{ 50, 118, "STOP" },
+		{ 100, 118, "TEMPO" },
 	},
 };
 int current_song_button = -1;
@@ -154,6 +178,80 @@ static void drum_machine_init(void)
 	drum_machine_state = DRUM_MACHINE_RUN;
 	screen_changed = 1;
 	memset(drum_song.measure, 255, sizeof(drum_song.measure));
+}
+
+static void add_drum_note(struct dynamic_tune *t, uint16_t freq, uint16_t duration_ms)
+{
+	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
+	if (duration_ms > sixteenth_ms)
+		duration_ms = sixteenth_ms;
+	if (t->num_notes >= MAX_DRUM_PATTERNS_PER_SONG * HITS_PER_MEASURE - 1)
+		return;
+
+	t->note[t->num_notes].freq = freq;
+	t->note[t->num_notes].duration = duration_ms;
+	t->num_notes++;
+	int ms_left = sixteenth_ms - duration_ms;
+	if (ms_left > 0) {
+		t->note[t->num_notes].freq = NOTE_REST;
+		t->note[t->num_notes].duration = ms_left;
+		t->num_notes++;
+	}
+}
+
+static void add_drum_hit(struct dynamic_tune *t, unsigned char instruments)
+{
+	if (instruments == 0)
+		add_drum_note(t, NOTE_REST, CRASH_DUR);
+	else if (instruments & DRUM_CRASH)
+		add_drum_note(t, CRASH_FREQ, CRASH_DUR);
+	else if (instruments & DRUM_RIDE)
+		add_drum_note(t, RIDE_FREQ, RIDE_DUR);
+	else if (instruments & DRUM_CHH)
+		add_drum_note(t, CHH_FREQ, CHH_DUR);
+	else if (instruments & DRUM_OHH)
+		add_drum_note(t, OHH_FREQ, OHH_DUR);
+	else if (instruments & DRUM_TOM2)
+		add_drum_note(t, TOM2_FREQ, TOM2_DUR);
+	else if (instruments & DRUM_TOM1)
+		add_drum_note(t, TOM1_FREQ, TOM1_DUR);
+	else if (instruments & DRUM_SNARE)
+		add_drum_note(t, SNARE_FREQ, SNARE_DUR);
+	else if (instruments & DRUM_BASS)
+		add_drum_note(t, BASS_FREQ, BASS_DUR);
+}
+
+static void repeat_current_tune(__attribute__((unused)) void *cookie)
+{
+	play_dynamic_tune(&drumtune, repeat_current_tune, NULL);
+}
+
+static void play_pattern(int current_pattern)
+{
+	drumtune.num_notes = 0;
+	drumtune.note = drumtune_hits;
+	struct drum_pattern *pattern = &drum_song.pattern[current_pattern];
+	for (int i = 0; i < HITS_PER_MEASURE; i++)
+		add_drum_hit(&drumtune, pattern->hit[i]);
+	repeat_current_tune(NULL);
+}
+
+static void play_song(void)
+{
+	/* Count how many measures we have */
+	drum_song.nmeasures = 0;
+	for (int i = 0; i < MAX_DRUM_PATTERNS_PER_SONG; i++)
+		if (drum_song.measure[i] != 255)
+			drum_song.nmeasures = i;
+	drumtune.num_notes = 0;
+	drumtune.note = drumtune_hits;
+	for (int i = 0; i < drum_song.nmeasures; i++) {
+		int m = drum_song.measure[i];
+		struct drum_pattern *p = &drum_song.pattern[m];
+		for (int j = 0; j < HITS_PER_MEASURE; j++)
+			add_drum_hit(&drumtune, p->hit[j]);
+	}
+	repeat_current_tune(NULL);
 }
 
 static void check_buttons(void)
@@ -292,7 +390,11 @@ static void check_buttons(void)
 				if (v)
 					drum_song.pattern[current_pattern].hit[current_hit] &= ~(1 << current_inst);
 				else
+#if HAVE_MIXING
 					drum_song.pattern[current_pattern].hit[current_hit] |= (1 << current_inst);
+#else
+					drum_song.pattern[current_pattern].hit[current_hit] = (1 << current_inst);
+#endif
 				screen_changed = 1;
 			} else {
 				switch (current_pattern_button) {
@@ -304,14 +406,14 @@ static void check_buttons(void)
 					if (current_pattern < MAX_DRUM_PATTERNS - 1)
 						current_pattern++;
 					break;
-				case 2: /* stop */
-					/* TODO: implement this */
-					break;
-				case 3: /* play */
-					/* TODO: implement this */
-					break;
-				case 4: /* copy */
+				case 2: /* copy */
 					copied_pattern = current_pattern;
+					break;
+				case 3: /* stop */
+					stop_tune();
+					break;
+				case 4: /* play */
+					play_pattern(current_pattern);
 					break;
 				case 5: /* paste */
 					if (copied_pattern != -1 && current_pattern != copied_pattern) {
@@ -319,11 +421,15 @@ static void check_buttons(void)
 						screen_changed = 1;
 					}
 					break;
-				case 6: /* song */
+				case 6: /* tempo */
+					drum_machine_state = DRUM_MACHINE_SET_TEMPO;
+					screen_changed = 1;
+					break;
+				case 7: /* song */
 					drum_mode = song_mode;
 					screen_changed = 1;
 					break;
-				case 7: /* quit */
+				case 8: /* quit */
 					drum_machine_state = DRUM_MACHINE_EXIT;
 					screen_changed = 1;
 					break;
@@ -348,6 +454,16 @@ static void check_buttons(void)
 					break;
 				case 2: /* pattern */
 					drum_mode = pattern_mode;
+					screen_changed = 1;
+					break;
+				case 3: /* play */
+					play_song();
+					break;
+				case 4: /* stop */
+					stop_tune();
+					break;
+				case 5: /* tempo */
+					drum_machine_state = DRUM_MACHINE_SET_TEMPO;
 					screen_changed = 1;
 					break;
 				}
@@ -608,6 +724,57 @@ static void drum_machine_save_load(enum dm_save_or_load action)
 	return;
 }
 
+static int bpm_delta(int tempo)
+{
+	if (tempo >= 120 * 256)
+		return 256;
+	if (tempo >= 60 * 256)
+		return 128;
+	if (tempo >= 30 * 256)
+		return 64;
+	return 32;
+}
+
+static void drum_machine_set_tempo(void)
+{
+	static int screen_changed = 1;
+	char buffer[20];
+
+	if (screen_changed) {
+		FbColor(WHITE);
+		FbBackgroundColor(BLACK);
+		FbClear();
+		FbMove(0, 0);
+		FbWriteString("SET TEMPO IN BPM\n");
+		snprintf(buffer, sizeof(buffer), " %d.%d BPM", tempo / 256, ((tempo & 0x0ff) * 100) / 256);
+		FbWriteString(buffer);
+		FbSwapBuffers();
+		screen_changed = 0;
+	}
+
+	int down_latches = button_down_latches();
+	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+		tempo += bpm_delta(tempo);
+		screen_changed = 1;
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
+		tempo -= bpm_delta(tempo);
+		screen_changed = 1;
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		drum_machine_state = DRUM_MACHINE_RUN;
+		screen_changed = 1;
+	}
+	/* 20 seems like a reasonable minimum BPM */
+	if (tempo < 20 * 256)
+		tempo = 20 * 256;
+	/* 256 seems like a reasonable max BPM */
+	if (tempo > 255 * 256)
+		tempo = 256 * 256;
+		
+}
+
 static void drum_machine_error(void)
 {
 	if (screen_changed) {
@@ -647,6 +814,9 @@ void drum_machine_cb(__attribute__((unused)) struct badge_app *app)
 		break;
 	case DRUM_MACHINE_SAVE:
 		drum_machine_save_load(dm_save);
+		break;
+	case DRUM_MACHINE_SET_TEMPO:
+		drum_machine_set_tempo();
 		break;
 	case DRUM_MACHINE_ERROR:
 		drum_machine_error();
