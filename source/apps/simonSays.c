@@ -243,20 +243,16 @@ void resetButtons(void){
 
 //CHECKS TO SEE WHAT BUTTONS ARE PRESSED
 void check_buttons(void){
-	printf("checking keys\n");
 	int down_latches = button_down_latches();
 	int up_latches = button_up_latches();
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
-
-		printf("should be going back to the menu\n");
 				playing = false;
 				simonSays_state = SIMONSAYS_INIT;
 		return;
 	}
 
 	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		printf("should be going back to the menu\n");
 				playing = false;
 				simonSays_state = SIMONSAYS_INIT;
 		return;
