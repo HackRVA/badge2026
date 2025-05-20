@@ -9,6 +9,7 @@
 #include "dynmenu.h"
 #include "utils.h"
 #include "key_value_storage.h"
+#include "music.h"
 
 /* Program states.  Initial state is DRUM_MACHINE_INIT */
 enum drum_machine_state_t {
@@ -36,6 +37,27 @@ static struct drum_song {
 } drum_song = { 0 };
 
 static char drum_machine_err_msg[100];
+
+#define BASS_FREQ 110
+#define SNARE_FREQ 2100
+#define CRASH_FREQ 5000
+#define TOM1_FREQ 440
+#define TOM2_FREQ 550
+#define OHH_FREQ 3700
+#define CHH_FREQ 3800
+#define RIDE_FREQ 1000
+
+#define BASS_DUR 16
+#define SNARE_DUR 16
+#define CRASH_DUR 16
+#define TOM1_DUR 16
+#define TOM2_DUR 16
+#define OHH_DUR 16
+#define CHH_DUR 16
+#define RIDE_DUR 16
+
+static struct note drumtune_hits[2 * 16 * MAX_DRUM_PATTERNS];
+static struct dynamic_tune drumtune;
 
 #define DRUM_CRASH (1 << 0)
 #define DRUM_RIDE (1 << 1)
@@ -154,6 +176,65 @@ static void drum_machine_init(void)
 	drum_machine_state = DRUM_MACHINE_RUN;
 	screen_changed = 1;
 	memset(drum_song.measure, 255, sizeof(drum_song.measure));
+}
+
+static void add_drum_note(struct dynamic_tune *t, uint16_t freq, uint16_t duration_ms)
+{
+	int sixteenth_ms = (256 * 60000) / tempo;
+	if (duration_ms > sixteenth_ms)
+		duration_ms = sixteenth_ms;
+	if (t->num_notes >= MAX_DRUM_PATTERNS_PER_SONG * HITS_PER_MEASURE - 1)
+		return;
+
+	t->note[t->num_notes].freq = freq;
+	t->note[t->num_notes].duration = duration_ms;
+	t->num_notes++;
+	int ms_left = sixteenth_ms - duration_ms;
+	if (ms_left > 0) {
+#if 0
+		/* This is currently broken, a rest stops everything. */
+		t->note[t->num_notes].freq = NOTE_REST;
+		t->note[t->num_notes].duration = ms_left;
+		t->num_notes++;
+#endif
+	}
+}
+
+static void add_drum_hit(struct dynamic_tune *t, unsigned char instruments)
+{
+	if (instruments == 0)
+		add_drum_note(t, NOTE_REST, CRASH_DUR);
+	else if (instruments & DRUM_CRASH)
+		add_drum_note(t, CRASH_FREQ, CRASH_DUR);
+	else if (instruments & DRUM_RIDE)
+		add_drum_note(t, RIDE_FREQ, RIDE_DUR);
+	else if (instruments & DRUM_CHH)
+		add_drum_note(t, CHH_FREQ, CHH_DUR);
+	else if (instruments & DRUM_OHH)
+		add_drum_note(t, OHH_FREQ, OHH_DUR);
+	else if (instruments & DRUM_TOM2)
+		add_drum_note(t, TOM2_FREQ, TOM2_DUR);
+	else if (instruments & DRUM_TOM1)
+		add_drum_note(t, TOM1_FREQ, TOM1_DUR);
+	else if (instruments & DRUM_SNARE)
+		add_drum_note(t, SNARE_FREQ, SNARE_DUR);
+	else if (instruments & DRUM_BASS)
+		add_drum_note(t, BASS_FREQ, BASS_DUR);
+}
+
+static void repeat_current_tune(__attribute__((unused)) void *cookie)
+{
+	play_dynamic_tune(&drumtune, repeat_current_tune, NULL);
+}
+
+static void play_pattern(int current_pattern)
+{
+	drumtune.num_notes = 0;
+	drumtune.note = drumtune_hits;
+	struct drum_pattern *pattern = &drum_song.pattern[current_pattern];
+	for (int i = 0; i < HITS_PER_MEASURE; i++)
+		add_drum_hit(&drumtune, pattern->hit[i]);
+	repeat_current_tune(NULL);
 }
 
 static void check_buttons(void)
@@ -309,10 +390,10 @@ static void check_buttons(void)
 						current_pattern++;
 					break;
 				case 2: /* stop */
-					/* TODO: implement this */
+					stop_tune();
 					break;
 				case 3: /* play */
-					/* TODO: implement this */
+					play_pattern(current_pattern);
 					break;
 				case 4: /* copy */
 					copied_pattern = current_pattern;
