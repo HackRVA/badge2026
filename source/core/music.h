@@ -106,10 +106,21 @@ struct note {
 
 struct tune {
 	int num_notes;
+	/* Note: the const here prevents you from dynamically constructing a tune at runtime.
+	 * If you need to do that, use struct dynamic_tune, and play_dynamic_tune(), below.
+	 */
 	const struct note *note;
 };
 
+/* Only use this if you are dynamically constructing your tune at runtime,
+ * otherwise, use struct tune, above. */
+struct dynamic_tune {
+	int num_notes;
+	struct note *note;
+};
+
 void play_tune(const struct tune *tune, void (*finished_callback)(void *cookie), void *cookie);
+void play_dynamic_tune(const struct dynamic_tune *tune, void (*finished_callback)(void *cookie), void *cookie);
 
 void stop_tune(void);
 
