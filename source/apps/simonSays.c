@@ -23,7 +23,7 @@ const struct asset2 *rightyellow_p = &rightyellow;
 
 //arbitrary max level
 const int MAX_TURNS = 100;
-const int SPEED = 500;
+      int SPEED = 500;
 
 
 /* Program states.  Initial state is MYPROGRAM_INIT */
@@ -36,6 +36,7 @@ enum simonSays_state_t {
 	SIMONSAYS_PLAYBACK_SETUP,
 	SIMONSAYS_PLAYBACK_RUN,
 	SIMONSAYS_PLAYER_LOSE,
+	SIMONSAYS_DISCO,
 	SIMONSAYS_MENU,
 	SIMONSAYS_EXIT
 };
@@ -60,12 +61,12 @@ uint64_t now, then;
 bool listening,waitingForRelease,actuallyReleased,playing,started;
 bool timeIsSet=false;
 int usedTurns,it;
-
+static struct dynmenu menu;
 
 static void simonSaysMenu(void)
 {
 	static int menu_setup = 0;
-	static struct dynmenu menu;
+
 	static struct dynmenu_item menu_item[5];
 
 	if (!menu_setup) {
@@ -90,6 +91,7 @@ static void simonSaysMenu(void)
 			case 2:
 				break;
 			case 3:
+				simonSays_state = SIMONSAYS_DISCO;
 				break;
 			case 4:
 				simonSays_state = SIMONSAYS_EXIT;
@@ -222,8 +224,11 @@ void checkin(void)
 	return (xorshift(&my_state) % 4);
 }
 
+
+
 void newRound(void){
 	sequence[usedTurns] = randChoice();
+	SPEED = SPEED - 10;
 	usedTurns++;
 }
 
@@ -238,15 +243,23 @@ void resetButtons(void){
 
 //CHECKS TO SEE WHAT BUTTONS ARE PRESSED
 void check_buttons(void){
+	printf("checking keys\n");
 	int down_latches = button_down_latches();
 	int up_latches = button_up_latches();
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
-		simonSays_state = SIMONSAYS_MENU;
+
+		printf("should be going back to the menu\n");
+				playing = false;
+				simonSays_state = SIMONSAYS_INIT;
+		return;
 	}
 
 	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		simonSays_state = SIMONSAYS_MENU;
+		printf("should be going back to the menu\n");
+				playing = false;
+				simonSays_state = SIMONSAYS_INIT;
+		return;
 	}
 
 	if(listening){
@@ -296,6 +309,49 @@ void check_buttons(void){
 
 }
 
+
+void disco (void){
+	checkin();
+	playing = true;
+	check_buttons();
+	uint64_t timestamp= rtc_get_ms_since_boot();
+	unsigned int my_state = 0xa5a5a5a5 ^ timestamp;
+	if(xorshift(&my_state) % 2){
+	showChoice(xorshift(&my_state) % 4);
+	timestamp= rtc_get_ms_since_boot();
+	my_state = 0xa5a5a5a5 ^ timestamp;
+	if(xorshift(&my_state) % 2){
+	led_pwm_enable(BADGE_LED_RGB_RED,  xorshift(&my_state) % 255);
+	}
+	timestamp= rtc_get_ms_since_boot();
+	my_state = 0xa5a5a5a5 ^ timestamp;
+	if(xorshift(&my_state) % 2){
+	led_pwm_enable(BADGE_LED_RGB_GREEN, xorshift(&my_state) % 255);
+	}
+	timestamp= rtc_get_ms_since_boot();
+	my_state = 0xa5a5a5a5 ^ timestamp;
+	if(xorshift(&my_state) % 2){
+	led_pwm_enable(BADGE_LED_RGB_BLUE,  xorshift(&my_state) % 255);
+	}
+	timestamp= rtc_get_ms_since_boot();
+	my_state = 0xa5a5a5a5 ^ timestamp;
+	soundStart(xorshift(&my_state) % 2000);
+	timestamp= rtc_get_ms_since_boot();
+	my_state = 0xa5a5a5a5 ^ timestamp;
+		check_buttons();
+	if(playing){
+	wait(xorshift(&my_state) % 200,SIMONSAYS_DISCO);
+	}
+	}
+	else{
+		check_buttons();
+		showChoice(NONE);
+	}
+
+
+}
+
+
 void clearSequence(void){
 	for(int i=0;i<MAX_TURNS;i++){
 		sequence[i] = NONE;
@@ -309,6 +365,7 @@ void clearSequence(void){
 	started = false;
 	it = 0;
 	usedTurns=0;
+	SPEED = 500;
 	clearSequence();
 	newRound();
 	timeIsSet = false;
@@ -446,6 +503,9 @@ void simonSays_cb(__attribute__((unused)) struct badge_app *app){
 		break;
 	case SIMONSAYS_MENU:
 		simonSaysMenu();
+		break;
+	case SIMONSAYS_DISCO:
+		disco();
 		break;
 	case SIMONSAYS_EXIT:
 		simonSays_exit();
