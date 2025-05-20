@@ -1,5 +1,3 @@
-
-
 #include "colors.h"
 #include "menu.h"
 #include "button.h"
@@ -16,13 +14,16 @@
 #include "music.h"
 #include "led_pwm.h"
 
+//load instances of all the sprite assets
 const struct asset2 *alldark_p = &alldark;
 const struct asset2 *upblue_p = &upblue;
 const struct asset2 *leftred_p = &leftred;
 const struct asset2 *downgreen_p = &downgreen;
 const struct asset2 *rightyellow_p = &rightyellow;
 
+//arbitrary max level
 const int MAX_TURNS = 100;
+const int SPEED = 500;
 
 
 /* Program states.  Initial state is MYPROGRAM_INIT */
@@ -34,10 +35,10 @@ enum simonSays_state_t {
 	SIMONSAYS_PLAYER_RUN,
 	SIMONSAYS_PLAYBACK_SETUP,
 	SIMONSAYS_PLAYBACK_RUN,
+	SIMONSAYS_PLAYER_LOSE,
+	SIMONSAYS_MENU,
 	SIMONSAYS_EXIT
 };
-
-
 // CHOICES THE PLAYER CAN MAKE
 typedef enum Choice {
 	UP,
@@ -47,6 +48,7 @@ typedef enum Choice {
 	NONE
 }Choice;
 
+
 enum Choice sequence[100];
 Choice dPad;
 
@@ -55,9 +57,51 @@ static enum simonSays_state_t waitstate;
 int waitms;
 
 uint64_t now, then;
-bool listening,waitingForRelease,actuallyReleased,playing;
+bool listening,waitingForRelease,actuallyReleased,playing,started;
 bool timeIsSet=false;
 int usedTurns,it;
+
+
+static void simonSaysMenu(void)
+{
+	static int menu_setup = 0;
+	static struct dynmenu menu;
+	static struct dynmenu_item menu_item[5];
+
+	if (!menu_setup) {
+		dynmenu_init(&menu, menu_item, 5);
+		dynmenu_clear(&menu);
+		dynmenu_set_title(&menu, "Simon Says", "", "");
+		dynmenu_add_item(&menu, "Play Simon", 0, 1);
+		dynmenu_add_item(&menu, "Songs", 0, 2);
+		dynmenu_add_item(&menu, "Disco", 0, 3);
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&menu))
+		return; // let dynmenu take over as runningApp for a bit
+
+		// dynmenu is done, the user has made their choice.
+	switch (dynmenu_get_user_choice(&menu)) { // get choice and reset for next time.
+			case 1:
+				simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
+				break;
+			case 2:
+				break;
+			case 3:
+				break;
+			case DYNMENU_SELECTION_ABORTED:
+				simonSaysMenu();
+				break;
+			default:
+				simonSaysMenu();
+				break;
+		}
+}
+
+
+
+
 
 void waitForState(enum simonSays_state_t returnTo){
 
@@ -154,7 +198,7 @@ void showChoice(Choice c){
 
 void playChoice(Choice c){
 	showChoice(c);
-	wait(800,SIMONSAYS_PLAYBACK_RUN);
+	wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
 	showChoice(NONE);
 	soundStop();
 }
@@ -258,6 +302,7 @@ void clearSequence(void){
 
 //SETS UP OUR WORK ENVIRONMENT
 	void simonSays_init(void){
+	started = false;
 	it = 0;
 	usedTurns=0;
 	clearSequence();
@@ -271,7 +316,7 @@ void clearSequence(void){
 	FbImage2(alldark_p, 0);
 	FbSwapBuffers();
 	soundStop();
-	simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
+	simonSays_state = SIMONSAYS_MENU;
 }
 
 	void playerSetup(void){
@@ -289,7 +334,7 @@ void clearSequence(void){
 				if((it>98)|(sequence[it+1]==NONE)){
 					resetButtons();
 					newRound();
-					wait(800,SIMONSAYS_PLAYBACK_SETUP);
+					wait(SPEED,SIMONSAYS_PLAYBACK_SETUP);
 					return;
 				}
 				else{
@@ -300,7 +345,8 @@ void clearSequence(void){
 			}
 			else{
 				resetButtons();
-				simonSays_state = SIMONSAYS_EXIT;
+				simonSays_state = SIMONSAYS_PLAYER_LOSE;
+				return;
 			}
 		}
 		check_buttons();
@@ -328,7 +374,7 @@ void clearSequence(void){
 			soundStop();
 			playing = false;
 			showChoice(NONE);
-			wait(800,SIMONSAYS_PLAYBACK_RUN);
+			wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
 			//check for last
 			if(sequence[it+1]==NONE){
 				simonSays_state = SIMONSAYS_PLAYER_SETUP;
@@ -342,10 +388,26 @@ void clearSequence(void){
 		else{
 			showChoice(sequence[it]);
 			playing = true;
-			wait(800,SIMONSAYS_PLAYBACK_RUN);
+			wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
 			return;
 		}
 	}
+
+void playerLose(void){
+	if(!started){
+		clearSequence();
+		soundStop();
+		showChoice(NONE);
+		soundStart(110);
+		wait(2000,SIMONSAYS_PLAYER_LOSE);
+		started = true;
+	}
+	else{
+		soundStop();
+		simonSays_state = SIMONSAYS_INIT;
+		return;
+	}
+}
 
 //THIS GETS OUT OF THE PROGRAM CLEANLY
 void simonSays_exit(void){
@@ -375,6 +437,12 @@ void simonSays_cb(__attribute__((unused)) struct badge_app *app){
 		break;
 	case SIMONSAYS_PLAYBACK_RUN:
 		playbackRun();
+		break;
+	case SIMONSAYS_PLAYER_LOSE:
+		playerLose();
+		break;
+	case SIMONSAYS_MENU:
+		simonSaysMenu();
 		break;
 	case SIMONSAYS_EXIT:
 		simonSays_exit();
