@@ -99,10 +99,24 @@ class WasmSimulator extends HTMLElement {
 <div class="emscripten_border" id="canvas-container">
 	<canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
 
+    <button id="play-button" style="
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      padding: 20px 40px;
+      font-size: 24px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      border: none;
+      cursor: pointer;
+    ">▶ Play</button>
+
 	<div class="button-container">
 		<button id="fullscreen-button">Fullscreen</button>
 		<button id="zoom-in-button">Zoom In</button>
 		<button id="zoom-out-button">Zoom Out</button>
+		<button id="rotate-button">Rotate</button>
 		<!--
 		<label class="volume-control">
 			Volume
@@ -115,13 +129,28 @@ class WasmSimulator extends HTMLElement {
 	${this.render_console()}
     `;
 
+    // this.setupModule();
+    // this.loadEmscriptenScript();
+    this.querySelector("#play-button").addEventListener("click", () =>
+      this.startWasm(),
+    );
+
+    this.setupFullscreenButton();
+    this.setupButtons();
+    // this.setupVolumeControl();
+    window.addEventListener("resize", this.adjustCanvasSize.bind(this));
+  }
+
+  startWasm() {
+    // hide the play button
+    const btn = this.querySelector("#play-button");
+    btn.style.display = "none";
+
+    // now safe to init audio & run wasm
     this.setupModule();
     this.loadEmscriptenScript();
-    this.setupFullscreenButton();
-    this.setupZoomButtons();
-    this.setupVolumeControl();
-    this.adjustCanvasSize();
-    window.addEventListener("resize", this.adjustCanvasSize.bind(this));
+    this.sendKey("r");
+    this.sendKey("r");
   }
 
   setupModule() {
@@ -158,6 +187,37 @@ class WasmSimulator extends HTMLElement {
     };
   }
 
+  sendKey(key) {
+    const canvas = this.querySelector("#canvas");
+
+    let code, keyCode;
+    if (key === "+") {
+      code = "Equal";
+      keyCode = 187;
+    } else if (key === "-") {
+      code = "Minus";
+      keyCode = 189;
+    } else if (key.length === 1 && /^[a-z]$/i.test(key)) {
+      const upper = key.toUpperCase();
+      code = `Key${upper}`;
+      keyCode = upper.charCodeAt(0);
+    } else {
+      code = key;
+      keyCode = key.length === 1 ? key.charCodeAt(0) : 0;
+    }
+
+    const ev = new KeyboardEvent("keydown", {
+      key,
+      code,
+      keyCode,
+      which: keyCode,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    canvas.dispatchEvent(ev);
+  }
+
   loadEmscriptenScript() {
     const scriptSrc = this.getAttribute("script") || "badge2025_c.js";
     const script = document.createElement("script");
@@ -190,25 +250,15 @@ class WasmSimulator extends HTMLElement {
     });
   }
 
-  setupZoomButtons() {
+  setupButtons() {
     const zoomInButton = this.querySelector("#zoom-in-button");
     const zoomOutButton = this.querySelector("#zoom-out-button");
+    const rotateButton = this.querySelector("#rotate-button");
     const canvas = this.querySelector("#canvas");
 
-    function sendKey(key) {
-      const event = new KeyboardEvent("keydown", {
-        key: key,
-        code: key === "+" ? "Equal" : "Minus",
-        keyCode: key === "+" ? 187 : 189,
-        which: key === "+" ? 187 : 189,
-        bubbles: true,
-        cancelable: true,
-      });
-      canvas.dispatchEvent(event);
-    }
-
-    zoomInButton.addEventListener("click", () => sendKey("+"));
-    zoomOutButton.addEventListener("click", () => sendKey("-"));
+    zoomInButton.addEventListener("click", () => this.sendKey("+"));
+    zoomOutButton.addEventListener("click", () => this.sendKey("-"));
+    rotateButton.addEventListener("click", () => this.sendKey("r"));
   }
 
   setupVolumeControl() {
