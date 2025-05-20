@@ -75,6 +75,7 @@ static void simonSaysMenu(void)
 		dynmenu_add_item(&menu, "Play Simon", 0, 1);
 		dynmenu_add_item(&menu, "Songs", 0, 2);
 		dynmenu_add_item(&menu, "Disco", 0, 3);
+		dynmenu_add_item(&menu, "EXIT", 0, 4);
 		menu_setup = 1;
 	}
 
@@ -89,6 +90,9 @@ static void simonSaysMenu(void)
 			case 2:
 				break;
 			case 3:
+				break;
+			case 4:
+				simonSays_state = SIMONSAYS_EXIT;
 				break;
 			case DYNMENU_SELECTION_ABORTED:
 				simonSaysMenu();
@@ -238,11 +242,11 @@ void check_buttons(void){
 	int up_latches = button_up_latches();
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
-		simonSays_state = SIMONSAYS_EXIT;
+		simonSays_state = SIMONSAYS_MENU;
 	}
 
 	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		simonSays_state = SIMONSAYS_EXIT;
+		simonSays_state = SIMONSAYS_MENU;
 	}
 
 	if(listening){
@@ -313,7 +317,6 @@ void clearSequence(void){
 	FbInit();
 	FbClear();
 	FbMove(16,0);
-	FbImage2(alldark_p, 0);
 	FbSwapBuffers();
 	soundStop();
 	simonSays_state = SIMONSAYS_MENU;
