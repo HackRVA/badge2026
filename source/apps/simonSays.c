@@ -125,7 +125,7 @@ void waitForState(enum simonSays_state_t returnTo){
 
 }
 
-void simon_wait(int ms,enum simonSays_state_t state){
+void simonSays_wait(int ms,enum simonSays_state_t state){
 	simonSays_state = SIMONSAYS_WAIT;
 	waitms = ms;
 	waitstate = state;
@@ -204,7 +204,7 @@ void showChoice(Choice c){
 
 void playChoice(Choice c){
 	showChoice(c);
-	simon_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
+	simonSays_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
 	showChoice(NONE);
 	soundStop();
 }
@@ -340,7 +340,7 @@ void disco (void){
 	my_state = 0xa5a5a5a5 ^ timestamp;
 		check_buttons();
 	if(playing){
-	simon_wait(xorshift(&my_state) % 200,SIMONSAYS_DISCO);
+	simonSays_wait(xorshift(&my_state) % 200,SIMONSAYS_DISCO);
 	}
 	}
 	else{
@@ -394,7 +394,7 @@ void clearSequence(void){
 				if((it>98)|(sequence[it+1]==NONE)){
 					resetButtons();
 					newRound();
-					simon_wait(SPEED,SIMONSAYS_PLAYBACK_SETUP);
+					simonSays_wait(SPEED,SIMONSAYS_PLAYBACK_SETUP);
 					return;
 				}
 				else{
@@ -434,7 +434,7 @@ void clearSequence(void){
 			soundStop();
 			playing = false;
 			showChoice(NONE);
-			simon_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
+			simonSays_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
 			//check for last
 			if(sequence[it+1]==NONE){
 				simonSays_state = SIMONSAYS_PLAYER_SETUP;
@@ -448,7 +448,7 @@ void clearSequence(void){
 		else{
 			showChoice(sequence[it]);
 			playing = true;
-			simon_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
+			simonSays_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
 			return;
 		}
 	}
@@ -459,7 +459,7 @@ void playerLose(void){
 		soundStop();
 		showChoice(NONE);
 		soundStart(110);
-		simon_wait(2000,SIMONSAYS_PLAYER_LOSE);
+		simonSays_wait(2000,SIMONSAYS_PLAYER_LOSE);
 		started = true;
 	}
 	else{
