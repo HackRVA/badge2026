@@ -292,7 +292,11 @@ static void check_buttons(void)
 				if (v)
 					drum_song.pattern[current_pattern].hit[current_hit] &= ~(1 << current_inst);
 				else
+#if HAVE_MIXING
 					drum_song.pattern[current_pattern].hit[current_hit] |= (1 << current_inst);
+#else
+					drum_song.pattern[current_pattern].hit[current_hit] = (1 << current_inst);
+#endif
 				screen_changed = 1;
 			} else {
 				switch (current_pattern_button) {
