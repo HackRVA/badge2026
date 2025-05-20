@@ -117,13 +117,13 @@ static const struct drum_button_list {
 int current_pattern_button = -1;
 
 static const struct drum_button_list song_buttons = {
-	3,
+	5,
 	{
 		{ 0, 108, "SAVE" },
 		{ 50, 108, "LOAD" },
 		{ 100, 108, "PATTERN" },
-		{ 0, 0, "" },
-		{ 0, 0, "" },
+		{ 0, 118, "PLAY" },
+		{ 50, 118, "STOP" },
 		{ 0, 0, "" },
 	},
 };
@@ -234,6 +234,19 @@ static void play_pattern(int current_pattern)
 	struct drum_pattern *pattern = &drum_song.pattern[current_pattern];
 	for (int i = 0; i < HITS_PER_MEASURE; i++)
 		add_drum_hit(&drumtune, pattern->hit[i]);
+	repeat_current_tune(NULL);
+}
+
+static void play_song(void)
+{
+	drumtune.num_notes = 0;
+	drumtune.note = drumtune_hits;
+	for (int i = 0; i < drum_song.nmeasures; i++) {
+		int m = drum_song.measure[i];
+		struct drum_pattern *p = &drum_song.pattern[m];
+		for (int j = 0; j < HITS_PER_MEASURE; i++)
+			add_drum_hit(&drumtune, p->hit[j]);
+	}
 	repeat_current_tune(NULL);
 }
 
@@ -434,6 +447,12 @@ static void check_buttons(void)
 				case 2: /* pattern */
 					drum_mode = pattern_mode;
 					screen_changed = 1;
+					break;
+				case 3: /* play */
+					play_song();
+					break;
+				case 4: /* stop */
+					stop_tune();
 					break;
 				}
 			}
