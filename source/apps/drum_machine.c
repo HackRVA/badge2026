@@ -518,7 +518,7 @@ static void draw_buttons(const struct drum_button_list *dbl, int current_button)
 	FbBackgroundColor(BLACK);
 }
 
-static void draw_pattern_screen(void)
+static void draw_pattern_screen(int draw_count)
 {
 	char buffer[20];
 	snprintf(buffer, sizeof(buffer), "PATTERN %d", current_pattern);
@@ -550,16 +550,18 @@ static void draw_pattern_screen(void)
 					FbPoint(x, y - 4);
 			}
 			if (i == current_inst && j == current_hit && current_pattern_button == -1) {
-				FbColor(YELLOW);
-				FbMove(x - 2, y - 2);
-				FbRectangle(5, 5);
+				if (draw_count & 0x8) { /* make cursor blink */
+					FbColor(YELLOW);
+					FbMove(x - 2, y - 2);
+					FbRectangle(5, 5);
+				}
 			}
 		}
 	}
 	draw_buttons(&pattern_buttons, current_pattern_button);
 }
 
-static void draw_song_screen(void)
+static void draw_song_screen(int draw_count)
 {
 	char buffer[20];
 	int sx, sy;
@@ -604,9 +606,11 @@ static void draw_song_screen(void)
 				FbWriteString("PATTERN ");
 				snprintf(buffer, sizeof(buffer), "%d", current_pattern);
 				FbWriteString(buffer);
-				FbColor(RED);
-				FbMove(sx, sy);
-				FbRectangle(7, 7);
+				if (draw_count & 0x8) {
+					FbColor(RED);
+					FbMove(sx, sy);
+					FbRectangle(7, 7);
+				}
 			}
 		}
 	}
@@ -615,6 +619,14 @@ static void draw_song_screen(void)
 
 static void draw_screen(void)
 {
+	static int draw_count = 0;
+
+	draw_count++;
+	if (draw_count > 32)
+		draw_count = 0;
+
+	if ((draw_count & 0x8) != ((draw_count + 1) & 0x8))  /* for blinking cursor */
+		screen_changed = 1;
 	if (!screen_changed)
 		return;
 
@@ -624,10 +636,10 @@ static void draw_screen(void)
 
 	switch (drum_mode) {
 	case pattern_mode:
-		draw_pattern_screen();
+		draw_pattern_screen(draw_count);
 		break;
 	case song_mode:
-		draw_song_screen();
+		draw_song_screen(draw_count);
 		break;
 	}
 
