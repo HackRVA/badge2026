@@ -21,21 +21,22 @@ const struct asset2 *upblue_p = &upblue;
 const struct asset2 *leftred_p = &leftred;
 const struct asset2 *downgreen_p = &downgreen;
 const struct asset2 *rightyellow_p = &rightyellow;
+
 const int MAX_TURNS = 100;
 
 
 /* Program states.  Initial state is MYPROGRAM_INIT */
 enum simonSays_state_t {
 	SIMONSAYS_INIT,
+	SIMONSAYS_BEEP,
+	SIMONSAYS_WAIT,
+	SIMONSAYS_PLAYER_SETUP,
+	SIMONSAYS_PLAYER_RUN,
 	SIMONSAYS_PLAYBACK_SETUP,
 	SIMONSAYS_PLAYBACK_RUN,
-	SIMONSAYS_PLAYERTURN_SETUP,
-	SIMONSAYS_PLAYERTURN_RUN,
-	SIMONSAYS_PLAYERLOST,
-	SIMONSAYS_ADD,
-	SIMONSAYS_GENERIC_DELAY,
 	SIMONSAYS_EXIT
 };
+
 
 // CHOICES THE PLAYER CAN MAKE
 typedef enum Choice {
@@ -49,41 +50,91 @@ typedef enum Choice {
 enum Choice sequence[100];
 Choice dPad;
 
-bool lastone,released,clear;
-int it,usedturns,dReturn,sReturn = 0;
-uint64_t stoptime,now,lStop,lNow;
-
 static enum simonSays_state_t simonSays_state = SIMONSAYS_INIT;
+static enum simonSays_state_t waitstate;
+int waitms;
+
+uint64_t now, then;
+bool listening,waitingForRelease,actuallyReleased,playing;
+bool timeIsSet=false;
+int usedTurns,it;
+
+void waitForState(enum simonSays_state_t returnTo){
+
+	if(timeIsSet){
+		now = rtc_get_ms_since_boot();
+		if(now<then){
+			return;
+		}
+		else{
+			simonSays_state = returnTo;
+			timeIsSet = false;
+			return;
+		}
+	}
+
+}
+
+void wait(int ms,enum simonSays_state_t state){
+	simonSays_state = SIMONSAYS_WAIT;
+	waitms = ms;
+	waitstate = state;
+	timeIsSet = true;
+	then = rtc_get_ms_since_boot()+ms;
+}
+
+void soundStart (int freq){
+	audio_out_beep(freq,30000);
+}
+
+
+void soundStop (void){
+	audio_out_beep(0,0);
+}
 
 //DISPLAYING THE RIGHT CHOICES
-void showChoice(Choice c, bool sound){
+void showChoice(Choice c){
 	const struct asset2 *temp;
 	int freq=0;
 	switch (c){
 		case UP:
 			temp = upblue_p;
 			//freq = 196;
+
 			freq = NOTE_G4;
-			led_pwm_enable(BADGE_LED_RGB_BLUE, 255);
+			soundStart(freq);
+			led_pwm_enable(BADGE_LED_RGB_RED,   0);
+			led_pwm_enable(BADGE_LED_RGB_GREEN, 0);
+			led_pwm_enable(BADGE_LED_RGB_BLUE, 30);
 			break;
 		case RIGHT:
 			temp = rightyellow_p;
 			//freq = 261;
+
 			freq = NOTE_E4;
-			led_pwm_enable(BADGE_LED_RGB_RED, 255);
-			led_pwm_enable(BADGE_LED_RGB_GREEN, 255);
+			soundStart(freq);
+			led_pwm_enable(BADGE_LED_RGB_RED,  30);
+			led_pwm_enable(BADGE_LED_RGB_GREEN,30);
+			led_pwm_enable(BADGE_LED_RGB_BLUE,  0);
 			break;
 		case DOWN:
 			temp = downgreen_p;
 			//freq = 392;
+
 			freq= NOTE_C4;
-			led_pwm_enable(BADGE_LED_RGB_GREEN, 255);
+			soundStart(freq);
+			led_pwm_enable(BADGE_LED_RGB_RED,   0);
+			led_pwm_enable(BADGE_LED_RGB_GREEN,30);
+			led_pwm_enable(BADGE_LED_RGB_BLUE,  0);
 			break;
 		case LEFT:
 			temp = leftred_p;
 			//freq = 329;
+			soundStart(NOTE_G3);
 			freq = NOTE_G3;
-			led_pwm_enable(BADGE_LED_RGB_RED, 255);
+			led_pwm_enable(BADGE_LED_RGB_RED,  30);
+			led_pwm_enable(BADGE_LED_RGB_GREEN, 0);
+			led_pwm_enable(BADGE_LED_RGB_BLUE,  0);
 			break;
 		default:
 			temp = alldark_p;
@@ -93,9 +144,6 @@ void showChoice(Choice c, bool sound){
 			led_pwm_disable(BADGE_LED_RGB_BLUE);
 			break;
 	}
-	if(sound) {
-		audio_out_beep(freq,500);
-	}
 
 	FbClear();
 	FbColor(WHITE);
@@ -104,7 +152,12 @@ void showChoice(Choice c, bool sound){
 	FbSwapBuffers();
 }
 
-
+void playChoice(Choice c){
+	showChoice(c);
+	wait(800,SIMONSAYS_PLAYBACK_RUN);
+	showChoice(NONE);
+	soundStop();
+}
 
 //THIS IS TO POLL THE COLLABORATIVE WORKSPACE
 //NOT SURE IF ITS EVEN REALLY NEEDED.
@@ -113,28 +166,6 @@ void checkin(void)
 {
 	button_reset_last_input_timestamp();
 }
-// provided to tax the badge for a set ammount of time
-void haltAndCatchFire(void){
-	now = rtc_get_ms_since_boot();
-	uint64_t stopagain = stoptime+150;
-	if(now>stoptime){
-		showChoice(NONE,false);
-		led_pwm_disable(BADGE_LED_RGB_RED);
-		led_pwm_disable(BADGE_LED_RGB_GREEN);
-		led_pwm_disable(BADGE_LED_RGB_BLUE);
-		if(now>stopagain){
-		simonSays_state = dReturn;
-		}
-	}
-	checkin();
-}
-//entrypoint to halt and catch fire
-void delay(int ms, int returnTo){
-	stoptime = rtc_get_ms_since_boot()+ms;
-	dReturn=returnTo;
-	simonSays_state = SIMONSAYS_GENERIC_DELAY;
-}
-
 
 //RANDOMIZE THE SEQUENCE
 	Choice randChoice(void){
@@ -142,208 +173,187 @@ void delay(int ms, int returnTo){
 	unsigned int my_state = 0xa5a5a5a5 ^ timestamp;
 	return (xorshift(&my_state) % 4);
 }
-//ADD NEW TURNS IN THE SEQUENCE
-	void newTurn(void){
-	if(usedturns==MAX_TURNS){
-		//win the game :)
-		//no need to add a link
-		simonSays_state = SIMONSAYS_EXIT;
-		return; // LETS GET OUT OF THIS PLACE
-	}
-	dPad=NONE; //CLEAR ANY DPAD DATA
-	sequence[usedturns]=randChoice(); //SET NEXT FRAME
-	usedturns++; //COUNT 1...2...3... BREATHE
-	simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
+
+void newRound(void){
+	sequence[usedTurns] = randChoice();
+	usedTurns++;
 }
 
+void resetButtons(void){
+	showChoice(NONE);
+	dPad = NONE;
+	soundStop();
+	waitingForRelease = false;
+	actuallyReleased = false;
+	listening = true;
+}
 
-//cleaning house
-	void cleanSequence(void){
-	for(int i =0;i<MAX_TURNS;i++){
-		sequence[i]=NONE;
+//CHECKS TO SEE WHAT BUTTONS ARE PRESSED
+void check_buttons(void){
+	int down_latches = button_down_latches();
+	int up_latches = button_up_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+		simonSays_state = SIMONSAYS_EXIT;
 	}
 
+	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		simonSays_state = SIMONSAYS_EXIT;
+	}
+
+	if(listening){
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
+			dPad = LEFT;
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT,down_latches)) {
+			dPad = RIGHT;
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
+			dPad = UP;
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN,down_latches))
+		{
+			dPad = DOWN;
+		}
+	}
+
+	if(waitingForRelease){
+		if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, up_latches)) {
+			if(dPad == LEFT){
+				actuallyReleased = true;
+			}
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT,up_latches)) {
+			if(dPad == RIGHT){
+				actuallyReleased = true;
+			}
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_UP, up_latches)) {
+			if(dPad == UP){
+				actuallyReleased = true;
+			}
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN,up_latches))
+		{
+			if(dPad == DOWN){
+				actuallyReleased = true;
+			}
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_A, up_latches)) {
+			//simonSays_state = SIMONSAYS_EXIT;
+		}
+		else if (BUTTON_PRESSED(BADGE_BUTTON_B, up_latches)) {
+			//simonSays_state = SIMONSAYS_EXIT;
+		}
+	}
+
+}
+
+void clearSequence(void){
+	for(int i=0;i<MAX_TURNS;i++){
+		sequence[i] = NONE;
+	}
+	it = 0;
+	usedTurns =0;
 }
 
 //SETS UP OUR WORK ENVIRONMENT
 	void simonSays_init(void){
-	usedturns=0; // COUNTS THE TURNS
-	cleanSequence(); //CLEANS THE SEQUENCE
-	newTurn(); //ADDS A NEW FRAME TO THE SEQUENCE
+	it = 0;
+	usedTurns=0;
+	clearSequence();
+	newRound();
+	timeIsSet = false;
+	listening = false;
+	waitingForRelease = false;
 	FbInit();
 	FbClear();
+	FbMove(16,0);
+	FbImage2(alldark_p, 0);
+	FbSwapBuffers();
+	soundStop();
 	simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
 }
-//CHECKS TO SEE WHAT BUTTONS ARE PRESSED
-	void check_buttons(void){
-    int down_latches = button_down_latches();
-	int up_latches = button_up_latches();
-	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
-		dPad = LEFT;
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT,down_latches)) {
-		dPad = RIGHT;
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
-		dPad = UP;
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN,down_latches))
-	{
-		dPad = DOWN;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
-		simonSays_state = SIMONSAYS_EXIT;
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
-		simonSays_state = SIMONSAYS_EXIT;
-	}
-	//******************************************//
 
-	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
-		if(dPad == LEFT){
-			released = true;
+	void playerSetup(void){
+		it = 0;
+		dPad = NONE;
+		listening = true;
+		check_buttons();
+		simonSays_state = SIMONSAYS_PLAYER_RUN;
+	}
+	void playerRun(void){
+		if(waitingForRelease){
+		if(actuallyReleased){
+			if(sequence[it]==dPad){
+				//if last one
+				if((it>98)|(sequence[it+1]==NONE)){
+					resetButtons();
+					newRound();
+					wait(800,SIMONSAYS_PLAYBACK_SETUP);
+					return;
+				}
+				else{
+					resetButtons();
+					it++;
+					return;
+				}
+			}
+			else{
+				resetButtons();
+				simonSays_state = SIMONSAYS_EXIT;
+			}
 		}
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT,up_latches)) {
-		if(dPad == RIGHT){
-			released = true;
-		}
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_UP, up_latches)) {
-		if(dPad == UP){
-			released = true;
-		}
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN,up_latches))
-	{
-		if(dPad == DOWN){
-			released = true;
-		}
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, up_latches)) {
-		//simonSays_state = SIMONSAYS_EXIT;
-	}
-	else if (BUTTON_PRESSED(BADGE_BUTTON_B, up_latches)) {
-		//simonSays_state = SIMONSAYS_EXIT;
-	}
-
-
-	//******************************************//
-}
-
-//sets up the playback variables
-void playbackSetup (void){
-	it = 0; //GENERIC GLOBAL ITERATOR
-	dPad = NONE; // CLEAR ANY DPAD DATA
-	lastone = false; // CLEAR THE KILLSWITCH
-	simonSays_state = SIMONSAYS_PLAYBACK_RUN;
-}
-
-//playback logic.
-void playbackRun (void){
-
-	//IF ITS THE LAST FRAME IN THE SEQUENCE
-	if(lastone){
-		//START THE PLAYERS TURN
-		simonSays_state = SIMONSAYS_PLAYERTURN_SETUP;
+		check_buttons();
 		return;
-	}
-	//IF THIS IS GOING TO BE THE LAST TURN
-	if((it+1==usedturns) | (it==99)){
-		lastone=true;
-	}
-	//SHOW THE FRAME AND WAIT A BIT
-	showChoice(sequence[it],true);
-	check_buttons();
-	checkin();
-	it++;
-	delay(800,SIMONSAYS_PLAYBACK_RUN);
-}
-
-//setup to listen and verify player input
-void playerTurnSetup(void){
-	it=0;
-	released = false;
-	clear = true;
-	lStop = (rtc_get_ms_since_boot()+3000);
-	simonSays_state = SIMONSAYS_PLAYERTURN_RUN;
-	dPad=NONE;
-	check_buttons();
-}
-
-//playerturn logic.
-void playerTurnRun (void){
-	if(released){
-		delay(250,SIMONSAYS_PLAYERTURN_RUN);
-		released = false;
-		clear = true;
-	}
-	if(clear){
-		showChoice(NONE,false);
-		led_pwm_disable(BADGE_LED_RGB_RED);
-		led_pwm_disable(BADGE_LED_RGB_GREEN);
-		led_pwm_disable(BADGE_LED_RGB_BLUE);
-		clear = false;
-	}
-	//IF THE DPAD MATCHES THE CURRENT
-	//NODE IN THE SEQUENCE
-	if(dPad==sequence[it]){
-		led_pwm_disable(BADGE_LED_RGB_RED);
-		led_pwm_disable(BADGE_LED_RGB_GREEN);
-		led_pwm_disable(BADGE_LED_RGB_BLUE);
-		//PLAY THE CHOICE
-		showChoice(dPad,true);
-		//IF ITS THE LAST IN THE SEQUENCE
-		if(it==(usedturns-1)){
-			//sequence complete
-			dPad=NONE;
-			//ADD A NEW ONE
-			delay(800,SIMONSAYS_ADD);
 		}
-		//IF ITS NOT THE LAST ONE THEN WE
-		//KEEP PLAYING THE SEQUENCE
+		if(dPad==NONE){
+				check_buttons();
+				return;
+			}
 		else{
-			it++;
-			dPad=NONE;
-			check_buttons();
-			//GIVE EM SOME EXTRA TIME
-			lStop+=1000;
-			return;
-		}
-	}
-	else{
-			//COUNTDOWN TIMER
-		lNow=rtc_get_ms_since_boot();
-		bool timesup = (lNow>lStop);
-		if(dPad!=NONE||timesup){
-			//GOT IT WRONG END THE GAME
-			//PROBABLY WILL GO TO A MENU LATER
-			//led_pwm_enable(BADGE_LED_RED,255);
-
-			audio_out_beep(42,2000);
-			delay(1000,SIMONSAYS_PLAYERLOST);
-			return;
-		}
-		else{
-			//NO INPUT SO CHECK BUTTONS AGAIN
+			showChoice(dPad);
+			waitingForRelease = true;
+			listening = false;
 			check_buttons();
 			return;
 		}
-
+	}
+	void playbackSetup(void){
+		playing = false;
+		it = 0;
+		simonSays_state = SIMONSAYS_PLAYBACK_RUN;
+	}
+	void playbackRun(void){
+		if(playing){
+			soundStop();
+			playing = false;
+			showChoice(NONE);
+			wait(800,SIMONSAYS_PLAYBACK_RUN);
+			//check for last
+			if(sequence[it+1]==NONE){
+				simonSays_state = SIMONSAYS_PLAYER_SETUP;
+				return;
+			}
+			else{
+				it++;
+				return;
+			}
+		}
+		else{
+			showChoice(sequence[it]);
+			playing = true;
+			wait(800,SIMONSAYS_PLAYBACK_RUN);
+			return;
+		}
 	}
 
-}
-void playerLost(void){
-	FbColor(RED);
-	FbMove(10, LCD_YSIZE / 2);
-	FbWriteLine("YOU LOSE!");
-	FbSwapBuffers();
-	delay(2000,SIMONSAYS_EXIT);
-}
 //THIS GETS OUT OF THE PROGRAM CLEANLY
 void simonSays_exit(void){
-	cleanSequence();
+	soundStop();
 	simonSays_state = SIMONSAYS_INIT; /* So that when we start again, we do not immediately exit */
 	pop_app();
 }
+
 
 /* collabortive processing interface */
 void simonSays_cb(__attribute__((unused)) struct badge_app *app){
@@ -351,26 +361,20 @@ void simonSays_cb(__attribute__((unused)) struct badge_app *app){
 	case SIMONSAYS_INIT:
 		simonSays_init();
 		break;
-	case SIMONSAYS_PLAYERTURN_SETUP:
-		playerTurnSetup();
+	case SIMONSAYS_WAIT:
+		waitForState(waitstate);
 		break;
-	case SIMONSAYS_PLAYERTURN_RUN:
-		playerTurnRun();
+	case SIMONSAYS_PLAYER_SETUP:
+		playerSetup();
+		break;
+	case SIMONSAYS_PLAYER_RUN:
+		playerRun();
 		break;
 	case SIMONSAYS_PLAYBACK_SETUP:
 		playbackSetup();
 		break;
 	case SIMONSAYS_PLAYBACK_RUN:
 		playbackRun();
-		break;
-	case SIMONSAYS_PLAYERLOST:
-		playerLost();
-		break;
-	case SIMONSAYS_ADD:
-		newTurn();
-		break;
-	case SIMONSAYS_GENERIC_DELAY:
-		haltAndCatchFire();
 		break;
 	case SIMONSAYS_EXIT:
 		simonSays_exit();
