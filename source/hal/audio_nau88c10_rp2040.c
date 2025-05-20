@@ -29,6 +29,7 @@
 #include <hardware/sync.h>
 
 #include "analog.h"
+#include "rtc.h"
 #include "pinout_rp2040.h"
 #include "nau88c10_rp2040.h"
 #include "badge.h"
@@ -45,6 +46,12 @@
  *  @{
  */
 
+#if PREPRODUCTION_FIRMWARE
+#define AUDIO_IRQ_STATS 1
+#else
+#define AUDIO_IRQ_STATS 0
+#endif /* PREPRODUCTION_FIRMWARE */
+
 #define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX)
 
 static volatile enum audio_out_mode_ {
@@ -55,6 +62,11 @@ static volatile enum audio_out_mode_ {
 // FIXME: move this to audio_common.c. -PMW
 static audio_input_callback_t m_audio_in_cb[AUDIO_INPUT_CALLBACKS_MAX];
 static int m_audio_in_cb_count;
+
+#if AUDIO_IRQ_STATS
+static uint64_t m_audio_last_irq_start_us;
+static uint64_t m_audio_irq_accum_us;
+#endif /* AUDIO_IRQ_STATS */
 
 static struct audio_out_beep {
     uint16_t duration_ms;   /**< Duration in ms. */
@@ -159,6 +171,9 @@ static void prv_audio_i2s_process(int32_t *in, int32_t *out)
 
 static void prv_audio_i2s_dma_handler(void)
 {
+#if AUDIO_IRQ_STATS
+    uint64_t entry_us = rtc_get_us_since_boot();
+#endif /* AUDIO_IRQ_STATS */
     struct pio_i2s *p = &m_nau88c10_ctx.pio_i2s;
     size_t offset;
     if (*(int32_t**)dma_hw->ch[p->dma_ch_in_ctrl].read_addr == p->input_buffer) {
@@ -170,6 +185,17 @@ static void prv_audio_i2s_dma_handler(void)
     }
     prv_audio_i2s_process(p->input_buffer + offset, p->output_buffer + offset);
     dma_hw->ints0 = 1U << p->dma_ch_in_data;  // clear the IRQ
+#if AUDIO_IRQ_STATS
+    uint64_t exit_us = rtc_get_us_since_boot();
+    m_audio_irq_accum_us += (exit_us - entry_us);
+    uint64_t since_last_log_us = entry_us - m_audio_last_irq_start_us;
+    if (since_last_log_us > (1000 * 1000)) {
+        LOG("irq cpu load %llu%%", 
+            m_audio_irq_accum_us * 100 / MAX(1,since_last_log_us));
+        m_audio_irq_accum_us = 0;
+        m_audio_last_irq_start_us = entry_us;
+    }
+#endif /* AUDIO_IRQ_STATS */
 }
 
 /*- Initialization -----------------------------------------------------------*/
