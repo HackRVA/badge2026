@@ -4,9 +4,42 @@
 
 #include "new_badge_monsters.h"
 #define DEFINE_IMAGE_ASSET_DATA
-/* #include "new_badge_monsters_assets.h" */
 #include "assetList.h"
-#include "2024-badge-monsters/2024-badge-monsters.h"
+
+#include "badge_monster_birdo_asset.h"
+#include "badge_monster_bowser_asset.h"
+#include "badge_monster_crawler_asset.h"
+#include "badge_monster_donkey_kong_asset.h"
+#include "badge_monster_ghosts_asset.h"
+#include "badge_monster_harpy_asset.h"
+#include "badge_monster_jason_voorhees_asset.h"
+#include "badge_monster_medusa_head_asset.h"
+#include "badge_monster_metall_asset.h"
+#include "badge_monster_moblin_asset.h"
+#include "badge_monster_mother_brain_asset.h"
+#include "badge_monster_nettler_asset.h"
+#include "badge_monster_odd_eye_asset.h"
+#include "badge_monster_shredder_asset.h"
+#include "badge_monster_slime_asset.h"
+#include "badge_monster_stay_puff_asset.h"
+
+#include "badge_monster_beetlejuice_asset.h"
+#include "badge_monster_chet_asset.h"
+#include "badge_monster_chucky_asset.h"
+#include "badge_monster_drago_asset.h"
+#include "badge_monster_ed_rooney_asset.h"
+#include "badge_monster_freddy_krueger_asset.h"
+#include "badge_monster_gopher_caddyshack_asset.h"
+#include "badge_monster_gremlin_asset.h"
+#include "badge_monster_hans_gruber_asset.h"
+#include "badge_monster_jack_torrance_asset.h"
+#include "badge_monster_jason_asset.h"
+#include "badge_monster_joker_asset.h"
+#include "badge_monster_khan_asset.h"
+#include "badge_monster_richard_vernon_asset.h"
+#include "badge_monster_skeltor_asset.h"
+#include "badge_monster_stay_puft_asset.h"
+
 #undef DEFINE_IMAGE_ASSET_DATA
 #include "new_badge_monsters_ir.h"
 #include "audio.h"
@@ -112,7 +145,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A large, amphi-\nbious monster\nwith a biolumi-\nnescent under\nbelly, capable\n"
 	"of emitting\nelectrical dis-\ncharges under\nwater, in\nhabiting the\noceans of dis-\ntant moons.",
-        &bm1
+        &badge_monster_birdo
     }
   , {
         "Nekroth",
@@ -120,7 +153,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A skeletal,\nundead-like\nmonster that\ndrains life\nforce from its\nvictims, "
 	"leav-\ning them as\nwithered husks",
-        &bm2
+        &badge_monster_bowser
     }
   , {
         "Xarnok",
@@ -128,14 +161,14 @@ struct new_monster new_monsters[] = {
         RED,
         "A heavily arm-\nored beast with\nmultiple eyes\nand sharp man-\ndibles, known\n"
 	"for its brute\nstrength and\nability to\ntunnel through\nsolid rock on\nasteroid belt",
-        &bm3
+        &badge_monster_crawler
     }
   , {
         "Obsidrax",
         false,
         RED,
         "A hulking beast\nwith obsidian\nskin and the\nability to\nmanipulate\nmagma, often\nfound in volca-\nnic regions.",
-        &bm4
+        &badge_monster_donkey_kong
     }
   , {
         "Chronor",
@@ -143,14 +176,14 @@ struct new_monster new_monsters[] = {
         RED,
         "A time manipu-\nlating entity\nthat can slow\ndown or speed\nup time around\nit, using this\n"
 	"ability to\nevade attacks\nor catch prey.",
-        &bm5
+        &badge_monster_ghosts
     }
   , {
         "Lumorax",
         false,
         RED,
         "A biolumine-\nscent predator\nthat uses light\nto lure prey.",
-        &bm6
+        &badge_monster_harpy
     }
   , {
         "Phantax",
@@ -158,7 +191,7 @@ struct new_monster new_monsters[] = {
         RED,
         "An ethereal\nbeing composed\nof dark matter,\nable to pass\nthrough\n"
 	"physical ob-\njects and mani-\npulate shadows.",
-        &bm7
+        &badge_monster_jason_voorhees
     }
   , {
         "Thragor",
@@ -166,7 +199,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A massive, bi-\npedal monster\nwith volcanic\nrock skin and\nthe ability to\n"
 	"spew molten\nlava from its\nmouth, dwelling\nnear the cores\nof unstable\nplanets.",
-        &bm8
+        &badge_monster_medusa_head
     }
   , {
         "Glacira",
@@ -174,7 +207,7 @@ struct new_monster new_monsters[] = {
         RED,
         "An ice-covered\npredator with a\nchilling breath\nthat can freeze\n"
 	"anything in its\npath, thriving\nin icy environ-\nments.",
-        &bm9
+        &badge_monster_metall
     }
   , {
         "Quasarix",
@@ -182,14 +215,14 @@ struct new_monster new_monsters[] = {
         RED,
         "A cosmic entity\nthat emits pow-\nerful radiation\nbursts, disin-\ntegrating any-\n"
 	"thing within\nits reach, and\nliving in deep\nspace.",
-        &bm10
+        &badge_monster_moblin
     }
   , {
         "Pirate",
         false,
         RED,
         "Arrrr matey! I\nfly like Iron\nMan!",
-        &bm11
+        &badge_monster_mother_brain
     }
   , {
         "Blitzar",
@@ -197,7 +230,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A lightning-\nfast quadruped\nwith electric\nblue fur that\ncan generate\n"
 	"powerful static\ndischarges to\nstun its prey.",
-        &bm12
+        &badge_monster_nettler
     }
   , {
         "Lunaraq",
@@ -205,7 +238,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A giant six-\nlegged predator\nwith a skull\nlike head and\nrazor-sharp\n"
 	"claws, using\nits speed and\nagility to hunt\nin low-gravity\nenvirnoments",
-        &bm13
+        &badge_monster_odd_eye
     }
   , {
         "Flarix",
@@ -213,7 +246,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A two headed\nfire-breathing\nreptilian beast\nwith scales\nthat can with-\n"
 	"stand extreme\nheat, dwelling\nnear volcanic\nvents on molten\nplanets.",
-        &bm14
+        &badge_monster_shredder
     }
   , {
         "Spirox",
@@ -221,7 +254,7 @@ struct new_monster new_monsters[] = {
         RED,
         "A spore-based\norganism that\ninfects and\ntakes control\nof other crea-\n"
 	"tures, turning\nthem into zombi-\nfied versions\nof themselves",
-        &bm15
+        &badge_monster_slime
     }
   , {
         "Skorith",
@@ -229,47 +262,137 @@ struct new_monster new_monsters[] = {
         RED,
         "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
 	"capable of\nmelting through\nmetal to reach\nits prey.",
-        &bm16
+        &badge_monster_stay_puff
     }
+
   , {
-        "Eclipsar",
+        "beetlejuice",
         false,
         RED,
-        "A shadowy wing-\ned creature\nthat thrives in\nthe darkness,\ncapable of\ncreating areas\n"
-	"of absolute\ndarkness to\nambush its\nprey.",
-        &bm17
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_beetlejuice
     }
+
   , {
-        "Nyralith",
+        "chet",
         false,
         RED,
-        "A crystalline,\nspider-like\nmonster that\ncan generate\npowerful energy\n"
-	"beams from its\neye, inhabiting\nthe caves of\nmineral-rich\nasteroids.",
-        &bm18
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_chet
     }
   , {
-        "Zephyra",
+        "chucky",
         false,
         RED,
-        "A delicate,\nbutterfly-like\ncreature that\nflits through\nthe air with\nease, using its\n"
-	"wings to create\nmesmerizing\nlight patterns\nto attract prey.",
-        &bm19
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_chucky
     }
   , {
-        "Mythra",
+        "drago",
         false,
         RED,
-        "A ghostly, spec-\ntral entity\nthat feeds on\nthe psychic\nenergy of sen-\n"
-	"tient beings,\nable to phase\nin and out of\nreality at\nwill.",
-        &bm20
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_drago
     }
   , {
-        "Raven",
-        true,
+        "ed rooney",
+        false,
         RED,
-        "A haunting omen\ndriving you\ninto madness.\n\nAppears along-\nside rapping at\n"
-        "your chamber\ndoor...",
-        &bm21
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_ed_rooney
+    }
+  , {
+        "freddy krueger",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_freddy_krueger
+    }
+  , {
+        "gopher",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_gopher_caddyshack
+    }
+  , {
+        "gremlin",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_gremlin
+    }
+  , {
+        "hans gruber",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_hans_gruber
+    }
+  , {
+        "jack torrance",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_jack_torrance
+    }
+  , {
+        "jason",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_jason
+    }
+  , {
+        "joker",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_joker
+    }
+  , {
+        "khan",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_khan
+    }
+  , {
+        "richard vernon",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_richard_vernon
+    }
+  , {
+        "skeltor",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_skeltor
+    }
+  , {
+        "stay puft",
+        false,
+        RED,
+        "A predatory\ninsectoid with\na metallic exo-\nskeleton and\nacidic saliva,\n"
+	"capable of\nmelting through\nmetal to reach\nits prey.",
+        &badge_monster_stay_puft
     }
 };
 
@@ -370,7 +493,12 @@ static void app_init()
     state.nmonsters = ARRAYSIZE(new_monsters);
     load_from_flash();
     // initial monster different for different badges
-    state.initial_mon = badge_system_data()->badgeId % state.nmonsters;
+    /* state.initial_mon = badge_system_data()->badgeId % state.nmonsters; */
+    /*
+     * only the first 16 monsters are available as starters
+     * the rest can be unlocked from other badge apps
+     * */
+    state.initial_mon = badge_system_data()->badgeId % 16;
     state.current_monster = state.initial_mon;
     enable_monster(state.initial_mon);
 
@@ -480,7 +608,8 @@ static void show_monster(void)
     if (state.screen_changed) {
         LOG("render_monster: %s\n", monster->name);
         FbClear();
-        FbMove(0, 10);
+        /* assuming the images are 112 width this year */
+        FbMove(LCD_XSIZE/2 - 112/2, LCD_YSIZE/2 - 112/2);
         FbImage4bit2(monster->asset, 0);
         if(state.current_monster == state.initial_mon)
         {

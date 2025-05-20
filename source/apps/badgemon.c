@@ -10,7 +10,39 @@
 #include "xorshift.h"
 #include "palette.h"
 #include "colors.h"
-#include "2024-badge-monsters/2024-badge-monsters.h"
+
+#include "badge_monster_birdo_asset.h"
+#include "badge_monster_bowser_asset.h"
+#include "badge_monster_crawler_asset.h"
+#include "badge_monster_donkey_kong_asset.h"
+#include "badge_monster_ghosts_asset.h"
+#include "badge_monster_harpy_asset.h"
+#include "badge_monster_jason_voorhees_asset.h"
+#include "badge_monster_medusa_head_asset.h"
+#include "badge_monster_metall_asset.h"
+#include "badge_monster_moblin_asset.h"
+#include "badge_monster_mother_brain_asset.h"
+#include "badge_monster_nettler_asset.h"
+#include "badge_monster_odd_eye_asset.h"
+#include "badge_monster_shredder_asset.h"
+#include "badge_monster_slime_asset.h"
+#include "badge_monster_stay_puff_asset.h"
+#include "badge_monster_beetlejuice_asset.h"
+#include "badge_monster_chet_asset.h"
+#include "badge_monster_chucky_asset.h"
+#include "badge_monster_drago_asset.h"
+#include "badge_monster_ed_rooney_asset.h"
+#include "badge_monster_freddy_krueger_asset.h"
+#include "badge_monster_gopher_caddyshack_asset.h"
+#include "badge_monster_gremlin_asset.h"
+#include "badge_monster_hans_gruber_asset.h"
+#include "badge_monster_jack_torrance_asset.h"
+#include "badge_monster_jason_asset.h"
+#include "badge_monster_joker_asset.h"
+#include "badge_monster_khan_asset.h"
+#include "badge_monster_richard_vernon_asset.h"
+#include "badge_monster_skeltor_asset.h"
+#include "badge_monster_stay_puft_asset.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_SPARKLES 16
@@ -67,33 +99,52 @@ struct monster {
 	const struct asset2 *image;
 };
 
-#define NUM_MONSTERS 11 
 static const struct monster monsters[] = {
-  {.name = "mircrabanx", .description = "A biotech or nano-themed creature", .unlocked = true, .shiny = false, .image = &bm1},
-  {.name = "rvasekor", .description = "a mythical, security-themed being", .unlocked = true, .shiny = true, .image = &bm2},
-  {.name = "lunatrox", .description = "a galactic scout", .unlocked = true, .shiny = true, .image = &bm3},
-  {.name = "gunneraam", .description = "heavily armored turret monster", .unlocked = true, .shiny = false, .image = &bm3},
-  {.name = "astrolith", .description = "Rock-type, possibly a meteor creature", .unlocked = true, .shiny = false, .image = &bm4},
-  {.name = "lunarex", .description = "A noble, moon-themed savior creature", .unlocked = true, .shiny = false, .image = &bm5},
-  {.name = "zonetrax", .description = "A tank-like war monster", .unlocked = true, .shiny = false, .image = &bm6},
-  {.name = "jackpanda", .description = "A lucky, coin-flipping creature", .unlocked = true, .shiny = true, .image = &bm7},
-  {.name = "smashikong", .description = "Heavy-hitting brawler, ape-like", .unlocked = true, .shiny = false, .image = &bm8},
-  {.name = "puzzlith", .description = "a psychic fairy", .unlocked = true, .shiny = false, .image = &bm9},
-  {.name = "numbrion", .description = "evolves every 1024 levels", .unlocked = true, .shiny = false, .image = &bm10},
-  {.name = "hacktrix", .description = "A virtual-type infiltrator", .unlocked = true, .shiny = false, .image = &bm11},
-  {.name = "celluna", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &bm12},
-  {.name = "beatdramon", .description = "rhythm", .unlocked = true, .shiny = false, .image = &bm13},
+  {.name = "mircrabanx", .description = "A biotech or nano-themed creature", .unlocked = true, .shiny = false, .image = &badge_monster_birdo},
+  {.name = "rvasekor", .description = "a mythical, security-themed being", .unlocked = true, .shiny = true, .image = &badge_monster_bowser},
+  {.name = "lunatrox", .description = "a galactic scout", .unlocked = true, .shiny = true, .image = &badge_monster_jason_voorhees},
+  {.name = "gunneraam", .description = "heavily armored turret monster", .unlocked = true, .shiny = false, .image = &badge_monster_crawler},
+  {.name = "astrolith", .description = "Rock-type, possibly a meteor creature", .unlocked = true, .shiny = false, .image = &badge_monster_donkey_kong},
+  {.name = "lunarex", .description = "A noble, moon-themed savior creature", .unlocked = true, .shiny = false, .image = &badge_monster_ghosts},
+  {.name = "zonetrax", .description = "A tank-like war monster", .unlocked = true, .shiny = false, .image = &badge_monster_harpy},
+  {.name = "jackpanda", .description = "A lucky, coin-flipping creature", .unlocked = true, .shiny = true, .image = &badge_monster_medusa_head},
+  {.name = "smashikong", .description = "Heavy-hitting brawler, ape-like", .unlocked = true, .shiny = false, .image = &badge_monster_nettler},
+  {.name = "puzzlith", .description = "a psychic fairy", .unlocked = true, .shiny = false, .image = &badge_monster_odd_eye},
+  {.name = "numbrion", .description = "evolves every 1024 levels", .unlocked = true, .shiny = false, .image = &badge_monster_shredder},
+  {.name = "hacktrix", .description = "A virtual-type infiltrator", .unlocked = true, .shiny = false, .image = &badge_monster_slime},
+  {.name = "celluna", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_metall},
+  {.name = "celluna", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_moblin},
+  {.name = "celluna", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_mother_brain},
+  {.name = "celluna", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_stay_puff},
+
+  {.name = "beetlejuice", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_beetlejuice},
+  {.name = "chet", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_chet},
+  {.name = "chucky", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_chucky},
+  {.name = "drago", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_drago},
+  {.name = "ed rooney", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_ed_rooney},
+  {.name = "freddy krueger", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_freddy_krueger},
+  {.name = "gopher caddyshack", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_gopher_caddyshack},
+  {.name = "gremlin", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_gremlin},
+  {.name = "hans gruber", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_hans_gruber},
+  {.name = "jack torrance", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_jack_torrance},
+  {.name = "jason", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_jason},
+  {.name = "joker", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_joker},
+  {.name = "khan", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_khan},
+  {.name = "richard vernon", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_richard_vernon},
+  {.name = "skeltor", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_skeltor},
+  {.name = "stay puft", .description = "Cellular, evolving creature with logic-based moves", .unlocked = true, .shiny = false, .image = &badge_monster_stay_puft},
 };
 
 static void check_buttons(void)
 {
 	int down_latches = button_down_latches();
+	int num_monsters = ARRAY_SIZE(monsters);
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
-		current_monster = (current_monster + NUM_MONSTERS - 1) % NUM_MONSTERS;
+		current_monster = (current_monster + num_monsters - 1) % num_monsters;
 	}
 	else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
-		current_monster = (current_monster + 1) % NUM_MONSTERS;
+		current_monster = (current_monster + 1) % num_monsters;
 	}
 	else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches)) {
 		show_info = !show_info;     
@@ -150,10 +201,7 @@ static void draw_sparkles(uint64_t now) {
 
 static void draw_monster_avatar(const struct asset2 *img)
 {
-	int x = 16;
-	int y = 4;
-
-	FbMove(x, y);
+	FbMove(LCD_XSIZE/2 - 112/2, LCD_YSIZE/2 - 112/2);
 	FbImage4bit2(img, 0);
 }
 
