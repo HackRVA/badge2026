@@ -178,7 +178,7 @@ int audio_out_beep_with_cb(
 #ifdef SIMULATOR_AUDIO
 	float value = -0.025;
 
-	if ((freq == 0) || (duration == 0)) {
+	if (freq == 0 && duration == 0) {
 		/* Stop playing beep. */
 		SDL_LockMutex(audio_lock);
 		memset(audio_buffer, 0, sizeof(audio_buffer));
