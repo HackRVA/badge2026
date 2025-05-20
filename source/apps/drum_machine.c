@@ -238,12 +238,17 @@ static void play_pattern(int current_pattern)
 
 static void play_song(void)
 {
+	/* Count how many measures we have */
+	drum_song.nmeasures = 0;
+	for (int i = 0; i < MAX_DRUM_PATTERNS_PER_SONG; i++)
+		if (drum_song.measure[i] != 255)
+			drum_song.nmeasures = i;
 	drumtune.num_notes = 0;
 	drumtune.note = drumtune_hits;
 	for (int i = 0; i < drum_song.nmeasures; i++) {
 		int m = drum_song.measure[i];
 		struct drum_pattern *p = &drum_song.pattern[m];
-		for (int j = 0; j < HITS_PER_MEASURE; i++)
+		for (int j = 0; j < HITS_PER_MEASURE; j++)
 			add_drum_hit(&drumtune, p->hit[j]);
 	}
 	repeat_current_tune(NULL);
