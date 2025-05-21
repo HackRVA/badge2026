@@ -22,7 +22,7 @@
  *  @{
  */
 
-typedef int16_t audio_sample_t;
+/*- Public Macro ------------------------------------------------------------*/
 #define AUDIO_SAMPLE_MAX        (INT16_MAX)     //!< Audio driver maximum sample value
 #define AUDIO_SAMPLE_MIN        (INT16_MIN)     //!< Audio driver maximum sample value
 
@@ -33,8 +33,45 @@ typedef int16_t audio_sample_t;
 
 #define AUDIO_FS    (48000) /**< Audio driver sample rate. */
 
+#ifdef TARGET_SIMULATOR
+  #define AUDIO_BUFFER_FRAMES   (256)
+  #define AUDIO_BUFFER_CHANS    (1)
+#else
+  #ifdef TARGET_PICO
+    #ifdef AUDIO_BUFFER_FRAMES /* This might already be defined for i2s on pio. */
+      #if AUDIO_BUFFER_FRAMES != 48
+        #error "Incompatbile value for I2S AUDIO_BUFFER_FRAMES!"
+      #elif STEREO_BUFFER_SIZE != 96
+        #error "Unexpected channel count in I2S STEREO_BUFFER_SIZE!"
+      #endif
+    #else
+      #define AUDIO_BUFFER_FRAMES   (48)
+      #define AUDIO_BUFFER_CHANS    (2)
+    #endif /* AUDIO_BUFFER_FRAMES */
+  #else
+    #error "Target audio not configured!"
+  #endif /* TARGET_PICO */
+#endif /* TARGET_SIMULATOR */
+#define AUDIO_BUFFER_LEN    (AUDIO_BUFFER_FRAMES * AUDIO_BUFFER_CHANS)
+
+
 #define AUDIO_INPUT_CALLBACKS_MAX (4) /*!< Maximum number of audio input callbacks simultaneously active. */
 
+/*- Public Types -------------------------------------------------------------*/
+/** Integer type used for sample processing. */
+typedef int16_t audio_sample_t;
+
+/** Integer type used for samples in the audio buffer. */
+typedef int32_t audio_buffer_t;
+
+/** Audio input callback.
+ *
+ *  @param  samples Input samples to be processed.
+ *  @param  len     Number of input samples to be processed.
+ */
+typedef void (*audio_input_callback_t)(const audio_sample_t *samples, size_t len);
+
+/*- API ----------------------------------------------------------------------*/
 /*!
  *  @brief  Initialize and configure audio gpio
  *
@@ -51,12 +88,24 @@ void audio_init(void);
 /** Update audio engine with any per-frame tasks (like volume). */
 void audio_poll(void);
 
-/** Audio input callback.
+/** Process audio buffer.
  *
- *  @param  samples Input samples to be processed.
- *  @param  len     Number of input samples to be processed.
+ *  @param  in  Pointer to audio input buffer.
+ *  @param  out Pointer to audio output buffer.
  */
-typedef void (*audio_input_callback_t)(const audio_sample_t *samples, size_t len);
+void audio_process_buffer(const audio_buffer_t *in, audio_buffer_t *out);
+
+/** Lock shared audio context. 
+ *
+ *  @note   If this wraps a mutex, it must be a recursive mutex.
+ */
+void audio_lock(void);
+
+/** Unlock shared audio context.
+ *
+ *  @note   If this wraps a mutex, it must be a recursive mutex.
+ */
+void audio_unlock(void);
 
 /** Add audio input callback.
  *

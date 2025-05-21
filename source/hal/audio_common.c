@@ -11,11 +11,23 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <fxp_sqrt.h>
 
 #include "audio.h"
+#include "utils.h"
+
+/* TODO: add logging system? -PMW */
+#ifndef LOG
+#define LOG(...) printf("\r\n[audio] " __VA_ARGS__)
+#endif /* LOG */
+
+/*! @addtogroup BADGE_AUDIO Audio Driver
+ *  @{
+ */
 
 /*- Private Constants --------------------------------------------------------*/
 #define DB_RATIO_TABLE_ZERO_INDEX (86) /* Index of the entry for 0 dB. */
@@ -207,6 +219,28 @@ static const struct {int8_t dB; uint32_t ratio;} DB_RATIO_TABLE[] =
     {INT8_MAX, UINT32_MAX}, /* Guarantees UINT32_MAX in search domain. */
 };
 
+#define AUDIO_OUT_BEEP_AMPLITUDE    (INT32_MAX)
+
+/*- Private Variables --------------------------------------------------------*/
+/*----- Input ----------------------------------------------------------------*/
+static audio_input_callback_t m_audio_in_cb[AUDIO_INPUT_CALLBACKS_MAX];
+static int m_audio_in_cb_count;
+
+/*----- Output ---------------------------------------------------------------*/
+static volatile enum audio_out_mode_ {
+    AUDIO_OUT_MODE_OFF = 0,
+    AUDIO_OUT_MODE_BEEP,
+} m_audio_out_mode;
+
+static struct audio_out_beep {
+    uint32_t duration_samples;  /**< Duration in ms. */
+    uint32_t elapsed_samples;   /**< Elapsed beep duration in ms. */
+    uint16_t period;            /**< Period in samples. */
+    uint16_t samples_high;      /**< Samples high. */
+    uint16_t samples;           /**< Sample counter. */
+    void (*cb)(void);           /**< Callback on beep completion. */
+} m_audio_out_beep;
+
 /*- Private Methods ----------------------------------------------------------*/
 static uint32_t log2u32(uint32_t x)
 {
@@ -217,6 +251,34 @@ static uint32_t log2u32(uint32_t x)
     return n;
 }
 
+/*----- Output ---------------------------------------------------------------*/
+static void prv_audio_out_beep_complete(struct audio_out_beep *beep)
+{
+    LOG("finished playing beep");
+    m_audio_out_mode = AUDIO_OUT_MODE_OFF;
+    if (NULL != beep->cb) {
+        beep->cb();
+    }
+}
+
+static int32_t prv_audio_out_beep_get_next_sample(struct audio_out_beep *beep)
+{
+    int32_t sample;
+    uint32_t samples = beep->samples;
+    uint32_t period = beep->period;
+    if (samples < beep->samples_high) {
+        sample = AUDIO_OUT_BEEP_AMPLITUDE;
+    } else {
+        sample = -AUDIO_OUT_BEEP_AMPLITUDE;
+    }
+    if (++samples >= period) {
+        samples = 0;
+    }
+    beep->samples = samples;
+    return sample;
+}
+
+/*- API ----------------------------------------------------------------------*/
 audio_sample_t audio_rms(const audio_sample_t *samples, size_t len)
 {
     if (len == 0) {
@@ -275,3 +337,150 @@ int8_t audio_dB(audio_sample_t _ref, audio_sample_t _raw)
     for (; DB_RATIO_TABLE[index].ratio < ratio; index++);
     return DB_RATIO_TABLE[index].dB;
 }
+
+void audio_process_buffer(const audio_buffer_t *in, audio_buffer_t *out)
+{
+    /* Input samples. */
+    if (0 < m_audio_in_cb_count) {
+        audio_sample_t samples[AUDIO_BUFFER_FRAMES];
+        for (size_t i = 0; i < AUDIO_BUFFER_FRAMES; i++) {
+            samples[i] = in[1 + i * 2U];
+        }
+        for (unsigned i = 0; i < ARRAY_SIZE(m_audio_in_cb); i++) {
+            if (NULL != m_audio_in_cb[i]) {
+                m_audio_in_cb[i](samples, AUDIO_BUFFER_FRAMES);
+            }
+        }
+    }
+
+    /* Output samples. */
+    if (AUDIO_OUT_MODE_BEEP == m_audio_out_mode) {
+        struct audio_out_beep *beep = &m_audio_out_beep;
+        if (beep->elapsed_samples < beep->duration_samples) {
+            unsigned period = beep->period;
+            if (UINT16_MAX != period) {
+                /* Play the note. */
+                for (size_t i = 0; i < AUDIO_BUFFER_LEN; i += AUDIO_BUFFER_CHANS) {
+                    out[i] = prv_audio_out_beep_get_next_sample(beep);
+                    /* Check if beep is finished. */
+                    if (++(beep->elapsed_samples) == beep->duration_samples) {
+                        prv_audio_out_beep_complete(beep);
+                    }
+                }
+            } else {
+                /* This is a rest. */
+                for (size_t i = 0; i < AUDIO_BUFFER_LEN; i += AUDIO_BUFFER_CHANS) {
+                    out[i] = 0U;
+                    if (++(beep->elapsed_samples) == beep->duration_samples) {
+                        prv_audio_out_beep_complete(beep);
+                    }
+                }
+            }
+        } else {
+            for (size_t i = 0; i < AUDIO_BUFFER_LEN; i += AUDIO_BUFFER_CHANS) {
+                out[i] = 0U;
+            }
+        }
+    } else {
+        /* Nothing is playing. */
+        for (size_t i = 0; i < AUDIO_BUFFER_LEN; i += AUDIO_BUFFER_CHANS) {
+            out[i] = 0U;
+        }
+    };
+}
+
+/*----- Input ----------------------------------------------------------------*/
+int audio_in_add_cb(audio_input_callback_t cb)
+{
+    if (NULL == cb) {
+        LOG("Cannot add NULL input callback.");
+        return -EINVAL;
+    } else if (ARRAY_SIZE(m_audio_in_cb) <= (unsigned) m_audio_in_cb_count) {
+        LOG("No space to add input callback.");
+        return -ENOMEM;
+    } else {
+        for (int i = 0; i < (int) ARRAY_SIZE(m_audio_in_cb); i++) {
+            if (NULL == m_audio_in_cb[i]) {
+                m_audio_in_cb_count++;
+                m_audio_in_cb[i] = cb;
+                LOG("Added input callback. (i: %d, count: %d)",
+                    i, m_audio_in_cb_count);
+                return i;
+            }
+        }
+        LOG("Did not find space to add input callback.");
+        return -ENOMEM;
+    }
+}
+
+int audio_in_remove_cb(int i)
+{
+    if (((int) ARRAY_SIZE(m_audio_in_cb) <= i) || (i < 0)) {
+        LOG("Input entry index out of range.");
+        return -EINVAL;
+    } else if (NULL == m_audio_in_cb[i]) {
+        LOG("Input entry already empty.");
+        return -ENOENT;
+    } else {
+        m_audio_in_cb[i] = NULL;
+        m_audio_in_cb_count--;
+        LOG("Removed input callback. (i: %d, count: %d)", i, m_audio_in_cb_count);
+        return 0;
+    }
+}
+
+int audio_in_cb_count()
+{
+    return m_audio_in_cb_count;
+}
+
+/*----- Output ---------------------------------------------------------------*/
+int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
+{
+    uint32_t period;
+    enum audio_out_mode_ out_mode = AUDIO_OUT_MODE_OFF;
+    if ((freq_hz == 0) && (dur_ms == 0)) {
+        /* Cancel the current beep. */
+        period = UINT16_MAX;
+    } else if (freq_hz == 0 && cb != NULL) { 
+        /* We're being asked to play a rest. */
+        out_mode = AUDIO_OUT_MODE_BEEP;
+        period = UINT16_MAX;
+    } else if ((freq_hz < AUDIO_BEEP_FREQ_HZ_MIN)
+               || (freq_hz > AUDIO_BEEP_FREQ_HZ_MAX)
+               || (dur_ms < AUDIO_BEEP_DUR_MS_MIN)
+               || (dur_ms > AUDIO_BEEP_DUR_MS_MAX))
+    {
+        return -1;
+    } else {
+        out_mode = AUDIO_OUT_MODE_BEEP;
+        period = AUDIO_FS / freq_hz;
+    }
+
+    audio_lock();
+    m_audio_out_mode = out_mode;
+    m_audio_out_beep.duration_samples = dur_ms * (AUDIO_FS / 1000);
+    m_audio_out_beep.elapsed_samples = 0;
+    if (m_audio_out_beep.period != period) {
+        m_audio_out_beep.period = period;
+        m_audio_out_beep.samples_high = period / 2;
+        m_audio_out_beep.samples = 0;
+    }
+    m_audio_out_beep.cb = cb;
+    audio_unlock();
+    LOG("playing beep (freq: %d, period: %u, duration: %u)", 
+         freq_hz, period, dur_ms);
+    return 0;
+}
+
+int audio_out_beep(uint16_t freqHz, uint16_t durMs)
+{
+    return audio_out_beep_with_cb(freqHz, durMs, NULL);
+}
+
+bool audio_is_playing(void) {
+    return m_audio_out_mode == AUDIO_OUT_MODE_BEEP;
+}
+
+/*! @} */ // BADGE_AUDIO
+
