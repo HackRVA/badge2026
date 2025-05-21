@@ -1106,8 +1106,8 @@ static const char *monster_keys[UNLOCKABLE_MONSTER_COUNT] = {
 	"monster/jason",
 	"monster/joker",
 	"monster/khan",
-	"monster/richarad vernon",
-	"monster/skeltor",
+	"monster/richard vernon",
+	"monster/skeletor",
 	"monster/stay puft",
 };
 
