@@ -28,7 +28,6 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/2048.c
 	${CMAKE_CURRENT_LIST_DIR}/puzzle-attack.c
 	${CMAKE_CURRENT_LIST_DIR}/badgemon.c
-	${CMAKE_CURRENT_LIST_DIR}/badgemon_menu.c
 	${CMAKE_CURRENT_LIST_DIR}/badgemon_unlock.c
 	${CMAKE_CURRENT_LIST_DIR}/mixtape.c
         # ${CMAKE_CURRENT_LIST_DIR}/badge-app-template.c
