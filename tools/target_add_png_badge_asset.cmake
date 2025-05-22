@@ -28,6 +28,7 @@
 # target_add_png_badge_asset(${PRODUCT} 4 ${CMAKE_CURRENT_LIST_DIR}/example_png.png EXTRA_FLAGS --nostatic)
 # ```
 function(target_add_png_badge_asset TARGET BITDEPTH PNG_FILE)
+	# set_property(GLOBAL PROPERTY TARGET_MESSAGES OFF)
 	cmake_parse_arguments(ARG "" "" "EXTRA_FLAGS" ${ARGN})
 
 	get_filename_component(PNG_NAME "${PNG_FILE}" NAME_WE)
@@ -46,13 +47,11 @@ function(target_add_png_badge_asset TARGET BITDEPTH PNG_FILE)
 		VERBATIM
 	)
 
-	add_custom_target(${PNG_NAME}_asset_gen DEPENDS "${ASSET_H}")
-
 	add_library(${PNG_NAME}_asset_obj OBJECT "${ASSET_H}")
-	add_dependencies(${PNG_NAME}_asset_obj ${PNG_NAME}_asset_gen)
+	add_dependencies(${PNG_NAME}_asset_obj ${PNG_NAME}_asset_obj)
 
 	target_sources(${TARGET} PRIVATE $<TARGET_OBJECTS:${PNG_NAME}_asset_obj>)
-	add_dependencies(${TARGET} ${PNG_NAME}_asset_gen)
-
 	target_include_directories(${TARGET} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+	add_dependencies(${TARGET} ${PNG_NAME}_asset_obj)
 endfunction()
