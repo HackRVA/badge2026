@@ -80,7 +80,15 @@ if (${TARGET} STREQUAL "SDL_SIMULATOR" OR ${TARGET} STREQUAL "WASM")
             )
 
     cmake_policy(SET CMP0079 NEW)
-    find_package(SDL2 REQUIRED)
+
+    # adding a condition here because
+    # the wasm build tries to incorrectly find SDL
+    # this started when the png-to-badge-asset was added as an external project
+    # because emcmake can't build png-to-badge-asset, we have to compile
+    # it before compiling with emcmake.
+    if (${TARGET} STREQUAL "SDL_SIMULATOR")
+      find_package(SDL2 REQUIRED)
+    endif()
     target_include_directories(${PRODUCT} PRIVATE ${SDL2_INCLUDE_DIRS})
     target_link_directories(${PRODUCT} PRIVATE ${SDL2_LIBRARY_DIRS})
     target_link_libraries(${PRODUCT} ${SDL2_LIBRARIES})
