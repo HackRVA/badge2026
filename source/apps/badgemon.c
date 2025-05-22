@@ -94,6 +94,7 @@ static struct palette default_palette = {
 		},
 };
 static bool screen_changed = false;
+static bool initial_run = true;
 static bool scan_animating = false;
 static int  current_menu_item = 0;
 static bool current_menu_item_selected = false;
@@ -211,7 +212,6 @@ static void draw_sparkles(uint64_t now)
 	}
 }
 
-static bool screen_changed_view = false;
 static bool show_description = false;
 static unsigned int current_monster_id = 0;
 
@@ -244,6 +244,7 @@ static void draw_monster_avatar_screen_locked(uint64_t now)
 	if (now >= mosaic_cooldown) {
 		mosaic_cooldown = now + MOSAIC_INTERVAL_MS;
 		mosaic_seed = (uint32_t)(now ^ current_monster_id);
+		screen_changed = true;
 	}
 
 	uint32_t state = mosaic_seed;
@@ -328,6 +329,7 @@ static void draw_monster_avatar_screen(void)
 	if (monsters[current_monster_id].shiny && now >= sparkle_cooldown) {
 		spawn_sparkles(now, 16, 4, LCD_XSIZE, LCD_YSIZE);
 		sparkle_cooldown = now + SPARKLE_INTERVAL_MS;
+		screen_changed = true;
 	}
 	draw_sparkles(now);
 }
@@ -342,19 +344,23 @@ static void start_scanline_animation(void)
 static void top_menu_action_monsters(void)
 {
 	badgemon_state = BADGEMON_MONSTER_AVATAR;
+	screen_changed = true;
 }
 static void top_menu_action_show_progress_page(void)
 {
 	badgemon_state = BADGEMON_PROGRESS;
+	screen_changed = true;
 }
 static void top_menu_action_trade_monsters(void)
 {
 	badgemon_state = BADGEMON_TRADE_MONSTERS;
 	start_scanline_animation();
+	screen_changed = true;
 }
 static void top_menu_action_help_screen(void)
 {
 	badgemon_state = BADGEMON_HELP_SCREEN;
+	screen_changed = true;
 }
 static void top_menu_action_unlock_all(void)
 {
@@ -429,19 +435,19 @@ static void check_buttons_avatar_screen(void)
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down)) {
 		current_monster_id = (current_monster_id + n -1) % n;
-		screen_changed_view = true;
+		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down)) {
 		current_monster_id = (current_monster_id +1) % n;
-		screen_changed_view = true;
+		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down)) {
 		show_description = !show_description;
-		screen_changed_view = true;
+		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down) ||
 		BUTTON_PRESSED(BADGE_BUTTON_A, down) ||
 		BUTTON_PRESSED(BADGE_BUTTON_B, down)) {
 		badgemon_state = BADGEMON_TOP_MENU;
 		show_description = false;
-		screen_changed_view = true;
+		screen_changed = true;
 		current_monster_id = initial_mon;
 	}
 }
@@ -457,6 +463,7 @@ static void check_buttons_top_menu(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down)) {
 		current_menu_item_selected = true;
 		handle_options_top_menu();
+		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down)) {
 		badgemon_state = BADGEMON_EXIT;
 	}
@@ -535,7 +542,7 @@ static void draw_trade_monsters_screen(void)
 			/* Skip empty lines for spacing */
 			continue;
 		}
-    FbColor(GREEN);
+		FbColor(GREEN);
 		FbMove(ui_center_text_x(lines[i], 0, LCD_XSIZE), y);
 		FbWriteString(lines[i]);
 	}
@@ -586,13 +593,6 @@ static void draw_help_screen(void)
 		"most of them?",
 	};
 	draw_centered_text_page(lines, sizeof(lines) / sizeof(lines[0]), 0, 8);
-}
-
-static void draw_screen(void)
-{
-	if (!screen_changed) return;
-	FbSwapBuffers();
-	screen_changed = false;
 }
 
 static bool trading_monsters_enabled = false;
@@ -648,7 +648,7 @@ static void badgemon_init(void)
 	sparkle_cooldown = rtc_get_ms_since_boot();
 	initial_mon = badge_system_data()->badgeId % 16;
 	current_monster_id = initial_mon;
-  monsters[initial_mon].unlocked = true;
+	monsters[initial_mon].unlocked = true;
 
 	badgemon_state = BADGEMON_TOP_MENU;
 	screen_changed  = true;
@@ -656,7 +656,10 @@ static void badgemon_init(void)
 
 void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 {
-	screen_changed = true;
+	if (app->wake_up) {
+		screen_changed = true;
+	}
+
 	switch (badgemon_state) {
 	case BADGEMON_INIT:
 		badgemon_init();
@@ -664,17 +667,11 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 	case BADGEMON_MONSTER_AVATAR: {
 		check_buttons_avatar_screen();
 		draw_monster_avatar_screen();
-
-		if (screen_changed) {
-			FbSwapBuffers();
-			screen_changed = false;
-		}
 		break;
 	}
 	case BADGEMON_PROGRESS:
 		check_buttons_noop_screen();
 		draw_progress_menu();
-		draw_screen();
 		break;
 	case BADGEMON_TRADE_MONSTERS:
 		trade_monsters();
@@ -683,18 +680,20 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 		trade_monsters_delay();
 		check_buttons_noop_screen();
 		draw_trade_monsters_screen();
-		draw_screen();
 		break;
 	}
 	case BADGEMON_HELP_SCREEN:
 		check_buttons_noop_screen();
 		draw_help_screen();
-		draw_screen();
 		break;
 	case BADGEMON_TOP_MENU:
+		if (initial_run)
+			screen_changed = true;
+
+		initial_run = false;
+		FbClear();
 		check_buttons_top_menu();
 		draw_top_menu();
-		draw_screen();
 		break;
 	case BADGEMON_EXIT:
 		badgemon_state = BADGEMON_INIT;
@@ -702,5 +701,9 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 		save_monsters_to_flash();
 		pop_app();
 		break;
+	}
+	if (screen_changed) {
+		FbSwapBuffers();
+		screen_changed = false;
 	}
 }
