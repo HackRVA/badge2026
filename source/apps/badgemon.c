@@ -186,7 +186,7 @@ static unsigned int current_monster_id = 0;
 
 static void draw_monster_avatar(const struct asset2 *img)
 {
-	FbMove(LCD_XSIZE/2 - 56, LCD_YSIZE/2 - 56);
+	FbMove(LCD_XSIZE/2 - (img->x/2), LCD_YSIZE/2 - (img->y/2));
 	FbImage4bit2(img, 0);
 }
 
