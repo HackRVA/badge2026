@@ -39,7 +39,7 @@ static struct drum_song {
 
 static char drum_machine_err_msg[100];
 
-#define BASS_FREQ 110
+#define BASS_FREQ 120
 #define SNARE_FREQ 2100
 #define CRASH_FREQ 5000
 #define TOM1_FREQ 440
