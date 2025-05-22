@@ -55,3 +55,66 @@ function(target_add_png_badge_asset TARGET BITDEPTH PNG_FILE)
 
 	add_dependencies(${TARGET} ${PNG_NAME}_asset_obj)
 endfunction()
+
+function(badge_png_asset_add NAME BITDEPTH PNG_FILE)
+	get_property(_have_bits GLOBAL PROPERTY ASSET_${NAME}_BITDEPTH)
+	if(NOT _have_bits)
+		set_property(GLOBAL PROPERTY ASSET_${NAME}_BITDEPTH "${BITDEPTH}")
+	endif()
+
+	get_property(_have_guard GLOBAL PROPERTY ASSET_${NAME}_GUARD)
+	if(NOT _have_guard)
+		string(TOUPPER "${NAME}_ASSET_H" _guard)
+		set_property(GLOBAL PROPERTY ASSET_${NAME}_GUARD "${_guard}")
+	endif()
+
+	get_property(_list GLOBAL PROPERTY ASSET_${NAME}_PNG_FILES)
+	list(APPEND _list "${PNG_FILE}")
+	set_property(GLOBAL PROPERTY ASSET_${NAME}_PNG_FILES "${_list}")
+endfunction()
+
+
+function(badge_png_asset_build NAME TARGET)
+	get_property(_bits GLOBAL PROPERTY ASSET_${NAME}_BITDEPTH)
+	get_property(_guard GLOBAL PROPERTY ASSET_${NAME}_GUARD)
+	get_property(_pngs GLOBAL PROPERTY ASSET_${NAME}_PNG_FILES)
+
+	if(NOT _pngs)
+		message(FATAL_ERROR "badge_png_asset_add(${NAME} ...) must be called at least once before badge_png_asset_build(${NAME})")
+	endif()
+
+	set(_out "${CMAKE_CURRENT_BINARY_DIR}/${NAME}_asset.h")
+	set(_deps png-to-badge-asset ${_pngs})
+
+	set(_cmds
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
+		COMMAND ${CMAKE_COMMAND} -E echo "#ifndef ${_guard}" > "${_out}"
+		COMMAND ${CMAKE_COMMAND} -E echo "#define ${_guard}" >> "${_out}"
+	)
+	foreach(p IN LISTS _pngs)
+		list(APPEND _cmds
+			COMMAND $<TARGET_FILE:png-to-badge-asset> ${_bits} "${p}" >> "${_out}"
+		)
+	endforeach()
+	list(APPEND _cmds
+		COMMAND ${CMAKE_COMMAND} -E echo "#endif /* ${_guard} */" >> "${_out}"
+	)
+
+	add_custom_command(
+		OUTPUT "${_out}"
+		${_cmds}
+		DEPENDS ${_deps}
+		COMMENT "Generating combined asset header: ${_out}"
+		VERBATIM
+	)
+
+	add_library(${NAME}_asset_obj OBJECT "${_out}")
+
+	target_sources(${TARGET}
+		PRIVATE $<TARGET_OBJECTS:${NAME}_asset_obj>
+	)
+	target_include_directories(${TARGET}
+		PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
+	)
+	add_dependencies(${TARGET} ${NAME}_asset_obj)
+endfunction()
