@@ -1519,8 +1519,12 @@ static void draw_screen(void)
 
 void puzzle_attack_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+
+		/* when returning to puzzle-attack, we need to reset a cooldown so animations play smoothly */
+		current_particle_start_time = rtc_get_ms_since_boot();
+	}
 
 #define PUZZLE_ATTACK_POOL_SIG 0xC111456
 	if (particle_pool == NULL){
