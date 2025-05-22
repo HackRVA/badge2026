@@ -31,6 +31,8 @@ enum simonSays_state_t {
 	SIMONSAYS_INIT,
 	SIMONSAYS_BEEP,
 	SIMONSAYS_WAIT,
+	SIMONSAYS_INSTRUMENT,
+	SIMONSAYS_INSTRUMENT_SETUP,
 	SIMONSAYS_PLAYER_SETUP,
 	SIMONSAYS_PLAYER_RUN,
 	SIMONSAYS_PLAYBACK_SETUP,
@@ -58,7 +60,7 @@ static enum simonSays_state_t waitstate;
 int waitms;
 
 uint64_t now, then;
-bool listening,waitingForRelease,actuallyReleased,playing,started;
+bool listening,waitingForRelease,actuallyReleased,playing,started, timesUp,changeNote;
 bool timeIsSet=false;
 int usedTurns,it;
 static struct dynmenu menu;
@@ -74,7 +76,7 @@ static void simonSaysMenu(void)
 		dynmenu_clear(&menu);
 		dynmenu_set_title(&menu, "Simon Says", "", "");
 		dynmenu_add_item(&menu, "Play Simon", 0, 1);
-		dynmenu_add_item(&menu, "Songs", 0, 2);
+		dynmenu_add_item(&menu, "PLAY Songs", 0, 2);
 		dynmenu_add_item(&menu, "Disco", 0, 3);
 		dynmenu_add_item(&menu, "EXIT", 0, 4);
 		menu_setup = 1;
@@ -89,6 +91,7 @@ static void simonSaysMenu(void)
 				simonSays_state = SIMONSAYS_PLAYBACK_SETUP;
 				break;
 			case 2:
+				simonSays_state = SIMONSAYS_INSTRUMENT_SETUP;
 				break;
 			case 3:
 				simonSays_state = SIMONSAYS_DISCO;
@@ -119,6 +122,7 @@ void waitForState(enum simonSays_state_t returnTo){
 		else{
 			simonSays_state = returnTo;
 			timeIsSet = false;
+			timesUp = true;
 			return;
 		}
 	}
@@ -228,7 +232,9 @@ void checkin(void)
 
 void newRound(void){
 	sequence[usedTurns] = randChoice();
-	SPEED = SPEED - 10;
+	if(SPEED>100){
+	SPEED = SPEED - 50;
+	}
 	usedTurns++;
 }
 
@@ -380,9 +386,16 @@ void clearSequence(void){
 		dPad = NONE;
 		listening = true;
 		check_buttons();
+		now = rtc_get_ms_since_boot();
+		then = rtc_get_ms_since_boot()+3000;
 		simonSays_state = SIMONSAYS_PLAYER_RUN;
+
 	}
 	void playerRun(void){
+		now = rtc_get_ms_since_boot();
+		if(now>then){
+			simonSays_state = SIMONSAYS_PLAYER_LOSE;
+		}
 		if(waitingForRelease){
 		if(actuallyReleased){
 			if(sequence[it]==dPad){
@@ -394,6 +407,7 @@ void clearSequence(void){
 					return;
 				}
 				else{
+					then = then + SPEED;
 					resetButtons();
 					it++;
 					return;
@@ -420,6 +434,35 @@ void clearSequence(void){
 			return;
 		}
 	}
+	void musicSetup(void){
+		showChoice(NONE);
+		dPad = NONE;
+		waitingForRelease =false;
+		actuallyReleased = false;
+		listening = true;
+		check_buttons();
+		simonSays_state = SIMONSAYS_INSTRUMENT;
+	}
+	void playMusic (void){
+		check_buttons();
+		if(waitingForRelease){
+			if(actuallyReleased){
+				resetButtons();
+				return;
+			}
+			check_buttons();
+			return;
+		}
+		if(dPad!=NONE){
+			showChoice(dPad);
+			waitingForRelease = true;
+			listening = false;
+			check_buttons();
+			return;
+		}
+		check_buttons();
+	}
+
 	void playbackSetup(void){
 		playing = false;
 		it = 0;
@@ -454,16 +497,31 @@ void playerLose(void){
 		clearSequence();
 		soundStop();
 		showChoice(NONE);
-		soundStart(110);
+		soundStart(NOTE_E3);
 		simonSays_wait(2000,SIMONSAYS_PLAYER_LOSE);
 		started = true;
+		timesUp = false;
+		changeNote = true;
 	}
 	else{
+		if(timesUp){
 		soundStop();
 		simonSays_state = SIMONSAYS_INIT;
 		return;
+		}
+		else {
+			if(changeNote){
+				soundStart(NOTE_F3);
+			}
+			else{
+				soundStart(NOTE_E3);
+			}
+			return;
+		}
+
+		}
 	}
-}
+
 
 //THIS GETS OUT OF THE PROGRAM CLEANLY
 void simonSays_exit(void){
@@ -499,6 +557,12 @@ void simonSays_cb(__attribute__((unused)) struct badge_app *app){
 		break;
 	case SIMONSAYS_MENU:
 		simonSaysMenu();
+		break;
+	case SIMONSAYS_INSTRUMENT_SETUP:
+		musicSetup();
+		break;
+	case SIMONSAYS_INSTRUMENT:
+		playMusic();
 		break;
 	case SIMONSAYS_DISCO:
 		disco();
