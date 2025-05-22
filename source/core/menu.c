@@ -26,7 +26,7 @@
 
 // Apps
 #include "about_badge.h"
-#include "new_badge_monsters/new_badge_monsters.h"
+/* #include "new_badge_monsters/new_badge_monsters.h" */
 #include "battlezone.h"
 #include "game_of_life.h"
 #include "hacking_simulator.h"
@@ -74,7 +74,7 @@ static const struct menu_t games_m[] = {
 	{"Microban", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = microban_cb }, NULL },
 	{"badgemon", VERT_ITEM, FUNCTION, { .func = badgemon_cb }, NULL, },
 	{"badgemon-unlock",VERT_ITEM, FUNCTION, { .func = badgemon_unlock_cb}, NULL, },
-	{"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, },
+	/* {"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, }, */
 	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, NULL, },
 	{"mixtape",VERT_ITEM, FUNCTION, { .func = mixtape_cb}, NULL, },

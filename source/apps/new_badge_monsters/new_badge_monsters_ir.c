@@ -2,7 +2,8 @@
 #include <stdio.h>
 
 #include "new_badge_monsters_ir.h"
-#include "new_badge_monsters.h"
+/* #include "new_badge_monsters.h" */
+#include "badgemon.h"
 #include "init.h"
 
 /* These need to be protected from interrupts. */
@@ -60,7 +61,8 @@ void process_packet(IR_DATA* packet)
 
     if(opcode == OPCODE_XMIT_MONSTER){
         printf("Enabling monster %u!\n", payload &0xFF);
-        enable_monster(payload & 0x0ff);
+        /* enable_monster(payload & 0x0ff); */
+        badgemon_unlock_monster(payload & 0x0ff);
     }
 }
 

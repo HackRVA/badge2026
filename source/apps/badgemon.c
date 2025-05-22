@@ -676,3 +676,21 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 		screen_changed = false;
 	}
 }
+
+void badgemon_draw_screen_saver_monster(void)
+{
+	static unsigned char current_index = 0;
+	current_index++;
+	current_index %= ARRAY_SIZE(monsters) - 1;
+	struct monster current_monster = monsters[current_index];
+
+	FbClear();
+	FbColor(BLACK);
+	FbMove(LCD_XSIZE/2 - (current_monster.image->x/2), LCD_YSIZE/2 - (current_monster.image->y/2));
+	FbImage4bit2(current_monster.image, 0);
+}
+
+void badgemon_unlock_monster(int monster_id)
+{
+	flash_kv_store_int(flash_key_from_monster(monster_id), 1);
+}

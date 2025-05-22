@@ -10,7 +10,8 @@
 #include "rtc.h"
 #include "xorshift.h"
 #include "trig.h"
-#include "new_badge_monsters/new_badge_monsters.h"
+/* #include "new_badge_monsters/new_badge_monsters.h" */
+#include "badgemon.h"
 #include <string.h>
 
 #define SCREEN_ORIENTATION_LANDSCAPE 1 /* 0 = portrait, 1 = landscape */
@@ -232,7 +233,8 @@ void disp_asset_saver(void)
 
         case 2:
 	case 3:
-            render_screen_save_monsters();
+            /* render_screen_save_monsters(); */
+            badgemon_draw_screen_saver_monster();
             break;
     }
 
