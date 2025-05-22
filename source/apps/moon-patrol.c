@@ -247,11 +247,14 @@ static struct point wheel_points[] = {
 
 static struct note moon_patrol_theme_one[] = {
         { NOTE_E3, eighth_note, },
+	{ 0, 1 },
         { NOTE_E3, eighth_note, },
         { NOTE_E4, quarter_note, },
         { NOTE_D4, eighth_note, },
+	{ 0, 1 },
         { NOTE_D4, sixteenth_note, },
         { NOTE_B3, eighth_note, },
+	{ 0, 1 },
         { NOTE_B3, eighth_note, },
         { NOTE_D4, sixteenth_note, },
         { NOTE_Ef4, sixteenth_note, },
@@ -260,11 +263,14 @@ static struct note moon_patrol_theme_one[] = {
 
 static struct note moon_patrol_theme_four[] = {
         { NOTE_A4, eighth_note, },
+	{ 0, 1 },
         { NOTE_A4, eighth_note, },
         { NOTE_A5, quarter_note, },
         { NOTE_G5, eighth_note, },
+	{ 0, 1 },
         { NOTE_G5, sixteenth_note, },
         { NOTE_E5, eighth_note, },
+	{ 0, 1 },
         { NOTE_E5, eighth_note, },
         { NOTE_G5, sixteenth_note, },
         { NOTE_Af5, sixteenth_note, },
@@ -273,11 +279,14 @@ static struct note moon_patrol_theme_four[] = {
 
 static struct note moon_patrol_theme_five[] = {
         { NOTE_B4, eighth_note, },
+	{ NOTE_REST, 1 },
         { NOTE_B4, eighth_note, },
         { NOTE_B5, quarter_note, },
         { NOTE_A5, eighth_note, },
+	{ NOTE_REST, 1 },
         { NOTE_A5, sixteenth_note, },
         { NOTE_Fs5, eighth_note, },
+	{ NOTE_REST, 1 },
         { NOTE_Fs5, eighth_note, },
         { NOTE_A5, sixteenth_note, },
         { NOTE_Bf5, sixteenth_note, },
