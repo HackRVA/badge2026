@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-mkdir -p tools-build
-pushd tools-build
-cmake ../tools -DCMAKE_BUILD_TYPE=Release
+mkdir -p build_wasm/tools-build
+pushd build_wasm/tools-build
+cmake ../../tools -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 popd
 
 mkdir -p build_wasm/tools
-cp tools-build/tools/png-to-badge-asset build_wasm/tools/
+cp build_wasm/tools-build/tools/png-to-badge-asset build_wasm/tools/
 
 EMSDK_DIR="./build_wasm/_deps/emsdk-src"
 
@@ -16,10 +16,10 @@ if [ ! -d "$EMSDK_DIR" ]; then
     echo "Emscripten SDK not found. Cloning..."
     mkdir -p build_wasm/_deps
     git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$EMSDK_DIR"
-    cd "$EMSDK_DIR"
+    pushd "$EMSDK_DIR"
     ./emsdk install latest
     ./emsdk activate latest
-    cd ../../..
+    popd
 fi
 
 if [ -f "${EMSDK_DIR}/emsdk_env.sh" ]; then
