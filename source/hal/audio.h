@@ -56,6 +56,28 @@
 #define AUDIO_OUT_VOICE_COUNT   (8)                     /**< Number of output voice slots. */
 #define AUDIO_OUT_VOICE_ANY     (AUDIO_OUT_VOICE_COUNT) /**< Output using any available voice slot. */
 
+#define AUDIO_OUT_SPEC_NES_SQUARE_DUTY_0    (UINT8_MAX / 8)
+#define AUDIO_OUT_SPEC_NES_SQUARE_DUTY_1    (UINT8_MAX / 4)
+#define AUDIO_OUT_SPEC_NES_SQUARE_DUTY_2    (UINT8_MAX / 2)
+#define AUDIO_OUT_SPEC_NES_SQUARE_DUTY_3    (UINT8_MAX - (UINT8_MAX / 4)
+
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x0   (447443)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x1   (223722)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x2   (111861)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x3   (55930)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x4   (27965)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x5   (18644)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x6   (13983)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x7   (11186)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x8   (8860)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x9   (7046)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xA   (4710)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xB   (3523)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xC   (2349)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xD   (1762)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xE   (880)
+#define AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xF   (440)
+
 #define AUDIO_BEEP_FREQ_HZ_MIN  (120)
 #define AUDIO_BEEP_FREQ_HZ_MAX  (10000)
 #define AUDIO_BEEP_DUR_MS_MIN   (1)
@@ -110,8 +132,8 @@ struct audio_out_spec_sawtooth {
 
 /** Output spec for NES LFSR noise. */
 struct audio_out_spec_nes_noise {
-    // TODO -PMW
-    uint8_t dummy;
+    uint16_t lfsr_val;  /**< LFSR value to force. UINT16_MAX to not force load. */
+    bool mode_flag;     /**< LFSR XOR operand bit 6 not bit 1. */
 };
 
 /** Bit depth of raw samples for output. */

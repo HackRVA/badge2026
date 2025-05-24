@@ -501,8 +501,10 @@ struct audio_out_voice_ctx_sawtooth {
 
 /** Output waveform voice context for NES LFSR noise. */
 struct audio_out_voice_ctx_nes_noise {
-    // TODO -PMW
-    uint8_t dummy;
+    uint16_t period;
+    uint16_t samples;
+    uint16_t lfsr;
+    uint16_t mode_tap;
 };
 
 /** Output waveform voice context for raw samples. */
@@ -580,6 +582,7 @@ static void prv_audio_process_input(const audio_buffer_t *in)
 }
 
 /*----- Output ---------------------------------------------------------------*/
+/*--------- Square Wave _|¯|_|¯ ----------------------------------------------*/
 static int prv_audio_out_square_setup(struct audio_out_voice_ctx *voice,
                                       const struct audio_out_spec *spec)
 {
@@ -626,6 +629,63 @@ static int32_t prv_audio_out_square_step(struct audio_out_voice_ctx *voice)
     return sample;
 }
 
+/*--------- NES LFSR noise ---------------------------------------------------*/
+static int prv_audio_out_nes_noise_setup(struct audio_out_voice_ctx *voice,
+                                         const struct audio_out_spec *spec)
+{
+    uint16_t period;
+    if (0 == spec->frequency_hz) {
+        period = UINT16_MAX;
+    } else {
+        period = AUDIO_FS / spec->frequency_hz;
+        if (1 >= period) {
+            period = 1;
+        }
+    }
+    voice->nes_noise.period = period;
+    voice->nes_noise.mode_tap = spec->nes_noise.mode_flag ? 1 << 6 : 1 << 1;
+    if (spec->restart) {
+        voice->nes_noise.samples = 0;
+    }
+    if (spec->nes_noise.lfsr_val != UINT16_MAX) {
+        voice->nes_noise.lfsr = spec->nes_noise.lfsr_val & 0x7FFFU;
+    } else if (0 == voice->nes_noise.lfsr) {
+        /* The LFSR is loaded with 1 on NES power up. */
+        voice->nes_noise.lfsr = 0x0001U;
+    }
+#ifdef TARGET_SIMULATOR
+    LOG("playing nes_noise "
+        "(voice: %d, freq: %u, dur_ms: %u, mode_flag: %u,"
+        " lfsr: 0x%04X, period: %u, duration_samples: %u)",
+        (int) (voice - m_audio_out_voices), spec->frequency_hz,
+        spec->duration_ms, spec->nes_noise.mode_flag, voice->nes_noise.lfsr,
+        period, voice->duration_samples);
+#endif
+    return 0;
+}
+
+static int32_t prv_audio_out_nes_noise_step(struct audio_out_voice_ctx *voice)
+{
+    uint32_t samples = voice->nes_noise.samples;
+    uint32_t period = voice->nes_noise.period;
+    if (++samples >= period) {
+        samples = 0;
+        uint16_t lfsr = voice->nes_noise.lfsr;
+        uint16_t feedback = lfsr & 0x0001U;
+        feedback ^= 0U != (lfsr & voice->nes_noise.mode_tap) ? 1U : 0U;
+        feedback <<= 14;
+        lfsr >>= 1;
+        lfsr |= feedback;
+        voice->nes_noise.lfsr = lfsr;
+    }
+    voice->nes_noise.samples = samples;
+    int32_t sample = voice->nes_noise.lfsr;
+    sample -= INT16_MAX / 2; /* Remove DC bias. */
+    sample *= voice->amplitude;
+    sample >>= 13; /* Correct for amplitude and DC bias removal above. */
+    return sample;
+}
+
 static void prv_audio_out_complete(struct audio_out_voice_ctx *voice)
 {
     int v = voice - m_audio_out_voices;
@@ -652,7 +712,6 @@ static void prv_audio_process_output(audio_buffer_t *out)
                 case AUDIO_OUT_TYPE_NONE:
                 case AUDIO_OUT_TYPE_TRIANGE: // TODO: implement -PMW
                 case AUDIO_OUT_TYPE_SAWTOOTH: // TODO: implement -PMW
-                case AUDIO_OUT_TYPE_NES_NOISE: // TODO: implement -PMW
                 case AUDIO_OUT_TYPE_SAMPLES: // TODO: implement -PMW
                 default:
                     /* No contribution to this sample. */
@@ -660,17 +719,20 @@ static void prv_audio_process_output(audio_buffer_t *out)
                 case AUDIO_OUT_TYPE_SQUARE:
                     sample += prv_audio_out_square_step(voice);
                     break;
+                case AUDIO_OUT_TYPE_NES_NOISE:
+                    sample += prv_audio_out_nes_noise_step(voice);
+                    break;
             }
             switch (voice->type) {
                 case AUDIO_OUT_TYPE_NONE:
                 case AUDIO_OUT_TYPE_TRIANGE: // TODO: implement -PMW
                 case AUDIO_OUT_TYPE_SAWTOOTH: // TODO: implement -PMW
-                case AUDIO_OUT_TYPE_NES_NOISE: // TODO: implement -PMW
                 case AUDIO_OUT_TYPE_SAMPLES: // TODO: implement -PMW
                 default:
                     /* Post step actions for these types. */
                     break;
                 case AUDIO_OUT_TYPE_SQUARE:
+                case AUDIO_OUT_TYPE_NES_NOISE:
                     if (++(voice->elapsed_samples) >= voice->duration_samples) {
                         prv_audio_out_complete(voice);
                     } else {
@@ -794,13 +856,15 @@ int audio_out_play(int v, const struct audio_out_spec *spec) {
         case AUDIO_OUT_TYPE_NONE:
         case AUDIO_OUT_TYPE_TRIANGE:
         case AUDIO_OUT_TYPE_SAWTOOTH:
-        case AUDIO_OUT_TYPE_NES_NOISE:
         case AUDIO_OUT_TYPE_SAMPLES:
         default:
             /* Not implemented. */
             break;
         case AUDIO_OUT_TYPE_SQUARE:
             rc = prv_audio_out_square_setup(voice, spec);
+            break;
+        case AUDIO_OUT_TYPE_NES_NOISE:
+            rc = prv_audio_out_nes_noise_setup(voice, spec);
             break;
     }
 
