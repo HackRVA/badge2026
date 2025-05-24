@@ -907,9 +907,13 @@ static void draw_screen(void)
         y += 8;
         DrawStringDropshadow("1982.", x + 24, y, WHITE, shadow);
         y += 12;
-        DrawStringDropshadow("Based on puzzles by", x, y, WHITE, shadow);
+        DrawStringDropshadow("Including puzzles", x, y, WHITE, shadow);
         y += 8;
-        DrawStringDropshadow("David W Skinner.", x + 8, y, WHITE, shadow);
+        DrawStringDropshadow("by David W Skinner,", x + 8, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("Yoshio Murase,", x + 16, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("& Zach Smith.", x + 24, y, WHITE, shadow);
         break;
         }
     }
