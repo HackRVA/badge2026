@@ -3842,6 +3842,10 @@ static void badgey_status_message(void)
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static void status_message(char *message)
@@ -4202,6 +4206,10 @@ static void badgey_collect_treasure(int treasure)
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static int chest_in_players_world(int chest_num)
@@ -4263,6 +4271,10 @@ static void badgey_dig(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -4343,6 +4355,9 @@ static void cave_check_buttons(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
 		set_badgey_state(BADGEY_DIG);
 		last_move_dir = NO_MOVE;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	} else {
 		if (player.stop_automatic_motion)
 			last_move_dir = NO_MOVE;
@@ -4360,6 +4375,10 @@ static void cave_check_buttons(void)
 					newy -= 64;
 			}
 		}
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 	if (dynmap[windex(newx, newy)] == '#')
 		return;
@@ -4627,6 +4646,10 @@ static void badgey_inventory(void)
 		screen_changed = 1;
 		set_badgey_state(BADGEY_RUN);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static void check_buttons(int tick)
@@ -4687,6 +4710,9 @@ static void check_buttons(int tick)
 				set_badgey_state(BADGEY_DIG);
 				newmoving = 0;
 		}
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 
 	player.dir = newdir;
@@ -6250,6 +6276,9 @@ static void badgey_talk_to_citizen(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -7479,6 +7508,9 @@ static void badgey_stats(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -7840,6 +7872,9 @@ static void badgey_display_map(void)
 		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		set_badgey_state(BADGEY_RUN);
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -8055,6 +8090,10 @@ static void badgey_combat(void)
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		awaiting_direction = 1;
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 
 	/* Move player to (nx, ny) if nothing's in the way */
@@ -8581,6 +8620,10 @@ static void badgey_assemble_badge(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		set_badgey_state(previous_badgey_state);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static int find_next_known_clue(int c, int dir)
@@ -8679,6 +8722,10 @@ static void badgey_review_clues(void)
 		set_badgey_state(BADGEY_RUN);
 		last_clue = -2;
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static const struct note funeral_march_notes[] = {
@@ -8732,6 +8779,10 @@ static void badgey_player_died(void)
 		first_time = 1;
 		game_in_progress = 0;
 		set_badgey_state(BADGEY_INITIAL_MENU);
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
