@@ -26,6 +26,9 @@
 #define SPLASH_WORD_THING_FRAMES (3)
 #define SPLASH_WAIT_BLINK_FRAMES (2 * BADGE_FRAME_RATE_FPS)
 
+#define SPLASH_BOOT_AUDIO_MS     (100)
+#define SPLASH_FINISHED_AUDIO_MS (2000)
+
 static const char *splash_word_things[] = {
     "Cognition Module",
     "useless bits",
@@ -87,6 +90,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         SPLASH_STATE_LOADBAR,
         SPLASH_STATE_DONE,
     } m_splash_state = SPLASH_STATE_NO_INIT;
+    struct audio_out_spec spec;
 
     switch (m_splash_state) {
     case SPLASH_STATE_NO_INIT:
@@ -99,7 +103,18 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255/100);
         led_pwm_enable(BADGE_LED_RGB_BLUE, 50 * 255/100);
         //if(buzzer)
-        audio_out_beep(NOTE_C3, 50);
+        spec = (const struct audio_out_spec) {
+            .callback = NULL,
+            .frequency_hz = NOTE_C3 / 2 ,
+            .duration_ms = SPLASH_BOOT_AUDIO_MS,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = 3,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 2,
+        };
+        (void) audio_out_play(0, &spec);
         m_splash_state = SPLASH_STATE_HACK;
         break;
 
@@ -161,6 +176,24 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         } else if (load_bar_frames + SPLASH_WAIT_POST_LOADBAR_FRAMES <= wait) {
             wait = 0;
             m_splash_state = SPLASH_STATE_DONE;
+            spec = (const struct audio_out_spec) {
+                .callback = NULL,
+                .frequency_hz = NOTE_C4,
+                .duration_ms = SPLASH_FINISHED_AUDIO_MS,
+                .decay = 0,
+                .phase = 0,
+                .amplitude_dBFS = -4,
+                .restart = false,
+                .type = AUDIO_OUT_TYPE_SQUARE,
+                .square.duty_cycle = UINT8_MAX / 3,
+            };
+            (void) audio_out_play(0, &spec);   
+            spec.frequency_hz = NOTE_E4;
+            (void) audio_out_play(1, &spec);   
+            spec.frequency_hz = NOTE_G4;
+            (void) audio_out_play(2, &spec);   
+            spec.frequency_hz = NOTE_C5;
+            (void) audio_out_play(3, &spec);   
         }
 
 	FbBackgroundColor(BLACK);
@@ -169,6 +202,22 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         led_pwm_enable(BADGE_LED_RGB_RED, 15 * 255 / 100);
         led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255 / 100);
 	led_pwm_enable(BADGE_LED_RGB_BLUE, 10 * 255 / 100);
+
+        spec = (const struct audio_out_spec) {
+            .callback = NULL,
+            .frequency_hz = 
+                99 <= load_bar_perc ? AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xA 
+                                    : AUDIO_FS / (99 - load_bar_perc),
+            .duration_ms = 50,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -3,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_NES_NOISE,
+            .nes_noise.lfsr_val = UINT16_MAX,
+            .nes_noise.mode_flag = 99 <= load_bar_perc,
+        };
+        (void) audio_out_play(0, &spec);   
 
         wait++;
         break;
@@ -191,7 +240,6 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         brand_preproduction_firmware(!((wait / 5) & 0x01) 
                                      || (wait > SPLASH_WAIT_BLINK_FRAMES));
 #endif
-
         FbSwapBuffers();
 
         int down_latches = button_down_latches();
