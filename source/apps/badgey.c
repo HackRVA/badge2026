@@ -9051,6 +9051,13 @@ static void cheat_planets(void)
 	}
 }
 
+static void cheat_get_all_badge_components(void)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++)
+		player.carrying[badge_bom[i]] = 1;
+	printf("All badge components gotten.\n");
+}
+
 static void cheat_caves_and_towns(void)
 {
 	fprintf(stderr, "TOWNS AND CAVES:\n");
@@ -9064,6 +9071,7 @@ static void cheat_help(void)
 {
 	fprintf(stderr, "\n");
 	fprintf(stderr, "? help\n");
+	fprintf(stderr, "b get all badge components\n");
 	fprintf(stderr, "p list planets\n");
 	fprintf(stderr, "c list caves/towns\n");
 	fprintf(stderr, "d print dungeon maps\n");
@@ -9110,6 +9118,9 @@ static void badgey_dev_cheats(void)
 		switch (input[0]) {
 		case '?':
 			cheat_help();
+			break;
+		case 'b':
+			cheat_get_all_badge_components();
 			break;
 		case 'c':
 			cheat_caves_and_towns();
