@@ -68,8 +68,20 @@ static bool check_button(const struct qc_button *b)
     FbWriteString(msg);
     printf("%.*s\t", len - 1, msg);
 
-    if (b->freq != SUPPRESS_BEEP)
-	    audio_out_beep(b->freq, 1000 / BADGE_FRAME_RATE_FPS + 2);
+    if (b->freq != SUPPRESS_BEEP) {
+        struct audio_out_spec spec = {
+            .callback = NULL,
+            .frequency_hz = b->freq,
+            .duration_ms = 1000 / BADGE_FRAME_RATE_FPS + 2,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -3,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = INT8_MAX / 2,
+        };
+        (void) audio_out_play(b->freq % AUDIO_OUT_VOICE_COUNT, &spec);
+    }
 
     led_pwm_enable(BADGE_LED_RGB_RED, b->r);
     led_pwm_enable(BADGE_LED_RGB_GREEN, b->g);
