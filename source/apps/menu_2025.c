@@ -9,6 +9,7 @@
 #include "default_menu_app.h"
 #include "menu_icon.h"
 #include "cassettepixel.h"
+#include "cassettedrawer.h"
 
 #define TAPE_DECK_MENU_FG_COLOR WHITE
 #define TAPE_DECK_MENU_BG_COLOR x11_red2
@@ -296,7 +297,17 @@ static void draw_screen(void)
 
 	if (animation_step == 5) {
 		FbMove(0, 0);
-		FbImageRect(&cassettepixel, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+		int text_x;
+		int text_y;
+		if (current_menu_stack_idx == -1) {
+			FbImageRect(&cassettedrawer, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+			text_x = 12;
+			text_y = 87;
+		} else {
+			FbImageRect(&cassettepixel, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+			text_x = 0;
+			text_y = 21;
+		}
 
 		char s_upper[sizeof(item->name)];
 		memcpy(s_upper, item->name, sizeof(item->name));
@@ -304,7 +315,7 @@ static void draw_screen(void)
 		for (int i = 0; i < len; i++) {
 			s_upper[i] = toupper(s_upper[i]);
 		}
-		FbMove((LCD_XSIZE - 8 * len) / 2, 21);
+		FbMove((LCD_XSIZE - 8 * len) / 2 + text_x, text_y);
 		FbBackgroundColor(TAPE_DECK_MENU_BG_COLOR);
 		FbColor(TAPE_DECK_MENU_FG_COLOR);
 		FbWriteString(s_upper);
@@ -327,7 +338,11 @@ static void draw_screen(void)
 			source_y = 0;
 			break;
 		}
-		FbImageRect(&cassettepixel, 0, 0, source_x, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+		if (current_menu_stack_idx == -1) {
+			FbImageRect(&cassettedrawer, 0, 0, source_x + 11, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+		} else {
+			FbImageRect(&cassettepixel, 0, 0, source_x + 8, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+		}
 		animation_step++;
 	}
 

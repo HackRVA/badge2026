@@ -56,5 +56,8 @@ typedef struct {
 SYSTEM_DATA* badge_system_data(void);
 void UserInit(void);
 uint64_t ProcessIO(void);
+#if TARGET_SIMULATOR
+extern int silent_startup; /* allow suppressing initial startup sound effects */
+#endif
 
 #endif

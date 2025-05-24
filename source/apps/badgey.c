@@ -3842,6 +3842,10 @@ static void badgey_status_message(void)
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static void status_message(char *message)
@@ -4202,6 +4206,10 @@ static void badgey_collect_treasure(int treasure)
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static int chest_in_players_world(int chest_num)
@@ -4263,6 +4271,10 @@ static void badgey_dig(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -4343,6 +4355,9 @@ static void cave_check_buttons(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
 		set_badgey_state(BADGEY_DIG);
 		last_move_dir = NO_MOVE;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	} else {
 		if (player.stop_automatic_motion)
 			last_move_dir = NO_MOVE;
@@ -4360,6 +4375,10 @@ static void cave_check_buttons(void)
 					newy -= 64;
 			}
 		}
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 	if (dynmap[windex(newx, newy)] == '#')
 		return;
@@ -4627,6 +4646,10 @@ static void badgey_inventory(void)
 		screen_changed = 1;
 		set_badgey_state(BADGEY_RUN);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static void check_buttons(int tick)
@@ -4687,6 +4710,9 @@ static void check_buttons(int tick)
 				set_badgey_state(BADGEY_DIG);
 				newmoving = 0;
 		}
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 
 	player.dir = newdir;
@@ -6250,6 +6276,9 @@ static void badgey_talk_to_citizen(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -7250,6 +7279,8 @@ static void print_cave(char *map)
 {
 #if TARGET_SIMULATOR
 	for (int i = 0; i < 64; i++) {
+		if (i < 29)
+			continue;
 		if ((i % 5) == 0)
 			printf("%3d ", i);
 		else
@@ -7477,6 +7508,9 @@ static void badgey_stats(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		screen_changed = 1;
 		set_badgey_state(previous_badgey_state);
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -7838,6 +7872,9 @@ static void badgey_display_map(void)
 		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		set_badgey_state(BADGEY_RUN);
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -8053,6 +8090,10 @@ static void badgey_combat(void)
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		awaiting_direction = 1;
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 
 	/* Move player to (nx, ny) if nothing's in the way */
@@ -8579,6 +8620,10 @@ static void badgey_assemble_badge(void)
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		set_badgey_state(previous_badgey_state);
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static int find_next_known_clue(int c, int dir)
@@ -8677,6 +8722,10 @@ static void badgey_review_clues(void)
 		set_badgey_state(BADGEY_RUN);
 		last_clue = -2;
 	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
+	}
 }
 
 static const struct note funeral_march_notes[] = {
@@ -8730,6 +8779,10 @@ static void badgey_player_died(void)
 		first_time = 1;
 		game_in_progress = 0;
 		set_badgey_state(BADGEY_INITIAL_MENU);
+	}
+	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
+		stop_tune();
+		pop_app();
 	}
 }
 
@@ -9013,10 +9066,33 @@ static void cheat_help(void)
 	fprintf(stderr, "? help\n");
 	fprintf(stderr, "p list planets\n");
 	fprintf(stderr, "c list caves/towns\n");
+	fprintf(stderr, "d print dungeon maps\n");
 	fprintf(stderr, "m move x, y\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
 	fprintf(stderr, "q quit\n\n");
+}
+
+
+static void print_all_dungeons(void)
+{
+	const struct badgey_world *world[] = { &ossaria, &NW42, &borton, &skang, &gnarg };
+
+	for (int w = 0; w < (int) ARRAY_SIZE(world); w++) {
+		for (int y = 0; y < 64; y++) {
+			for (int x = 0; x < 64; x++) {
+				if (world[w]->wm[windex(x, y)] < '5' || world[w]->wm[windex(x, y)] > '9')
+					continue;
+				player.world = world[w];
+				int cn = world[w]->wm[windex(x, y)];
+				cn = cn - '0';
+				generate_cave(cn, x, y);
+				cn = town_num_to_name_index(w * 10 + cn);
+				printf("PLANET: %s, CAVE: %s x,y = (%d,%d)\n\n\n", world[w]->name, towninfo[cn].name, x, y); 
+			}
+		}
+	}
+	exit(0);
 }
 
 static void badgey_dev_cheats(void)
@@ -9037,6 +9113,9 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'c':
 			cheat_caves_and_towns();
+			break;
+		case 'd':
+			print_all_dungeons();
 			break;
 		case 'p':
 			cheat_planets();

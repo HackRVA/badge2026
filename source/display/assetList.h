@@ -10,8 +10,7 @@
  NOTE
 */
 enum {
-    DRBOB=0,
-    FONT,
+    FONT=0,
     ROTATED_FONT,
 
     LASTASSET,

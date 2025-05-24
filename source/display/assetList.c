@@ -7,9 +7,6 @@
 
 #include "assetList.h"
 
-#define DRBOB_HIRES
-#include "drbob.h"
-
 //#include "font_2.xbm" // for size reasons just A-Z and a couple others
 #include "font8x8.xbm.h" // full font
 #include "font8x8-rotated.xbm.h" // rotated 90 deg clockwise font
@@ -43,7 +40,6 @@ void dummy_draw(unsigned char aid, int frame)
 }
 
 const struct asset assetList[] = {
-        { DRBOB, DRBOB_BITS, 1, DRBOB_WIDTH, DRBOB_HEIGHT, (const char *)DRBOB_CMAP, (const char *)DRBOB_DATA, (dummy_draw) },
 // partial font    { FONT, PICTURE1BIT, 42, 8, 8, (const char *)BW_cmap, (const char *)font_2_bits, (dummy_draw) },
         { FONT, PICTURE1BIT, 128, 8, 8, (const char *)BW_cmap, (const char *)font8x8_bits, (dummy_draw) },
 	{ ROTATED_FONT, PICTURE1BIT, 128, 8, 8, (const char *)BW_cmap, (const char *)font8x8_rotated_bits, (dummy_draw) },

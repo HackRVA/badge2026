@@ -38,6 +38,8 @@
 #include "utils.h"
 #include "analog.h"
 
+int silent_startup = 0;
+
 #define UNUSED __attribute__((unused))
 #define ARRAYSIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -202,6 +204,7 @@ static struct option long_options[] = {
 	{ "fullscreen", no_argument, NULL, 'f' },
 	{ "hotrestart", no_argument, NULL, 'h' },
 	{ "zoom", required_argument, NULL, 'z' },
+	{ "silent-start", no_argument, NULL, 's' },
 	{ NULL, 0, 0, 0 },
 };
 
@@ -218,7 +221,7 @@ static void process_options(int argc, char **argv)
 
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "fhi:z:", long_options, &option_index);
+		c = getopt_long(argc, argv, "fhi:sz:", long_options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -233,6 +236,9 @@ static void process_options(int argc, char **argv)
 			break;
 		case 'f': /* full screen mode */
 			fullscreen_flag = 1;
+			break;
+		case 's':
+			silent_startup = 1;
 			break;
 		case 'z': /* zoom level */
 			{

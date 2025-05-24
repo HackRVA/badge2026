@@ -3,6 +3,7 @@
 #include "colors.h"
 #include "utils.h"
 #include "menu.h"
+#include "ui.h"
 #include "button.h"
 #include "framebuffer.h"
 #include "badge.h"
@@ -22,11 +23,12 @@ enum microban_state_run {
     PAUSE,
     WIN,
     LEVEL_MENU,
+    ABOUT,
 };
 
 #define MENU_ENTRIES 4
 enum microcan_menu {
-    MENU_RESET, MENU_SKIP, MENU_LEVEL_MENU, MENU_EXIT
+    MENU_RESET, /*MENU_SKIP,*/ MENU_LEVEL_MENU, MENU_ABOUT, MENU_EXIT
 };
 
 typedef enum Tile {
@@ -384,25 +386,31 @@ static void process_input_PAUSE(void) {
             set_level(stats.level_number);
             if (moves > 0) stats.streak = 0;
             run_state = GAMEPLAY;
-        } else if (menu_selection == MENU_SKIP) {
-            int nextlvl = wrap(stats.level_number + 1, MAX_LEVELS);
-            if (stats.levels_unlocked[nextlvl] == true) {
-                stats.level_number = nextlvl;
-                set_level(stats.level_number);
-                stats.streak = 0;
-                run_state = GAMEPLAY;
-            } else {
-                run_state = LEVEL_MENU;
-                // levelmenufromcompleted = true;
-            }
+        }
+        // if (menu_selection == MENU_SKIP) {
+        //     int nextlvl = wrap(stats.level_number + 1, MAX_LEVELS);
+        //     if (stats.levels_unlocked[nextlvl] == true) {
+        //         stats.level_number = nextlvl;
+        //         set_level(stats.level_number);
+        //         stats.streak = 0;
+        //         run_state = GAMEPLAY;
+        //     } else {
+        //         run_state = LEVEL_MENU;
+        //         // levelmenufromcompleted = true;
+        //     }
 
-        } else if (menu_selection == MENU_LEVEL_MENU) {
+        // }
+        if (menu_selection == MENU_LEVEL_MENU) {
             run_state = LEVEL_MENU;
-        } else if (menu_selection == MENU_EXIT) {
+        }
+        if (menu_selection == MENU_ABOUT) {
+            run_state = ABOUT;
+        }
+        if (menu_selection == MENU_EXIT) {
             if (moves > 0) stats.streak = 0;
             microban_state = MICROBAN_EXIT;
         }
-        menu_selection = 0;
+        if (menu_selection != MENU_ABOUT) menu_selection = 0;
 
     } else if (input.BPressed) {
         run_state = GAMEPLAY;
@@ -548,7 +556,7 @@ static void draw_level(const struct asset2 *asset, Camera camera) {
             // pixdata = (unsigned short*) &(asset->pixel16[texture_row + texture_x]);
             uint8_t pixdata = asset->pixel[texture_row + texture_x];
             Tile tile = (Tile)pixdata; /* 1 pixel per 2 bytes */
-            switch(tile) {
+            switch (tile) {
             case VOID:
                 continue;
             case FLOOR:
@@ -708,18 +716,19 @@ static void draw_level_menu(void) {
     
 
     if (menu_streak_popup) {
-        FbMove(16, 32);
-        FbColor(BLACK);
-        FbFilledRectangle(LCD_XSIZE - 32, LCD_YSIZE - 64);
 
-        FbColor(WHITE);
-        FbMove(16, 32);
-        FbRoundedRect(LCD_XSIZE - 32, LCD_YSIZE - 32, 1);
-
-        FbMove(32, 48);
-        FbWriteString("SURE?");
-        FbMove(32, 56);
-        FbWriteString("STREAK WILL BE LOST.");
+        struct ui_text_box info_box = {
+            .x = 16,
+            .y = 16,
+            .width = LCD_XSIZE - 32,
+            .height = 32,
+            .text = "Sure? Streak will be lost!",
+            .outline_size = 1,
+            .outline_color = WHITE,
+            .fill_color = BLACK,
+            .text_color = WHITE,
+        };
+        ui_text_box_draw(info_box);
     }
 
 
@@ -728,7 +737,7 @@ static void draw_level_menu(void) {
 }
 
 
-static void DrawStingDropshadow(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+static void DrawStringDropshadow(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
     FbBackgroundColor(G_Fb.transIndex);
     FbColor(background_color);
     FbMove(x - 2, y + 1);
@@ -742,6 +751,13 @@ static void DrawStingDropshadow(const char *string, unsigned char x, unsigned ch
 
     FbMove(x, y);
     FbColor(text_color);
+    FbWriteString(string);
+}
+
+static void DrawString(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+    FbColor(background_color);
+    FbColor(text_color);
+    FbMove(x, y);
     FbWriteString(string);
 }
 
@@ -823,11 +839,11 @@ static void draw_screen(void)
 
         // FbMove(x, y);
         snprintf(buf, sizeof(buf), "room %d complete.", stats.level_number);
-        DrawStingDropshadow(buf, x, y, YELLOW, BLACK);
+        DrawStringDropshadow(buf, x, y, YELLOW, BLACK);
         y += unit;
 
         snprintf(buf, sizeof(buf), "moves: %d", moves);
-        DrawStingDropshadow(buf, x, y, YELLOW, BLACK);
+        DrawStringDropshadow(buf, x, y, YELLOW, BLACK);
         y += unit;
 
 
@@ -838,28 +854,63 @@ static void draw_screen(void)
         if (stats.streak >= 3) {
             y += unit;
             snprintf(buf, sizeof(buf), "STREAK: %d!!", stats.streak);
-            DrawStingDropshadow(buf, x, y, nice_clear_cycle[4], BLACK);
+            DrawStringDropshadow(buf, x, y, nice_clear_cycle[4], BLACK);
         }
 
         break;
     }
 
     case PAUSE:
-        FbColor(YELLOW);
-        FbMove(8, 16 + 12*menu_selection);
-        FbWriteString(">");
-        FbMove(16, 16);
-        FbWriteString("reset");
-        FbMove(16, 28);
-        FbWriteString("skip level");
-        FbMove(16, 40);
-        FbWriteString("level select");
-        FbMove(16, 52);
-        FbWriteString("exit");
+        for (int i = 0; i < LCD_XSIZE * LCD_YSIZE; i++) {
+            int y = i / LCD_XSIZE;
+            int x = i % LCD_XSIZE;
+            if (y % 2 == 0 && x % 2 == 0) {
+                FbPlacePoint(BLACK, x, y);
+            } else if (x % 2 != 0 && y % 2 != 0) {
+                FbPlacePoint(BLACK, x, y);
+            }
+        }
+
+        int y = 16;
+        DrawStringDropshadow(">", 8, y + 12*menu_selection, YELLOW, BLACK);
+        DrawStringDropshadow("reset level", 16, y, WHITE, BLACK);
+        y += 12;
+        DrawStringDropshadow("select level", 16, y, WHITE, BLACK);
+        y += 12;
+        DrawStringDropshadow("about microban", 16, y, WHITE, BLACK);
+        y += 12;
+        DrawStringDropshadow("exit", 16, y, WHITE, BLACK);
         break;
 
     case LEVEL_MENU: 
         break;
+    case ABOUT: {
+        FbImageRect(&bluestreet, 0, 0, tick, -tick/2, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+        int x, y;
+        x = 4;
+        y = 4;
+        unsigned const short shadow = PACKRGB888(199, 21, 133);
+        DrawStringDropshadow("MICROBAN, 2025", x, y, WHITE, shadow);
+        y += 12;
+        DrawStringDropshadow("Programmed by Zach", x, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("with artwork by", x + 8, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("Ann & Hannah.", x + 16, y, WHITE, shadow);
+        y += 12;
+        DrawStringDropshadow("Original Sokoban", x, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("game design by", x + 8, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("Thinking Rabbit,", x + 16, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("1982.", x + 24, y, WHITE, shadow);
+        y += 12;
+        DrawStringDropshadow("Based on puzzles by", x, y, WHITE, shadow);
+        y += 8;
+        DrawStringDropshadow("David W Skinner.", x + 8, y, WHITE, shadow);
+        break;
+        }
     }
 
 
@@ -892,6 +943,11 @@ static void microban_run(void)
     case LEVEL_MENU:
         process_input_LEVEL_MENU();
         break;
+    case ABOUT:
+        if(input.APressed || input.BPressed) {
+            run_state = PAUSE;
+        }
+        break;
     }
 
     if (old_state != run_state) {
@@ -910,6 +966,9 @@ static void microban_run(void)
         break;
     case LEVEL_MENU:
         draw_level_menu();
+        break;
+    case ABOUT:
+        draw_screen();
         break;
     }
     FbBackgroundColor(BLACK);
