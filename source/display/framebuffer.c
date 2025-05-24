@@ -1002,7 +1002,7 @@ void FbPoint(unsigned char x, unsigned char y)
     G_Fb.changed = 1;
 }
 
-/*
+
 void FbPlacePoint(unsigned short color, int x, int y) {
     if (x >= 0 && x < LCD_XSIZE && y >= 0 && y < LCD_YSIZE) {
         BUFFER(y * LCD_XSIZE + x) = color;
@@ -1010,7 +1010,7 @@ void FbPlacePoint(unsigned short color, int x, int y) {
         G_Fb.changed = 1;
     }
 }
-*/
+
 
 void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, __attribute__((unused)) unsigned char y2)
 {

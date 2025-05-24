@@ -70,6 +70,7 @@ void FbRotCharacter(unsigned char charin);
 void FbRoundedRect(unsigned char width, unsigned char height, unsigned char stroke);
 void FbFilledRectangle(unsigned char width, unsigned char height);
 void FbPoint(unsigned char x, unsigned char y);
+void FbPlacePoint(unsigned short color, int x, int y);
 // void FbPrintChar(unsigned char charin, unsigned char x, unsigned char y);
 void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2);
 void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2);
