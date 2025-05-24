@@ -220,7 +220,7 @@ static void draw_monster_avatar_screen_locked(uint64_t now)
 		screen_changed = true;
 	}
 
-	uint32_t state = mosaic_seed;
+	unsigned int state = (unsigned int)mosaic_seed;
 	const int block = 4;
 	for (int y = 0; y < LCD_YSIZE; y += block) {
 		for (int x = 0; x < LCD_XSIZE; x += block) {
