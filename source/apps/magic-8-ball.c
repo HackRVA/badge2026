@@ -239,8 +239,10 @@ static void magic_8_ball_exit(void)
 
 void magic_8_ball_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (magic_8_ball_state) {
 	case MAGIC8BALL_INIT:

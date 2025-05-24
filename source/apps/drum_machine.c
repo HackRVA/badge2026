@@ -808,8 +808,10 @@ static void drum_machine_error(void)
 
 void drum_machine_cb(__attribute__((unused)) struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (drum_machine_state) {
 	case DRUM_MACHINE_INIT:

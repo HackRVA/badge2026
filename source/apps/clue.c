@@ -1305,8 +1305,10 @@ static void clue_check_for_incoming_packets(void)
 
 void clue_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	if (scan_for_incoming_packets)
 		clue_check_for_incoming_packets();

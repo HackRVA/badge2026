@@ -5224,8 +5224,10 @@ static void gulag_safe_cracked(void)
 
 void gulag_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	game_timer++;
 	switch (gulag_state) {

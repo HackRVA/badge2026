@@ -680,8 +680,10 @@ static void aagunner_exit(void)
 void aagunner_cb(struct badge_app *app)
 {
 
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	if (sparkpool == NULL) {
 		sparkpool = get_common_particle_pool();

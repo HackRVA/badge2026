@@ -150,8 +150,10 @@ static void etch_a_sketch_exit(void)
 
 void etch_a_sketch_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (etch_a_sketch_state) {
 	case ETCH_A_SKETCH_INIT:
