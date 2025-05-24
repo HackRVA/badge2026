@@ -156,6 +156,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
             = MIN(load_bar_size * wait / load_bar_frames, load_bar_size);
         FbFilledRectangle(load_bar_px, 18);
 
+        FbColor(WHITE);
         uint8_t load_bar_perc 
             = MIN(load_bar_px * 100 / load_bar_size, 99);
         char str[4];
