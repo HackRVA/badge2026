@@ -19,6 +19,12 @@
 #include "badgemon_asset.h"
 #undef DEFINE_IMAGE_ASSET_DATA
 
+#if TARGET_SIMULATOR
+#define DEV_OPTIONS_ENABLED 1
+#else
+#define DEV_OPTIONS_ENABLED 0
+#endif
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define NUM_MENU_ITEMS ARRAY_SIZE(menu_items)
 #define MAX_SPARKLES 16
@@ -348,7 +354,7 @@ static const char *menu_items[] = {
 	"progress",
 	"trade monsters",
 	"how to play",
-#ifdef __linux__
+#if DEV_OPTIONS_ENABLED
 	"unlock all",
 	"lock all",
 #endif
@@ -360,7 +366,7 @@ static void (*menu_actions[])(void) = {
 	top_menu_action_show_progress_page,
 	top_menu_action_trade_monsters,
 	top_menu_action_help_screen,
-#ifdef __linux__
+#if DEV_OPTIONS_ENABLED
 	top_menu_action_unlock_all,
 	top_menu_action_lock_all,
 #endif
