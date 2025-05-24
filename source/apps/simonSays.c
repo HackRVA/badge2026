@@ -25,6 +25,7 @@ const struct asset2 *rightyellow_p = &rightyellow;
 const int MAX_TURNS = 100;
       int SPEED = 500;
 
+ struct audio_out_spec spec;
 
 /* Program states.  Initial state is MYPROGRAM_INIT */
 enum simonSays_state_t {
@@ -364,6 +365,10 @@ void clearSequence(void){
 
 //SETS UP OUR WORK ENVIRONMENT
 	void simonSays_init(void){
+
+
+
+
 	started = false;
 	it = 0;
 	usedTurns=0;
@@ -493,37 +498,28 @@ void clearSequence(void){
 	}
 
 void playerLose(void){
-	if(!started){
+
+	spec = (const struct audio_out_spec) {
+		.callback = NULL,
+		.frequency_hz = 93*42,
+		.duration_ms = 3000,
+		.decay = 0,
+		.phase = 0,
+		.amplitude_dBFS = -3,
+		.restart = false,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.nes_noise.lfsr_val = 1,
+		.nes_noise.mode_flag = true ,
+	};
+
+
 		clearSequence();
 		soundStop();
 		showChoice(NONE);
-		soundStart(120);
-		started = true;
-		timesUp = false;
-		changeNote = true;
-		then = rtc_get_ms_since_boot()+4000;
-		return;
-	}
-	else{
-		now = rtc_get_ms_since_boot();
-		if(timesUp){
-		soundStop();
-		simonSays_state = SIMONSAYS_INIT;
-		return;
+        (void) audio_out_play(0, &spec);
 
-		}
-		else{
-			if(changeNote){
-				soundStop();
-				changeNote++;
-			}
-			else {
-				soundStart(130);
-				changeNote++;
-			}
-			timesUp = now>then;
-		}
-	}
+		simonSays_state = SIMONSAYS_INIT;
+
 	}
 
 
