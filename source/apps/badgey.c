@@ -7250,6 +7250,8 @@ static void print_cave(char *map)
 {
 #if TARGET_SIMULATOR
 	for (int i = 0; i < 64; i++) {
+		if (i < 29)
+			continue;
 		if ((i % 5) == 0)
 			printf("%3d ", i);
 		else
@@ -9013,10 +9015,33 @@ static void cheat_help(void)
 	fprintf(stderr, "? help\n");
 	fprintf(stderr, "p list planets\n");
 	fprintf(stderr, "c list caves/towns\n");
+	fprintf(stderr, "d print dungeon maps\n");
 	fprintf(stderr, "m move x, y\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
 	fprintf(stderr, "q quit\n\n");
+}
+
+
+static void print_all_dungeons(void)
+{
+	const struct badgey_world *world[] = { &ossaria, &NW42, &borton, &skang, &gnarg };
+
+	for (int w = 0; w < (int) ARRAY_SIZE(world); w++) {
+		for (int y = 0; y < 64; y++) {
+			for (int x = 0; x < 64; x++) {
+				if (world[w]->wm[windex(x, y)] < '5' || world[w]->wm[windex(x, y)] > '9')
+					continue;
+				player.world = world[w];
+				int cn = world[w]->wm[windex(x, y)];
+				cn = cn - '0';
+				generate_cave(cn, x, y);
+				cn = town_num_to_name_index(w * 10 + cn);
+				printf("PLANET: %s, CAVE: %s x,y = (%d,%d)\n\n\n", world[w]->name, towninfo[cn].name, x, y); 
+			}
+		}
+	}
+	exit(0);
 }
 
 static void badgey_dev_cheats(void)
@@ -9037,6 +9062,9 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'c':
 			cheat_caves_and_towns();
+			break;
+		case 'd':
+			print_all_dungeons();
 			break;
 		case 'p':
 			cheat_planets();
