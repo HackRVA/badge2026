@@ -1113,10 +1113,7 @@ static const char *monster_keys[UNLOCKABLE_MONSTER_COUNT] = {
 
 static int badge_monsters_unlocked = 0;
 static int badge_monster_last_unlock_milestone = 0;
-/* TODO: this number needs to be higher because with the
-* interval set at 20 it interrupts gameplay too much
-*/
-static int badge_monster_unlock_interval = 20;
+static int badge_monster_unlock_interval = 125;
 
 static void unlock_next_badge_monster(void)
 {
