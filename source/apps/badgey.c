@@ -2885,8 +2885,6 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 
 /* Must match shop_item[], below */
 enum item_index {
-	SAVE_GAME = 0,
-	RESTORE_GAME,
 	FOOD,
 	DRINK,
 
@@ -3006,8 +3004,6 @@ static const struct shop_item {
 	unsigned char usable; /* May be accessed via "USE ITEM" menu */
 } shop_item[] = {
 	/* INN */
-	{ "SAVE GAME", 0, ITEM_TYPE_INTANGIBLE, SHOP_INN, 0 },
-	{ "RESTORE GAME", 0, ITEM_TYPE_INTANGIBLE, SHOP_INN, 0 },
 
 	/* PUB */
 	{ "FOOD", 10, ITEM_TYPE_SUSTENANCE, SHOP_PUB, 0 },
@@ -6095,6 +6091,10 @@ static void badgey_talk_to_shopkeeper(void)
 		if (player_in_richmond() && st == SHOP_RVASEC) {
 			dynmenu_add_item(&town_menu, "ENTER RVASEC", BADGEY_RUN, 251);
 		}
+		if (st == SHOP_INN) {
+			dynmenu_add_item(&town_menu, "SAVE GAME", BADGEY_SAVE_GAME, 250);
+			dynmenu_add_item(&town_menu, "RESTORE GAME", BADGEY_RESTORE_GAME, 249);
+		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
 		menu_setup = 1;
@@ -6127,6 +6127,14 @@ static void badgey_talk_to_shopkeeper(void)
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_ENTER_RVASEC);
+	} else if (choice == 250) { /* save game */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_SAVE_GAME);
+	} else if (choice == 249) { /* restore game */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_RESTORE_GAME);
 	} else if (choice >= 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
 		char *clue_text = "";
@@ -8965,8 +8973,6 @@ static void sanity_check_shop_enums(void)
 		raise(SIGTRAP); \
 	} } while(0)
 
-	CHECK_SHOPITEM(SAVE_GAME);
-	CHECK_SHOPITEM(RESTORE_GAME);
 	CHECK_SHOPITEM(FOOD);
 	CHECK_SHOPITEM(DRINK);
 	CHECK_SHOPITEM(LIGHT_ARMOR);
