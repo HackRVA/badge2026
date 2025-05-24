@@ -25,4 +25,5 @@ for file in "${FILES[@]}"; do
 	cp "$BUILD_DIR/$file" "$DST_DIR/"
 done
 
+cp docs/user_docs/src/images/* $DST_DIR/images
 cp docs/user_docs/simulator.html $DST_DIR
