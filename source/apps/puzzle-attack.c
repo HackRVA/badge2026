@@ -1257,6 +1257,41 @@ static void draw_bitmap(
 	}
 }
 
+static void draw_dumb_face(int grid_x, int grid_y, uint8_t color_index)
+{
+	int spacing = BLOCK_SIZE + BLOCK_SPACING;
+	int origin_x = (LCD_XSIZE / 2) - (GRID_COLS * spacing / 2);
+	int origin_y = 1 + 2;
+	int center_offset = (BLOCK_SIZE + 3) / 2;
+	struct pixel_coordinate center = get_center_of_block(grid_x, grid_y, origin_x, origin_y, spacing, center_offset);
+	int half = BLOCK_SIZE / 2;
+	struct pixel_coordinate block_coord = {
+	  .x = center.x - half,
+	  .y = center.y - half
+	};
+
+	FbMove(center.x - 4, center.y - 4);
+	FbColor(palette_color_from_index(default_palette, color_index));
+	FbFilledRectangle(9, 9);
+
+	FbColor(WHITE);
+	FbCircle(block_coord.x + 1, block_coord.y + 2, 2);
+	FbCircle(block_coord.x + 7, block_coord.y + 2, 2);
+
+	FbColor(BLACK);
+	FbPoint(block_coord.x + 1, block_coord.y + 2);
+	FbPoint(block_coord.x + 7, block_coord.y + 2);
+
+	FbColor(BLACK);
+	FbPoint(block_coord.x + 3, block_coord.y + 5);
+	FbPoint(block_coord.x + 4, block_coord.y + 5);
+	FbColor(RED);
+	FbPoint(block_coord.x + 3, block_coord.y + 6);
+	FbPoint(block_coord.x + 4, block_coord.y + 6);
+	FbPoint(block_coord.x + 3, block_coord.y + 7);
+	FbPoint(block_coord.x + 4, block_coord.y + 7);
+}
+
 static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
 	bool is_floating)
 {
@@ -1284,7 +1319,7 @@ static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
 			palette_color_from_index(default_palette, 9);
 
 	if (is_marked_for_removal(grid_x, grid_y))
-		block.fill_color = palette_color_from_index(default_palette,
+		block.outline_color = palette_color_from_index(default_palette,
 			2 + get_removal_progress(grid_x, grid_y));
 
 	ui_button_dither_fill(block, block.fill_color, 0, 1);
@@ -1317,6 +1352,9 @@ static void draw_block(int grid_y, int grid_x, int start_x, int start_y, int sz,
 		break;
 	default:
 		break;
+	}
+	if (is_marked_for_removal(grid_x, grid_y)) {
+	  draw_dumb_face(grid_x, grid_y, block_type + 8);
 	}
 }
 
