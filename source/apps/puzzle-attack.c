@@ -1495,7 +1495,7 @@ static void draw_help_screen(void)
 
 	const char *lines[] = {"use the dpad", "to move cursor", "", "press a",
 		"to swap blocks", "", "create matches", "to get points", "", "",
-		"A btn for menu", "B btn for back"};
+		"", "B btn for back"};
 
 	int y = 8;
 	for (size_t i = 0; i < sizeof(lines) / sizeof(lines[0]); i++) {
