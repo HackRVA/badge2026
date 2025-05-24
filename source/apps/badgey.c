@@ -8093,6 +8093,9 @@ static void badgey_combat(void)
 			direction = 3;
 		} else if (player.cbx > 0) {
 			nx = player.cbx - 1;
+		} else {
+			set_badgey_state(BADGEY_EXIT_COMBAT);
+			exit_combat_counter = 0;
 		}
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
@@ -8100,6 +8103,9 @@ static void badgey_combat(void)
 			direction = 1;
 		} else if (player.cbx < screen_cells_wide - 1) {
 			nx = player.cbx + 1;
+		} else {
+			set_badgey_state(BADGEY_EXIT_COMBAT);
+			exit_combat_counter = 0;
 		}
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
@@ -8107,6 +8113,9 @@ static void badgey_combat(void)
 			direction = 0;
 		} else if (player.cby > 0) {
 			ny = player.cby - 1;
+		} else {
+			set_badgey_state(BADGEY_EXIT_COMBAT);
+			exit_combat_counter = 0;
 		}
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
@@ -8114,6 +8123,9 @@ static void badgey_combat(void)
 			direction = 2;
 		} else if (player.cby < screen_cells_tall - 1) {
 			ny = player.cby + 1;
+		} else {
+			set_badgey_state(BADGEY_EXIT_COMBAT);
+			exit_combat_counter = 0;
 		}
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
