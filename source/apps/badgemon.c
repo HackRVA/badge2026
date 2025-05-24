@@ -617,6 +617,12 @@ static void badgemon_init(void)
 	current_monster_id = initial_mon;
 	monsters[initial_mon].unlocked = true;
 
+	monsters[4].shiny = true;
+	monsters[8].shiny = true;
+	monsters[19].shiny = true;
+	monsters[22].shiny = true;
+	monsters[26].shiny = true;
+
 	badgemon_state = BADGEMON_TOP_MENU;
 	screen_changed  = true;
 }
