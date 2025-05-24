@@ -26,11 +26,6 @@
 #define AUDIO_SAMPLE_MAX        (INT16_MAX)     //!< Audio driver maximum sample value
 #define AUDIO_SAMPLE_MIN        (INT16_MIN)     //!< Audio driver maximum sample value
 
-#define AUDIO_BEEP_FREQ_HZ_MIN  (120)
-#define AUDIO_BEEP_FREQ_HZ_MAX  (10000)
-#define AUDIO_BEEP_DUR_MS_MIN   (1)
-#define AUDIO_BEEP_DUR_MS_MAX   (30000)
-
 #define AUDIO_FS    (48000) /**< Audio driver sample rate. */
 
 #ifdef TARGET_SIMULATOR
@@ -54,8 +49,17 @@
 #endif /* TARGET_SIMULATOR */
 #define AUDIO_BUFFER_LEN    (AUDIO_BUFFER_FRAMES * AUDIO_BUFFER_CHANS)
 
-
+/*----- Input ----------------------------------------------------------------*/
 #define AUDIO_INPUT_CALLBACKS_MAX (4) /*!< Maximum number of audio input callbacks simultaneously active. */
+
+/*----- Output ---------------------------------------------------------------*/
+#define AUDIO_OUT_VOICE_COUNT   (8)                     /**< Number of output voice slots. */
+#define AUDIO_OUT_VOICE_ANY     (AUDIO_OUT_VOICE_COUNT) /**< Output using any available voice slot. */
+
+#define AUDIO_BEEP_FREQ_HZ_MIN  (120)
+#define AUDIO_BEEP_FREQ_HZ_MAX  (10000)
+#define AUDIO_BEEP_DUR_MS_MIN   (1)
+#define AUDIO_BEEP_DUR_MS_MAX   (30000)
 
 /*- Public Types -------------------------------------------------------------*/
 /** Integer type used for sample processing. */
@@ -64,6 +68,7 @@ typedef int16_t audio_sample_t;
 /** Integer type used for samples in the audio buffer. */
 typedef int32_t audio_buffer_t;
 
+/*----- Input ----------------------------------------------------------------*/
 /** Audio input callback.
  *
  *  @param  samples Input samples to be processed.
@@ -71,7 +76,97 @@ typedef int32_t audio_buffer_t;
  */
 typedef void (*audio_input_callback_t)(const audio_sample_t *samples, size_t len);
 
+/*----- Output ---------------------------------------------------------------*/
+/** Audio output waveform type. */
+enum audio_out_type {
+    AUDIO_OUT_TYPE_NONE = 0,
+
+    AUDIO_OUT_TYPE_SQUARE,      /** Square wave. _|¯|_|¯ */
+    AUDIO_OUT_TYPE_TRIANGE,     /** Triangle wave. /\/\ */
+    AUDIO_OUT_TYPE_SAWTOOTH,    /** Sawtooth wave. |\_|\_ */
+    AUDIO_OUT_TYPE_NES_NOISE,   /** NES LFSR noise. */
+    AUDIO_OUT_TYPE_SAMPLES,     /** Raw samples. */
+
+    AUDIO_OUT_TYPE_COUNT,
+};
+
+/** Output spec for square waveform. */
+struct audio_out_spec_square {
+    /** Duty cycle of the square wave. */
+    uint8_t duty_cycle;
+};
+
+/** Output spec for triangle waveform. */
+struct audio_out_spec_triangle {
+    // TODO -PMW
+    uint8_t dummy;
+};
+
+/** Output spec for sawtooth waveform. */
+struct audio_out_spec_sawtooth {
+    // TODO -PMW
+    uint8_t dummy;
+};
+
+/** Output spec for NES LFSR noise. */
+struct audio_out_spec_nes_noise {
+    // TODO -PMW
+    uint8_t dummy;
+};
+
+/** Bit depth of raw samples for output. */
+enum audio_out_spec_samples_bit_depth {
+    AUDIO_OUT_SPEC_SAMPLES_BIT_DEPTH_32 = 1,
+    AUDIO_OUT_SPEC_SAMPLES_BIT_DEPTH_24 = (1 << 8),
+    AUDIO_OUT_SPEC_SAMPLES_BIT_DEPTH_16 = (1 << 16),
+    AUDIO_OUT_SPEC_SAMPLES_BIT_DEPTH_8  = (1 << 24),
+};
+
+/** Output spec for raw samples. */
+struct audio_out_spec_samples {
+    enum audio_out_spec_samples_bit_depth bit_depth; /**< Sample bit depth. */
+
+    /** Ratio between provided and output sample rate.
+     *
+     *  Sample rates less than the target sample rate may be interpolated
+     *  linearly between the provided samples.
+     *
+     *  @note   This must be an integer in the inclusive range [0, 4].
+     */
+    uint8_t rate_ratio;
+
+    void *samples;      /**< Pointer to the array of samples. */
+    uint32_t n_samples; /**< Count of samples (array length NOT array size). */
+};
+
+struct audio_out_spec {
+    /*----- Common fields. -----*/
+    /** Note completion callback.
+     *
+     *  @param  voice   Voice index.
+     *  @param  spec    Provided spec struct pointer.
+     */
+    void (*callback)(int voice, const struct audio_out_spec *spec);
+    uint16_t frequency_hz;      /**< Frequency of the "note" in Hz. */
+    uint16_t duration_ms;       /**< Duration of the "note" in ms. */
+    int16_t decay;              /**< Linear decay to add to the amplitude every sample. @note This may change -PMW */
+    int16_t phase;              /**< Phase adjustment in samples. */
+    int8_t amplitude_dBFS;      /**< Starting amplitude of the waveform. */
+    bool restart;               /**< If the "note" should be restarted or continued with new parameters. */
+    enum audio_out_type type;   /**< Type of output. */
+
+    /*----- Type specific fields. -----*/
+    union {
+        struct audio_out_spec_square    square;     /**< Spec for square waveform. */
+        struct audio_out_spec_triangle  triangle;   /**< Spec for triangle waveform. */
+        struct audio_out_spec_sawtooth  sawtooth;   /**< Spec for sawtooth waveform. */
+        struct audio_out_spec_nes_noise nes_noise;  /**< Spec for NES LFSR noise. */
+        struct audio_out_spec_samples   samples;    /**< Spec for raw samples. */
+    };
+};
+
 /*- API ----------------------------------------------------------------------*/
+/*----- Initialization -------------------------------------------------------*/
 /*!
  *  @brief  Initialize and configure audio gpio
  *
@@ -85,6 +180,7 @@ void audio_init_gpio(void);
  */
 void audio_init(void);
 
+/*----- Runtime --------------------------------------------------------------*/
 /** Update audio engine with any per-frame tasks (like volume). */
 void audio_poll(void);
 
@@ -107,6 +203,7 @@ void audio_lock(void);
  */
 void audio_unlock(void);
 
+/*----- Input ----------------------------------------------------------------*/
 /** Add audio input callback.
  *
  *  @param  cb  Callback to add.
@@ -133,22 +230,34 @@ int audio_in_remove_cb(int i);
  */
 int audio_in_cb_count(void);
 
-/*!
- *  @brief  Play an old fashioned beep on the speaker.
+/*----- Output ---------------------------------------------------------------*/
+/** Start playing an output waveform.
  *
- *  @note   To play a rest, provide a callback and a frequency of zero with a 
- *          valid duration.
- *  @note   To stop playing beeps, provide a duration and frequency of zero.
+ *  @param  v       Index of voice to use in range [0, AUDIO_OUT_VOICE_COUNT].
+ *                  Use AUDIO_OUT_VOICE_ANY to automatically select.
+ *  @param  spec    Pointer to output spec.
  *
- *  @param  frequency   Frequency in Hertz
- *  @param  duration    Duration in milliseconds
+ *  @return Negative error on failure or positive voice index of playing voice.
  */
-int audio_out_beep(uint16_t freq, uint16_t duration);
+int audio_out_play(int v, const struct audio_out_spec *spec);
+
+/** Stop a playing output waveform.
+ *
+ *  @note   This function will return as successful if there is no currently
+ *          playing output waveform in the specified voice index.
+ *
+ *  @param  v   Index of voice to stop in range [0, AUDIO_OUT_VOICE_COUNT]. Use
+ *              AUDIO_OUT_VOICE_COUNT to stop all playing output waveforms.
+ *
+ *  @return Negative error on failure or positive voice index of stopped voice.
+ *  @retval -EINVAL Voice index was out of range.
+ */
+int audio_out_stop(int v);
 
 /*!
  *  @brief  Play an old fashioned beep on the speaker.
  *
- *  @note   To play a rest, provide a callback and a frequency of zero with a 
+ *  @note   To play a rest, provide a callback and a frequency of zero with a
  *          valid duration.
  *  @note   To stop playing beeps, provide a duration and frequency of zero.
  *
@@ -160,17 +269,26 @@ int audio_out_beep(uint16_t freq, uint16_t duration);
 int audio_out_beep_with_cb(uint16_t freq, uint16_t duration, void (*beep_finished)(void));
 
 /*!
- *  @brief  Request the opamp standby pin take a certain state.
+ *  @brief  Play an old fashioned beep on the speaker.
  *
- *  @param  enable  Request the standby mode be enabled
+ *  @note   To play a rest, provide a callback and a frequency of zero with a
+ *          valid duration.
+ *  @note   To stop playing beeps, provide a duration and frequency of zero.
+ *
+ *  @param  frequency   Frequency in Hertz
+ *  @param  duration    Duration in milliseconds
  */
-void audio_stby_ctl(bool enable);
+static inline int audio_out_beep(uint16_t freq, uint16_t duration)
+{
+    return audio_out_beep_with_cb(freq, duration, NULL);
+}
 
 /*!
  * @brief Tell us Signal if the audio is on or not.
  */
 bool audio_is_playing(void);
 
+/*----- Utilities ------------------------------------------------------------*/
 /** Get the RMS level.
  *
  *  @param  samples Pointer to buffer of samples.
@@ -208,6 +326,14 @@ static inline int8_t audio_dBFS(audio_sample_t raw)
 {
     return audio_dB(AUDIO_SAMPLE_MAX, raw);
 }
+
+/** Get ratio from dB.
+ *
+ *  @param  dB  Ratio in dB.
+ *
+ *  @return Ratio referenced to INT16_MAX as 0 dB.
+ */
+int32_t audio_ratio(int8_t dB);
 
 /*! @} */ // BADGE_AUDIO
 

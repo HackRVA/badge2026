@@ -54,8 +54,13 @@
 #endif /* PREPRODUCTION_FIRMWARE */
 
 /*- Private Variables --------------------------------------------------------*/
-static uint64_t m_audio_irq_accum_us;
+#if AUDIO_IRQ_STATS
+static uint32_t m_audio_irq_count;
+static uint32_t m_audio_irq_max_us;
+static uint32_t m_audio_irq_min_us = UINT32_MAX;
+static uint32_t m_audio_irq_accum_us;
 static uint64_t m_audio_last_irq_start_us;
+#endif /* AUDIO_IRQ_STATS */
 
 static struct nau88c10_ctx m_nau88c10_ctx;
 static void prv_audio_i2s_dma_handler(void); /* Forward declaration. */
@@ -92,17 +97,30 @@ static void prv_audio_i2s_dma_handler(void)
     dma_hw->ints0 = 1U << p->dma_ch_in_data;  // clear the IRQ
 #if AUDIO_IRQ_STATS
     uint64_t exit_us = rtc_get_us_since_boot();
-    m_audio_irq_accum_us += (exit_us - entry_us);
+    uint32_t this_us = (exit_us - entry_us);
+    m_audio_irq_count++;
+    m_audio_irq_max_us = MAX(m_audio_irq_max_us, this_us);
+    m_audio_irq_min_us = MIN(m_audio_irq_min_us, this_us);
+    m_audio_irq_accum_us += this_us;
     uint64_t since_last_log_us = entry_us - m_audio_last_irq_start_us;
     if (since_last_log_us > (1000 * 1000)) {
-        LOG("irq cpu load %llu%%", 
-            m_audio_irq_accum_us * 100 / MAX(1,since_last_log_us));
+        LOG("irq cpu load %llu%% (max: %lu, min: %lu, avg: %lu)",
+            m_audio_irq_accum_us * 100 / MAX(1, since_last_log_us),
+            m_audio_irq_max_us, m_audio_irq_min_us,
+            m_audio_irq_accum_us / MAX(1, m_audio_irq_count));
+        m_audio_irq_count = 0;
+        m_audio_irq_max_us = 0;
+        m_audio_irq_min_us = UINT32_MAX;
         m_audio_irq_accum_us = 0;
         m_audio_last_irq_start_us = entry_us;
+    }
+    if (this_us > 499) {
+        LOG("long dma irq!!! (us: %llu)", this_us);
     }
 #endif /* AUDIO_IRQ_STATS */
 }
 
+uint32_t m_audio_lock_nesting;
 int32_t m_audio_lock_irqs;
 
 /*- API ----------------------------------------------------------------------*/
@@ -147,12 +165,18 @@ void audio_poll(void)
 void audio_lock(void)
 {
     // TODO: irq locking insufficient with multiple cores. -PMW
-    m_audio_lock_irqs = save_and_disable_interrupts();
+    if (0 == m_audio_lock_nesting) {
+        m_audio_lock_irqs = save_and_disable_interrupts();
+    }
+    m_audio_lock_nesting++;
 }
 
 void audio_unlock(void)
 {
-    restore_interrupts(m_audio_lock_irqs);
+    m_audio_lock_nesting--;
+    if (0 == m_audio_lock_nesting) {
+        restore_interrupts(m_audio_lock_irqs);
+    }
 }
 
 /*! @} */ // BADGE_AUDIO
