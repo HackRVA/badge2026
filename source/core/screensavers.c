@@ -276,42 +276,71 @@ void dotty(void)
 
 void matrix(void)
 {
-#define NUM_MATRIX_DOODADS 5
-	static int x[NUM_MATRIX_DOODADS], y[NUM_MATRIX_DOODADS];
-	if (!animation_count) {
+#if !SCREEN_ORIENTATION_LANDSCAPE
+  #define MATRIX_XSIZE (LCD_XSIZE)
+  #define MATRIX_YSIZE (LCD_YSIZE)
+#else
+  #define MATRIX_XSIZE (LCD_YSIZE)
+  #define MATRIX_YSIZE (LCD_XSIZE)
+#endif /* !SCREEN_ORIENTATION_LANDSCAPE */
+#define MATRIX_NUM_DOODADS 5
+	static int x[MATRIX_NUM_DOODADS], y[MATRIX_NUM_DOODADS];
+	static unsigned drawn_columns;
+	if (0 == animation_count) {
+		drawn_columns = 0;
 		FbColor(x11_light_green);
 		FbBackgroundColor(BLACK);
 		FbClear();
-		for (int i = 0; i < NUM_MATRIX_DOODADS; i++) {
-			x[i] = random_num(LCD_XSIZE / 8);
-			y[i] = random_num(LCD_YSIZE / 8);
+		int x_base = random_num(MATRIX_XSIZE / 8 / MATRIX_NUM_DOODADS);
+		int y_base = random_num(MATRIX_YSIZE / 8 / MATRIX_NUM_DOODADS);
+		int x_shift = random_num(MATRIX_NUM_DOODADS);
+		int y_shift = random_num(MATRIX_NUM_DOODADS);
+		for (int i = 0; i < MATRIX_NUM_DOODADS; i++) {
+			x[i] = ((MATRIX_XSIZE / 8 / MATRIX_NUM_DOODADS)
+			       * ((i + x_shift) % MATRIX_NUM_DOODADS)) + x_base;
+			y[i] = ((MATRIX_YSIZE / 8 / MATRIX_NUM_DOODADS)
+			       * ((i + y_shift) % MATRIX_NUM_DOODADS)) + y_base;
 		}
 		animation_count = 1;
 	}
 
-	for (int i = 0; i < NUM_MATRIX_DOODADS; i++) {
-		if (y[i] * 8 < LCD_YSIZE - 8) /* not bottom row? */
+	for (int i = 0; i < MATRIX_NUM_DOODADS; i++) {
+		if (y[i] * 8 < MATRIX_YSIZE - 8) /* not bottom row? */
 			FbColor(x11_light_green);
 		else
 			FbColor(x11_dark_green);
 		FbBackgroundColor(BLACK);
 		unsigned char ch = random_num(63) + 'A';
+#if !SCREEN_ORIENTATION_LANDSCAPE
 		FbMove(x[i] * 8, y[i] * 8);
 		FbCharacter(ch);
+#else
+		FbMove(MATRIX_YSIZE - (y[i] * 8), x[i] * 8);
+		FbRotCharacter(ch);
+#endif /* !SCREEN_ORIENTATION_LANDSCAPE */
 		if (random_num(1000) < 900) {
 			int ny = y[i] - 1;
 			if (ny >= 0) { /* if it's not off the top of the screen */
 				FbColor(x11_dark_green);
-				FbMove(x[i] * 8, ny * 8);
 				ch = random_num(63) + 'A';
+#if !SCREEN_ORIENTATION_LANDSCAPE
+				FbMove(x[i] * 8, ny * 8);
 				FbCharacter(ch);
+#else
+				FbMove(MATRIX_YSIZE - (ny * 8), x[i] * 8);
+				FbRotCharacter(ch);
+#endif /* !SCREEN_ORIENTATION_LANDSCAPE */
 			}
 		}
 		y[i] += 1;
-		if (y[i] > (LCD_YSIZE - 8) / 8) { /* hit bottom of screen? */
+		if (y[i] > (MATRIX_YSIZE - 8) / 8) { /* hit bottom of screen? */
 			/* choose new location, random x, y = top of screen */
-			x[i] = random_num(LCD_XSIZE / 8);
+			do {
+				x[i] = random_num(MATRIX_XSIZE / 8);
+			} while ((drawn_columns != (1U << (MATRIX_XSIZE / 8)) - 1)
+				 && (0 != (drawn_columns & (1U << x[i]))));
 			y[i] = 0;
+			drawn_columns |= 1U << x[i];
 		}
 	}
 	FbPushBuffer();
