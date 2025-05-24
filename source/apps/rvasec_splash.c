@@ -126,10 +126,16 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
                ((LCD_YSIZE - hack_logo.y) / 2));	
         FbImage2(&hack_logo, 0);
         FbSwapBuffers();
-        if (SPLASH_WAIT_HACK_FRAMES < ++wait) {
+        if ((SPLASH_WAIT_HACK_FRAMES < ++wait)) {
             wait = 0;
             m_splash_state = SPLASH_STATE_LOADBAR;
+        } else if (button_down_latches() & (1U << BADGE_BUTTON_FASTFORWARD)) {
+            FbBackgroundColor(BLACK);
+            led_pwm_disable(BADGE_LED_RGB_RED);
+            m_splash_state = SPLASH_STATE_NO_INIT;
+            pop_app();
         }
+
         break;
 
     case SPLASH_STATE_LOADBAR:
