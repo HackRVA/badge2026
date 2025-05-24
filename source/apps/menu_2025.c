@@ -299,15 +299,6 @@ static void draw_screen(void)
 		FbMove(0, 0);
 		int text_x;
 		int text_y;
-		if (current_menu_stack_idx == -1) {
-			FbImageRect(&cassettedrawer, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
-			text_x = 12;
-			text_y = 87;
-		} else {
-			FbImageRect(&cassettepixel, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
-			text_x = 0;
-			text_y = 21;
-		}
 
 		char s_upper[sizeof(item->name)];
 		memcpy(s_upper, item->name, sizeof(item->name));
@@ -315,10 +306,36 @@ static void draw_screen(void)
 		for (int i = 0; i < len; i++) {
 			s_upper[i] = toupper(s_upper[i]);
 		}
-		FbMove((LCD_XSIZE - 8 * len) / 2 + text_x, text_y);
-		FbBackgroundColor(TAPE_DECK_MENU_BG_COLOR);
-		FbColor(TAPE_DECK_MENU_FG_COLOR);
-		FbWriteString(s_upper);
+		if (current_menu_stack_idx == -1) {
+			FbImageRect(&cassettedrawer, 0, 0, -14, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+			text_x = (LCD_XSIZE - 8 * len) / 2;
+			text_y = 87;
+			FbBackgroundColor(G_Fb.transIndex);
+
+			FbColor(PACKRGB888(200, 200, 200));
+			FbMove(text_x - 1, text_y);
+			FbWriteString(s_upper);
+
+			FbColor(WHITE);
+			FbMove(text_x + 1, text_y);
+			FbWriteString(s_upper);
+
+			FbColor(BLACK);
+			FbMove(text_x, text_y);
+			FbWriteString(s_upper);
+
+
+
+
+		} else {
+			FbImageRect(&cassettepixel, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+			text_x = (LCD_XSIZE - 8 * len) / 2;
+			text_y = 21;
+			FbMove(text_x, text_y);
+			FbBackgroundColor(TAPE_DECK_MENU_BG_COLOR);
+			FbColor(TAPE_DECK_MENU_FG_COLOR);
+			FbWriteString(s_upper);
+		}
 	} else {
 		switch (anim_direction) {
 		case anim_up: /* camera moving up, tape moving down */
@@ -339,7 +356,7 @@ static void draw_screen(void)
 			break;
 		}
 		if (current_menu_stack_idx == -1) {
-			FbImageRect(&cassettedrawer, 0, 0, source_x + 11, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
+			FbImageRect(&cassettedrawer, 0, 0, source_x + 8, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
 		} else {
 			FbImageRect(&cassettepixel, 0, 0, source_x + 8, source_y, LCD_XSIZE, LCD_YSIZE, MAGENTA);
 		}
