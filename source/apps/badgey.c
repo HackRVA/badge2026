@@ -67,6 +67,7 @@ static struct dynmenu_item initial_menu_item[10];
 static int game_in_progress = 0;
 static struct particle_pool *sparkpool;
 #define MAXSPARKS 50
+static unsigned int badgey_won = 0;
 
 /* x and y offsets indexed by direction, 4 and 8 direction variants */
 static const int xo4[] = { 0, 1, 0, -1 };
@@ -2872,7 +2873,8 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define SHOP_HACKERSPACE 4
 #define SHOP_TEMPLE 5
 #define SHOP_SPACESHIP_RENTAL 6
-#define SHOP_SPECIALTY 7 /* not a real shop type, used for specialty items */
+#define SHOP_RVASEC 7
+#define SHOP_SPECIALTY 8 /* not a real shop type, used for specialty items */
 
 #define ITEM_TYPE_INTANGIBLE 0
 #define ITEM_TYPE_SUSTENANCE 1
@@ -3078,7 +3080,7 @@ static const unsigned char badge_bom[] = {
 };
 
 #define MAX_ITEMS_PER_SHOP 8
-#define NUMSHOPS 7
+#define NUMSHOPS 8
 static struct shop {
 	int item[MAX_ITEMS_PER_SHOP];
 	int nitems;
@@ -3202,6 +3204,7 @@ const char *proprietor[NUMSHOPS] = { /* indexed by shop type */
 	"  HACKER",
 	"  GOOROO",
 	"  RENTAL AGENT",
+	"  JAKE",
 };
 
 const char *shopname[NUMSHOPS] = { /* indexed by shop type */
@@ -3212,6 +3215,7 @@ const char *shopname[NUMSHOPS] = { /* indexed by shop type */
 	"HACKERSPACE",
 	"TEMPLE",
 	"SPACESHIPS"
+	"RVASEC"
 };
 
 static const char *creature_info[] = {
@@ -3558,6 +3562,7 @@ static struct player {
 #define EQUIPPED_NONE 255
 	int stop_automatic_motion; /* stops automatic motion in caves */
 	uint8_t known_clues[ARRAY_SIZE(clue)];
+	int entered_rvasec;
 } player = {
 	.world = &space,
 	.x = 32,
@@ -3612,6 +3617,7 @@ enum badgey_state_t {
 	BADGEY_SAVE_GAME,
 	BADGEY_RESTORE_GAME,
 	BADGEY_ASSEMBLE_BADGE,
+	BADGEY_ENTER_RVASEC,
 	BADGEY_REVIEW_CLUES,
 	BADGEY_PLAYER_DIED,
 	BADGEY_EXIT,
@@ -5355,8 +5361,9 @@ static void draw_creature(int i)
 	cy += 8;
 
 	creature[i].onscreen_and_visible = 1;
-	if (creature[i].type == CREATURE_TYPE_CITIZEN)
+	if (creature[i].type == CREATURE_TYPE_CITIZEN) {
 		player.in_shop = creature[i].csd.citizen.shopkeep;
+	}
 	draw_creature_at_xy(cx, cy, creature[i].type, i);
 }
 
@@ -6085,6 +6092,9 @@ static void badgey_talk_to_shopkeeper(void)
 				player_has_all_badge_parts()) {
 			dynmenu_add_item(&town_menu, "ASSEMBLE BADGE", BADGEY_RUN, 252);
 		}
+		if (player_in_richmond() && st == SHOP_RVASEC) {
+			dynmenu_add_item(&town_menu, "ENTER RVASEC", BADGEY_RUN, 251);
+		}
 		dynmenu_add_item(&town_menu, "STATS", BADGEY_STATS, 253); 
 		dynmenu_add_item(&town_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 255);
 		menu_setup = 1;
@@ -6113,6 +6123,10 @@ static void badgey_talk_to_shopkeeper(void)
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_ASSEMBLE_BADGE);
+	} else if (choice == 251) { /* enter rvasec */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_ENTER_RVASEC);
 	} else if (choice >= 0 && choice < (int) ARRAY_SIZE(shop_item)) { /* Buy something */
 		char message[255];
 		char *clue_text = "";
@@ -6959,6 +6973,8 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 	for (size_t i = 0; i < ARRAY_SIZE(shop_item); i++) {
 		int st = shop_item[i].shop_type;
 		if (st < NUMSHOPS) {
+			if (st == SHOP_SPECIALTY) /* specialty items are rare */
+				continue;
 			/* Don't add exotic armor to every armor shop */
 			if (shop_item[i].item_type == ITEM_TYPE_ARMOR) {
 				int a = shop_to_armor_index(i);
@@ -7078,6 +7094,10 @@ static void generate_town(int town_number)
 	int x, y;
 	unsigned int seed;
 	int treecount = 0;
+	int in_richmond = 0;
+
+	if (town_number == 1 && player.world == &gnarg)
+		in_richmond = 1;
 
 	/* Switch to town_creature array */
 	creature = &town_creature[0];
@@ -7196,6 +7216,8 @@ static void generate_town(int town_number)
 		generate_building("TEMPLE", SHOP_TEMPLE, roadchar, &seed);
 	if (towninfo[town].feature & town_spaceship_rental)
 		generate_building("SPACESHIPS", SHOP_SPACESHIP_RENTAL, roadchar, &seed);
+	if (in_richmond)
+		generate_building("RVASEC", SHOP_RVASEC, roadchar, &seed);
 
 	arrange_shop_contents(town);
 
@@ -8173,6 +8195,9 @@ static void badgey_initial_menu(void)
 {
 	static int menu_setup = 0;
 
+	bool ok = flash_kv_get_binary("BADGEY_COMPLETED", &badgey_won, sizeof(badgey_won));
+	if (!ok)
+		badgey_won = 0;
 	FbColor(WHITE);
 	FbBackgroundColor(BLACK);
 	if (!menu_setup) {
@@ -8260,6 +8285,10 @@ static void theme_finished(__attribute__((unused)) void *x)
 
 static void badgey_intro(void)
 {
+	if (badgey_won == 0xBAD6E111)
+		FbBackgroundColor(BLUE);
+	else
+		FbBackgroundColor(BLACK);
 	FbClear();
 	FbColor(WHITE);
 	FbMove(0, 0);
@@ -8623,6 +8652,49 @@ static void badgey_assemble_badge(void)
 	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches)) {
 		stop_tune();
 		pop_app();
+	}
+}
+
+static void badgey_enter_rvasec(void)
+{
+	if (!player.entered_rvasec) {
+		if (player.carrying[RVASEC_BADGE]) {
+			badgey_won = 0xBAD6E111;
+			FbClear();
+			FbColor(WHITE);
+			FbBackgroundColor(BLACK);
+
+			FbMove(3, 3);
+			FbWriteString("WELCOME TO\nRVASEC!\n");
+			FbSwapBuffers();
+			play_tune(&badge_assembly_tune, NULL, NULL);
+			player.entered_rvasec = 1;
+			(void) flash_kv_store_binary("BADGEY_COMPLETED",
+						&badgey_won, sizeof(badgey_won));
+		} else {
+			FbClear();
+			FbColor(WHITE);
+			FbBackgroundColor(BLACK);
+
+			FbMove(3, 3);
+			FbWriteString("YOU NEED A\nBADGE TO\nATTEND RVASEC!");
+			FbSwapBuffers();
+		}
+	}
+
+	int down_latches = button_down_latches();
+
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
+		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		if (!player.carrying[RVASEC_BADGE]) {
+			set_badgey_state(BADGEY_RUN);
+		} else {
+			set_badgey_state(BADGEY_INIT);
+		}
 	}
 }
 
@@ -9252,6 +9324,9 @@ void badgey_cb(struct badge_app *app)
 		break;
 	case BADGEY_ASSEMBLE_BADGE:
 		badgey_assemble_badge();
+		break;
+	case BADGEY_ENTER_RVASEC:
+		badgey_enter_rvasec();
 		break;
 	case BADGEY_REVIEW_CLUES:
 		badgey_review_clues();
