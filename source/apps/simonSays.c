@@ -497,29 +497,33 @@ void playerLose(void){
 		clearSequence();
 		soundStop();
 		showChoice(NONE);
-		soundStart(NOTE_E3);
-		simonSays_wait(2000,SIMONSAYS_PLAYER_LOSE);
+		soundStart(120);
 		started = true;
 		timesUp = false;
 		changeNote = true;
+		then = rtc_get_ms_since_boot()+4000;
+		return;
 	}
 	else{
+		now = rtc_get_ms_since_boot();
 		if(timesUp){
 		soundStop();
 		simonSays_state = SIMONSAYS_INIT;
 		return;
-		}
-		else {
-			if(changeNote){
-				soundStart(NOTE_F3);
-			}
-			else{
-				soundStart(NOTE_E3);
-			}
-			return;
-		}
 
 		}
+		else{
+			if(changeNote){
+				soundStop();
+				changeNote++;
+			}
+			else {
+				soundStart(130);
+				changeNote++;
+			}
+			timesUp = now>then;
+		}
+	}
 	}
 
 
