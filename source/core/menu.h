@@ -35,7 +35,6 @@ enum menu_item_type {
 typedef enum  {
     MAIN_MENU_STYLE,
     MAIN_MENU_WITH_TIME_DATE_STYLE,
-    DRBOB_MENU_STYLE,
     WHITE_ON_BLACK,
     BLANK
 } MENU_STYLE;
