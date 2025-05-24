@@ -114,6 +114,9 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
             .type = AUDIO_OUT_TYPE_SQUARE,
             .square.duty_cycle = UINT8_MAX / 2,
         };
+#if TARGET_SIMULATOR
+	if (!silent_startup)
+#endif
         (void) audio_out_play(0, &spec);
         m_splash_state = SPLASH_STATE_HACK;
         break;
@@ -188,6 +191,9 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
                 .type = AUDIO_OUT_TYPE_SQUARE,
                 .square.duty_cycle = UINT8_MAX / 3,
             };
+#if TARGET_SIMULATOR
+            if (!silent_startup) {
+#endif
             (void) audio_out_play(0, &spec);   
             spec.frequency_hz = NOTE_E4;
             (void) audio_out_play(1, &spec);   
@@ -195,6 +201,9 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
             (void) audio_out_play(2, &spec);   
             spec.frequency_hz = NOTE_C5;
             (void) audio_out_play(3, &spec);   
+#if TARGET_SIMULATOR
+            }
+#endif
         }
 
 	FbBackgroundColor(BLACK);
@@ -218,6 +227,9 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
             .nes_noise.lfsr_val = UINT16_MAX,
             .nes_noise.mode_flag = 99 <= load_bar_perc,
         };
+#if TARGET_SIMULATOR
+	if (!silent_startup)
+#endif
         (void) audio_out_play(0, &spec);   
 
         wait++;
