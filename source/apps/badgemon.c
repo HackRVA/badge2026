@@ -592,9 +592,9 @@ static void trade_monsters_delay(void)
 {
 	static int just_begun = 1;
 	static uint64_t stop_time = 0;
-
 	if (just_begun) {
-		stop_time = rtc_get_ms_since_boot() + 1000;
+		unsigned int rand_interval = (xorshift(&sparkle_state) % 1000) + 1000;
+		stop_time = rtc_get_ms_since_boot() + rand_interval;
 		just_begun = 0;
 	} else {
 		uint64_t now = rtc_get_ms_since_boot();
@@ -652,9 +652,11 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 		check_buttons_noop_screen();
 		draw_progress_menu();
 		break;
-	case BADGEMON_TRADE_MONSTERS:
+	case BADGEMON_TRADE_MONSTERS: {
 		trade_monsters();
+		check_for_incoming_packets();
 		break;
+	}
 	case BADGEMON_TRADE_MONSTERS_DELAY: {
 		trade_monsters_delay();
 		check_buttons_noop_screen();
@@ -677,6 +679,7 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 	case BADGEMON_EXIT:
 		badgemon_state = BADGEMON_INIT;
 		current_menu_item = 0;
+		unregister_ir_packet_callback(ir_packet_callback);
 		save_monsters_to_flash();
 		pop_app();
 		break;
@@ -703,4 +706,7 @@ void badgemon_draw_screen_saver_monster(void)
 void badgemon_unlock_monster(int monster_id)
 {
 	flash_kv_store_int(flash_key_from_monster(monster_id), 1);
+	monsters[monster_id].unlocked = 1;
+
+	audio_out_beep(1200, 600);
 }
