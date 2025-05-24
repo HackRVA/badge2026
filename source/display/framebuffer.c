@@ -48,7 +48,7 @@ void FbInit() {
     G_Fb.pos.x = 0;
     G_Fb.pos.y = 0;
     G_Fb.font = FONT;
-    G_Fb.rotated_font = ROTATED_FONT;
+    G_Fb.rotated_font = FONT_ROTATED;
     G_Fb.fontHeight = 8;
 
     G_Fb.color = 255;
@@ -56,6 +56,11 @@ void FbInit() {
     G_Fb.transMask = 0;
     G_Fb.transIndex = 255;
     G_Fb.changed = 0;
+}
+
+void FbFont(enum fonts font) {
+    G_Fb.font = font;
+    G_Fb.rotated_font = font + 1;
 }
 
 void FbMoveX(unsigned char x)

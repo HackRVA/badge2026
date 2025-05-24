@@ -9,9 +9,11 @@
  NOTE   insert new enums before it.
  NOTE
 */
-enum {
+enum fonts {
     FONT=0,
-    ROTATED_FONT,
+    FONT_ROTATED,
+    FONT_SERIF,
+    FONT_SERIF_ROTATED,
 
     LASTASSET,
 };

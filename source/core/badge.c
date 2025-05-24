@@ -103,6 +103,7 @@ void exec_app(struct badge_app app)
 
 void push_app(struct badge_app app)
 {
+	FbFont(FONT);
 	if (app_stack_idx >= MAX_APP_STACK_DEPTH)
 		return;
 	app_stack_idx++;

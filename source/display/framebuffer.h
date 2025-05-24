@@ -61,6 +61,9 @@ void FbTransparency(unsigned short transparencyMask);
 unsigned short FbGetTransparentIndex(void);
 void FbTransparentIndex(unsigned short color);
 // void FbSprite(unsigned char picId, unsigned char imageNo);
+
+//Sets both font and rotated font.
+void FbFont(enum fonts font);
 void FbCharacter(unsigned char charin);
 void FbRotCharacter(unsigned char charin);
 /*

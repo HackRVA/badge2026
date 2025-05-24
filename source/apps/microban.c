@@ -302,6 +302,7 @@ static void microban_init(void)
     stats.streak = 0;
     camera.offset.x = LCD_XSIZE / 2 - TILE_SIZE/2;
     camera.offset.y = LCD_YSIZE / 2 - TILE_SIZE/2;
+    FbFont(FONT_SERIF);
 
     //unlock levels 0-29. (level 0 should be unlocked even though you start from 1)
     for (int lvl = 0; lvl < MAX_LEVELS; lvl += 1) {
@@ -754,12 +755,12 @@ static void DrawStringDropshadow(const char *string, unsigned char x, unsigned c
     FbWriteString(string);
 }
 
-static void DrawString(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
-    FbColor(background_color);
-    FbColor(text_color);
-    FbMove(x, y);
-    FbWriteString(string);
-}
+// static void DrawString(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+//     FbColor(background_color);
+//     FbColor(text_color);
+//     FbMove(x, y);
+//     FbWriteString(string);
+// }
 
 
 static void draw_screen(void)
@@ -870,16 +871,16 @@ static void draw_screen(void)
                 FbPlacePoint(BLACK, x, y);
             }
         }
-
+        unsigned const short shadow = PACKRGB888(199, 21, 133);
         int y = 16;
-        DrawStringDropshadow(">", 8, y + 12*menu_selection, YELLOW, BLACK);
-        DrawStringDropshadow("reset level", 16, y, WHITE, BLACK);
+        DrawStringDropshadow(">", 8, y + 12*menu_selection, YELLOW, shadow);
+        DrawStringDropshadow("reset level", 16, y, WHITE, shadow);
         y += 12;
-        DrawStringDropshadow("select level", 16, y, WHITE, BLACK);
+        DrawStringDropshadow("select level", 16, y, WHITE, shadow);
         y += 12;
-        DrawStringDropshadow("about microban", 16, y, WHITE, BLACK);
+        DrawStringDropshadow("about microban", 16, y, WHITE, shadow);
         y += 12;
-        DrawStringDropshadow("exit", 16, y, WHITE, BLACK);
+        DrawStringDropshadow("exit", 16, y, WHITE, shadow);
         break;
 
     case LEVEL_MENU: 
@@ -979,13 +980,18 @@ static void microban_run(void)
 static void microban_exit(void)
 {
     microban_state = MICROBAN_INIT; /* So that when we start again, we do not immediately exit */
+    FbFont(FONT);
     pop_app();
 }
 
 void microban_cb(struct badge_app *app)
 {
-    if (app->wake_up)
+    if (app->wake_up) {
+        FbFont(FONT_SERIF);
         screen_changed = 1;
+        app->wake_up = false;
+    }
+
 
     switch (microban_state) {
     case MICROBAN_INIT:
@@ -1000,5 +1006,6 @@ void microban_cb(struct badge_app *app)
     default:
         break;
     }
+
 }
 
