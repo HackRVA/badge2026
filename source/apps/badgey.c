@@ -4787,13 +4787,32 @@ static void badgey_inventory(void)
 
 
 	if (screen_changed) {
-		FbClear();
+		int last_printed_item;
+		int more_items_below = 0;
+		int more_items_above = 0;
+		FbBackgroundColor(BLACK);
 		FbColor(YELLOW);
+		FbClear();
 		FbMove(0, 0);
 		FbWriteString("INVENTORY:\n");
 		FbColor(WHITE);
 
+		/* check for more items above first item */
+		for (int i = first_item - 1; i >= 0; i--) {
+			if (player.carrying[i]) {
+				more_items_above = 1;
+				break;
+			}
+		}
+
 		int count = 0;
+		if (more_items_above) {
+			FbColor(GREEN);
+			FbWriteString("(more above)\n");
+			FbColor(WHITE);
+		} else {
+			FbWriteString("\n");
+		}
 		for (int i = 0; i < (int) ARRAY_SIZE(player.carrying); i++) {
 			char buffer[20];
 			if (i < first_item)
@@ -4807,10 +4826,23 @@ static void badgey_inventory(void)
 				FbWriteString(buffer);
 				FbWriteString("\n");
 				FbMoveX(0);
+				last_printed_item = i;
 				count++;
 			}
 			if (count > 10)
 				break;
+		}
+		/* Check if we have any things past the last thing we printed */
+		for (int i = last_printed_item + 1; i < (int) ARRAY_SIZE(player.carrying); i++) {
+			if (player.carrying[i]) {
+				more_items_below = 1;
+				break;
+			}
+		}
+		if (more_items_below) {
+			FbColor(GREEN);
+			FbWriteString("(more below)\n");
+			FbColor(WHITE);
 		}
 		FbSwapBuffers();
 		screen_changed = 0;
@@ -4829,7 +4861,7 @@ static void badgey_inventory(void)
 		}
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
-		/* move first_item backe the previous item the player is carrying */
+		/* move first_item back the previous item the player is carrying */
 		for (int i = first_item - 1; i >= 0; i--) {
 			if (player.carrying[i]) {
 				first_item = i;
