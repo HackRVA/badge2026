@@ -477,16 +477,19 @@ static void draw_top_menu(void)
 			.width = MENU_ITEM_WIDTH,
 			.height= MENU_ITEM_HEIGHT,
 			.text = menu_items[i],
-			.outline_size = 3,
+			.outline_size = 1,
 			.outline_color = palette_color_from_index(default_palette, 13),
 			.fill_color = palette_color_from_index(default_palette, 0),
 			.text_color = palette_color_from_index(default_palette,11),
 		};
 		if (i == current_menu_item) {
 			b.outline_color = palette_color_from_index(default_palette, 6);
+			b.fill_color = palette_color_from_index(default_palette, 1);
 			if (current_menu_item_selected)
 				b.fill_color = palette_color_from_index(default_palette,5);
 		}
+
+		if (b.y < 0 || b.y > LCD_YSIZE) continue;
 		ui_button_dither_fill(b, b.fill_color, palette_color_from_index(default_palette,0),1);
 		ui_button_draw_outline(b, b.outline_color);
 		ui_button_draw_label(b, b.text_color);

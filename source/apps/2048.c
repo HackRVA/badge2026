@@ -406,7 +406,7 @@ static void draw_menu(void)
 			.width = MENU_ITEM_WIDTH,
 			.height = MENU_ITEM_HEIGHT,
 			.text = menu_items[i],
-			.outline_size = 3,
+			.outline_size = 1,
 			.outline_color =
 				palette_color_from_index(default_palette, 12),
 			.fill_color =
@@ -418,11 +418,14 @@ static void draw_menu(void)
 		if (i == current_menu_item) {
 			button.outline_color =
 				palette_color_from_index(default_palette, 6);
+			button.fill_color = palette_color_from_index(
+					default_palette, 13);
 			if (current_menu_item_selected)
 				button.fill_color = palette_color_from_index(
 					default_palette, 5);
 		}
 
+		if (button.y < 0 || button.y > LCD_YSIZE) continue;
 		ui_button_dither_fill(button, button.fill_color,
 			palette_color_from_index(default_palette, 0), 1);
 		ui_button_draw_outline(button, button.outline_color);

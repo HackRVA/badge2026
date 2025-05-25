@@ -522,7 +522,7 @@ static inline void set_cell(int x, int y, enum BLOCK_TYPE t, bool r, uint8_t p) 
 #define AREA_FILL_COLOR_INDEX 1
 #define SCORE_COLOR_INDEX 12
 #define GAME_OVER_COLOR_INDEX 13
-#define MENU_OUTLINE_SIZE 3
+#define MENU_OUTLINE_SIZE 1
 #define MENU_OUTLINE_COLOR_INDEX 12
 #define MENU_FILL_COLOR_INDEX 2
 #define MENU_TEXT_COLOR_INDEX 7
@@ -1473,15 +1473,15 @@ static void draw_menu(void)
 		};
 
 		if (i == current_menu_item) {
-			button.outline_color =
-				palette_color_from_index(default_palette,
+			button.outline_color = palette_color_from_index(default_palette,
 					MENU_SELECTED_OUTLINE_COLOR_INDEX);
+			button.fill_color = palette_color_from_index(default_palette, 13);
 			if (current_menu_item_selected)
-				button.fill_color = palette_color_from_index(
-					default_palette,
+				button.fill_color = palette_color_from_index(default_palette,
 					MENU_SELECTED_FILL_COLOR_INDEX);
 		}
 
+		if (button.y < 0 || button.y > LCD_YSIZE) continue;
 		ui_button_dither_fill(button, button.fill_color,
 			palette_color_from_index(default_palette, 0), 1);
 		ui_button_draw_outline(button, button.outline_color);
