@@ -743,7 +743,7 @@ static int prv_audio_out_play(int v, const struct audio_out_spec *spec, bool mus
         }
     } else {
         for (int i = 0; i < (int) ARRAY_SIZE(m_audio_out_voices); i++) {
-            if (m_audio_out_voices[i].type) {
+            if (AUDIO_OUT_TYPE_NONE == m_audio_out_voices[i].type) {
                 v = i;
             }
         }
