@@ -9317,11 +9317,12 @@ static void cheat_help(void)
 	fprintf(stderr, "\n");
 	fprintf(stderr, "? help\n");
 	fprintf(stderr, "b get all badge components\n");
-	fprintf(stderr, "p list planets\n");
 	fprintf(stderr, "c list caves/towns\n");
 	fprintf(stderr, "d print dungeon maps\n");
+	fprintf(stderr, "g get lots of gold\n");
 	fprintf(stderr, "m move x, y\n");
 	fprintf(stderr, "n get navigation aids\n");
+	fprintf(stderr, "p list planets\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
 	fprintf(stderr, "w get all weapons\n");
@@ -9377,6 +9378,10 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'd':
 			print_all_dungeons();
+			break;
+		case 'g':
+			player.money += 10000;
+			fprintf(stderr, "+10000 gp granted\n");
 			break;
 		case 'p':
 			cheat_planets();
