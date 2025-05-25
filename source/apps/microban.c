@@ -85,8 +85,6 @@ static enum microban_state_run run_state = GAMEPLAY;
 static int screen_changed = 0;
 
 static int tick;
-// static int stats.level_number;
-
 
 static int menu_selection = 0;
 static int menu_selection_level = 1;
@@ -97,11 +95,11 @@ static Player player;
 static const Input input_clear = {0};
 static Input input = input_clear;
 
-// static int streak = 0;
 static int moves = 0;
 static int moves_tried = 0;
 
 static bool DrawHud = false;
+static bool DrawHud2 = false;
 
 static struct Stats {
     bool levels_completed[MAX_LEVELS];
@@ -198,7 +196,81 @@ static struct asset2 current_level = {
     .colormap = (const uint16_t *) microban_levels_colormap,
     .pixel = (const unsigned char *) current_level_data,
 };
+/*
+static void DrawString(const char *string, unsigned char x, unsigned char y, unsigned short text_color) {
+    FbBackgroundColor(G_Fb.transIndex);
+    FbColor(text_color);
+    FbMove(x, y);
+    FbWriteString(string);
+    FbMove(x, y);
+}
 
+static void DrawStringBG(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+    FbBackgroundColor(background_color);
+    FbColor(text_color);
+    FbMove(x, y);
+    FbWriteString(string);
+    FbMove(x, y);
+}
+*/
+
+static void DrawStringDropshadow(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+    FbBackgroundColor(G_Fb.transIndex);
+    FbColor(background_color);
+    FbMove(x - 2, y + 1);
+    FbWriteString(string);
+    FbMove(x - 2, y);
+    FbWriteString(string);
+    FbMove(x - 1, y + 1);
+    FbWriteString(string);
+    FbMove(x - 1, y);
+    FbWriteString(string);
+    FbMove(x, y + 1);
+    FbWriteString(string);
+
+    FbMove(x, y);
+    FbColor(text_color);
+    FbWriteString(string);
+    FbMove(x, y);
+}
+/*
+static void DrawStringDropshadow2(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
+    FbBackgroundColor(G_Fb.transIndex);
+    FbColor(background_color);
+    FbMove(x - 2, y + 1);
+    FbWriteString(string);
+    FbMove(x - 2, y);
+    FbWriteString(string);
+    FbMove(x - 2, y - 1);
+    FbWriteString(string);
+
+    FbMove(x - 1, y + 1);
+    FbWriteString(string);
+    FbMove(x - 1, y);
+    FbWriteString(string);
+    FbMove(x - 1, y - 1);
+    FbWriteString(string);
+
+    FbMove(x, y + 1);
+    FbWriteString(string);
+    FbMove(x, y);
+    FbWriteString(string);
+    FbMove(x, y - 1);
+    FbWriteString(string);
+
+    FbMove(x + 1, y + 1);
+    FbWriteString(string);
+    FbMove(x + 1, y);
+    FbWriteString(string);
+    FbMove(x + 1, y - 1);
+    FbWriteString(string);
+
+    FbMove(x, y);
+    FbColor(text_color);
+    FbWriteString(string);
+    FbMove(x, y);
+}
+*/
 
 
 static int wrap(int i, int i_max) {
@@ -437,7 +509,15 @@ static void process_input_GAMEPLAY(void) {
     }
 
     if (input.APressed) {
-        DrawHud = !DrawHud;
+        // DrawHud = !DrawHud;
+        if (!DrawHud) {
+            DrawHud = true;
+        } else if (DrawHud && !DrawHud2) {
+            DrawHud2 = true;
+        } else {
+            DrawHud = false;
+            DrawHud2 = false;
+        }
     }
     if (input.BPressed) {
         run_state = PAUSE;
@@ -596,17 +676,34 @@ static void draw_level(const struct asset2 *asset, Camera camera) {
 
 static void draw_hud(void)
 {   
-    if (stats.levels_completed[stats.level_number] == true) {
-        // FbMove(0,0);
-        // FbColor(GREEN);
-        // FbWriteString("")
-        FbImageRect(&possum2, 0, 0, 48, 48, 8, 8, MAGENTA);
+    unsigned const short color = PACKRGB888(255, 255, 128);
+    // unsigned const short color = YELLOW;
+    char buf_top[20];
+    char buf_bottom[20];
+    if(DrawHud2) {
+        snprintf(buf_top, sizeof(buf_top), "streak: %d best: %d", stats.streak, stats.best_streak);
+        DrawStringDropshadow(buf_top, 3, 2, color, BLACK);
+        // DrawStringBG(buf_top, 0, 0, WHITE, BLACK);
+        // DrawString(buf_top, 0, 0, color);
+    } else {
+        snprintf(buf_top, sizeof(buf_top), "room %d", stats.level_number);
+        DrawStringDropshadow(buf_top, 3, 2, color, BLACK);
+        // DrawStringBG(buf_top, 0, 0, WHITE, BLACK);
+        // DrawString(buf_top, 0, 0, color);
     }
-    char buf[20];
-    FbColor(WHITE);
-    FbMove(8, 0);
-    snprintf(buf, sizeof(buf), "%d,%d moves:%d", player.position.x, player.position.y, moves);
-    FbWriteString(buf);
+
+    if (stats.best_moves[stats.level_number] > 0) {
+        snprintf(buf_bottom, sizeof(buf_bottom), "moves: %d best: %d", moves, stats.best_moves[stats.level_number]);
+        DrawStringDropshadow(buf_bottom, 3, LCD_YSIZE - 9, color, BLACK);        
+        // DrawStringBG(buf_bottom, 0, LCD_YSIZE - 8, WHITE, BLACK);        
+        // DrawString(buf_bottom, 0, LCD_YSIZE - 8, color);        
+    } else {
+        snprintf(buf_bottom, sizeof(buf_bottom), "moves: %d", moves);
+        DrawStringDropshadow(buf_bottom, 3, LCD_YSIZE - 9, color, BLACK);
+        // DrawStringBG(buf_bottom, 0, LCD_YSIZE - 8, WHITE, BLACK);
+        // DrawString(buf_bottom, 0, LCD_YSIZE - 8, color);
+    }
+
 
 }
 
@@ -737,30 +834,6 @@ static void draw_level_menu(void) {
     screen_changed = 1;
 }
 
-
-static void DrawStringDropshadow(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
-    FbBackgroundColor(G_Fb.transIndex);
-    FbColor(background_color);
-    FbMove(x - 2, y + 1);
-    FbWriteString(string);
-    FbMove(x - 2, y);
-    FbWriteString(string);
-    FbMove(x - 1, y + 1);
-    FbWriteString(string);
-    FbMove(x - 1, y);
-    FbWriteString(string);
-
-    FbMove(x, y);
-    FbColor(text_color);
-    FbWriteString(string);
-}
-
-// static void DrawString(const char *string, unsigned char x, unsigned char y, unsigned short text_color, unsigned short background_color) {
-//     FbColor(background_color);
-//     FbColor(text_color);
-//     FbMove(x, y);
-//     FbWriteString(string);
-// }
 
 
 static void draw_screen(void)
