@@ -662,9 +662,9 @@ static void draw_level_menu(void) {
         }
     } else {
         FbColor(GREY8);
-        FbMove(24, LCD_YSIZE/2 - 8);
-        FbWriteString("COMPLETE 10 ROOMS");
-        FbMove(52, LCD_YSIZE/2);
+        FbMove(40, LCD_YSIZE/2 - 8);
+        FbWriteString("CLEAR 10 ROOMS");
+        FbMove(60, LCD_YSIZE/2);
         FbWriteString("TO UNLOCK");
     }
 
@@ -977,7 +977,6 @@ static void microban_run(void)
         break;
     }
     FbBackgroundColor(BLACK);
-
 }
 
 
