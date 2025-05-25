@@ -62,6 +62,8 @@ static struct dynmenu town_menu;
 static struct dynmenu_item town_menu_item[12];
 static struct dynmenu board_ship_menu;
 static struct dynmenu_item board_ship_menu_item[2];
+static struct dynmenu planetfall_menu;
+static struct dynmenu_item planetfall_menu_item[2];
 static struct dynmenu initial_menu;
 static struct dynmenu_item initial_menu_item[10];
 static int game_in_progress = 0;
@@ -3654,6 +3656,8 @@ static struct player {
 	int stop_automatic_motion; /* stops automatic motion in caves */
 	uint8_t known_clues[ARRAY_SIZE(clue)];
 	int entered_rvasec;
+	int landingx; /* what planet we may be about to land on */
+	int landingy;
 } player = {
 	.world = &space,
 	.x = 32,
@@ -3711,6 +3715,7 @@ enum badgey_state_t {
 	BADGEY_ENTER_RVASEC,
 	BADGEY_REVIEW_CLUES,
 	BADGEY_PLAYER_DIED,
+	BADGEY_MAYBE_LAND_ON_PLANET,
 	BADGEY_EXIT,
 #if DEV_CHEATS_ENABLED
 	BADGEY_DEV_CHEATS,
@@ -4652,6 +4657,57 @@ static void spawn_planet_initial_ships(void)
 
 static void enter_combat(int cr);
 
+static void maybe_land_on_planet(void)
+{
+	static int menu_setup = 0;
+	unsigned char c = player.world->wm[windex(player.landingx, player.landingy)] - '0';
+	struct badgey_world const *new_world = player.world->subworld[c];
+	static char *old_planet_name = NULL;
+	static char *planet_name;
+
+	planet_name = new_world->name;
+
+	if (!menu_setup || old_planet_name != planet_name) {
+		dynmenu_clear(&planetfall_menu);
+		dynmenu_init(&planetfall_menu, planetfall_menu_item, ARRAY_SIZE(planetfall_menu_item));
+		dynmenu_set_title(&planetfall_menu, "LAND ON PLANET?", planet_name, "");
+		dynmenu_add_item(&planetfall_menu, "NO", 0, 0);
+		dynmenu_add_item(&planetfall_menu, "YES", 1, 1);
+		old_planet_name = planet_name;
+		menu_setup = 1;
+	}
+
+	if (!dynmenu_let_user_choose(&planetfall_menu))
+		return;
+
+	switch (dynmenu_get_user_choice(&planetfall_menu)) {
+	default:
+	case 0:
+		set_badgey_state(BADGEY_RUN);
+		break;
+	case 1:
+		if (new_world != NULL) {
+			player.world_level++;
+			player.wx[player.world_level] = player.x;
+			player.wy[player.world_level] = player.y;
+			player.old_world[player.world_level] = player.world;
+			player.x = new_world->landingx;
+			player.y = new_world->landingy;
+			player.world = new_world;
+			screen_changed = 1;
+			spawn_planet_initial_monsters();
+			setup_planet_initial_treasures();
+			spawn_planet_initial_ships();
+			player.moving = 0;
+			player.landingx = -1;
+			player.landingy = -1;
+			set_badgey_state(BADGEY_RUN);
+			return;
+		}
+		break;
+	}
+}
+
 static void maybe_board_ship(void)
 {
 	static int menu_setup = 0;
@@ -4689,6 +4745,7 @@ static void maybe_board_ship(void)
 		break;
 	}
 }
+
 
 static void badgey_use_badge_bom(void)
 {
@@ -4860,23 +4917,12 @@ static void check_buttons(int tick)
 			return;
 		}
 		if (c >= '0' && c <= '9') { /* it's a planet */
-			c = c - '0';
-			struct badgey_world const *new_world = player.world->subworld[c];
-			if (new_world != NULL) {
-				player.world_level++;
-				player.wx[player.world_level] = player.x;
-				player.wy[player.world_level] = player.y;
-				player.old_world[player.world_level] = player.world;
-				player.x = new_world->landingx;
-				player.y = new_world->landingy;
-				player.world = new_world;
-				screen_changed = 1;
-				spawn_planet_initial_monsters();
-				setup_planet_initial_treasures();
-				spawn_planet_initial_ships();
-				player.moving = 0;
-				return;
-			}
+			player.landingx = newx;
+			player.landingy = newy;
+			player.moving = 0;
+			set_badgey_state(BADGEY_MAYBE_LAND_ON_PLANET);
+			screen_changed = 1;
+			return;
 		}
 	} else {
 		char x = player.world->wm[windex(newx, newy)];
@@ -9581,6 +9627,9 @@ void badgey_cb(struct badge_app *app)
 		break;
 	case BADGEY_PLAYER_DIED:
 		badgey_player_died();
+		break;
+	case BADGEY_MAYBE_LAND_ON_PLANET:
+		maybe_land_on_planet();
 		break;
 #if DEV_CHEATS_ENABLED
 	case BADGEY_DEV_CHEATS:
