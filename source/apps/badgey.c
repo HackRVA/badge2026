@@ -9332,6 +9332,8 @@ static void cheat_get_all_badge_components(void)
 {
 	for (int i = 0; i < (int) ARRAY_SIZE(badge_bom); i++)
 		player.carrying[badge_bom[i]] = 1;
+	player.carrying_dirty = 1;
+	screen_changed = 1;
 	printf("All badge components gotten.\n");
 }
 
@@ -9357,11 +9359,13 @@ static void cheat_help(void)
 	fprintf(stderr, "? help\n");
 	fprintf(stderr, "b get all badge components\n");
 	fprintf(stderr, "c list caves/towns\n");
+	fprintf(stderr, "C get all clues\n");
 	fprintf(stderr, "d print dungeon maps\n");
 	fprintf(stderr, "g get lots of gold\n");
 	fprintf(stderr, "m move x, y\n");
 	fprintf(stderr, "n get navigation aids\n");
 	fprintf(stderr, "p list planets\n");
+	fprintf(stderr, "s get spaceship\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
 	fprintf(stderr, "w get all weapons\n");
@@ -9430,6 +9434,11 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'n':
 			cheat_get_navigation_aids();
+			break;
+		case 's':
+			player.carrying[SPACESHIP] = 1;
+			player.carrying_dirty = 1;
+			screen_changed = 1;
 			break;
 		case 't':
 			cheat_teleport(input);
