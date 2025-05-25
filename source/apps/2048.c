@@ -592,6 +592,7 @@ static void draw_screen(void)
 static void twenty_forty_eight_exit(void)
 {
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_INIT;
+	current_menu_item = 0;
 	pop_app();
 }
 
