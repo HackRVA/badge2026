@@ -8928,9 +8928,9 @@ static void sanity_check_aux_cave_entrances_per_world(const struct badgey_world 
 }
 #endif
 
+#if TARGET_SIMULATOR
 static void sanity_check_aux_cave_entrances(void)
 {
-#if TARGET_SIMULATOR
 	static int already_checked = 0;
 	if (already_checked)
 		return;
@@ -8941,8 +8941,8 @@ static void sanity_check_aux_cave_entrances(void)
 	sanity_check_aux_cave_entrances_per_world(&borton);
 	sanity_check_aux_cave_entrances_per_world(&skang);
 	sanity_check_aux_cave_entrances_per_world(&gnarg);
-#endif
 }
+#endif
 
 #if TARGET_SIMULATOR
 /* Compare two strings like strcpy, except consider - _ and space to be the same
@@ -8977,9 +8977,9 @@ static int str_under_cmp(const char *s1, const char *s2)
 #endif
 
 /* Make sure I didn't bodge up the shop_item[] array */
+#if TARGET_SIMULATOR
 static void sanity_check_shop_enums(void)
 {
-#if TARGET_SIMULATOR
 
 #define CHECK_SHOPITEM(v) \
 	do { if (str_under_cmp(#v, shop_item[v].name) != 0) { \
@@ -9085,8 +9085,8 @@ static void sanity_check_shop_enums(void)
 	CHECK_PLACENAME(SLIN_CAVERNS);
 	CHECK_PLACENAME(SPIDER_CAVE);
 	fprintf(stderr, "Sanity checked all place_name and item enumeration values\n");
-#endif
 }
+#endif
 
 #if DEV_CHEATS_ENABLED
 static void cheat_teleport(char *cmd)
@@ -9321,8 +9321,15 @@ void badgey_cb(struct badge_app *app)
 		app->wake_up = 0;
 	}
 
-	sanity_check_aux_cave_entrances();
-	sanity_check_shop_enums();
+#if TARGET_SIMULATOR
+	static int sanity_checks_done = 0;
+
+	if (!sanity_checks_done) {
+		sanity_check_aux_cave_entrances();
+		sanity_check_shop_enums();
+		sanity_checks_done = 1;
+	}
+#endif
 
 	switch (badgey_state) {
 	case BADGEY_INITIAL_MENU:
