@@ -9429,6 +9429,8 @@ void badgey_cb(struct badge_app *app)
 	if (app->wake_up) {
 		screen_changed = 1;
 		app->wake_up = 0;
+		FbBackgroundColor(BLACK);
+		FbColor(WHITE);
 	}
 
 #if TARGET_SIMULATOR
