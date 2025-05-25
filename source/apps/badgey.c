@@ -9157,6 +9157,13 @@ static void cheat_caves_and_towns(void)
 	}
 }
 
+static void cheat_get_all_clues(void)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(clue); i++)
+		player.known_clues[i] = 1;
+	fprintf(stderr, "All clues granted.\n");
+}
+
 static void cheat_help(void)
 {
 	fprintf(stderr, "\n");
@@ -9214,6 +9221,9 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'c':
 			cheat_caves_and_towns();
+			break;
+		case 'C':
+			cheat_get_all_clues();
 			break;
 		case 'd':
 			print_all_dungeons();
