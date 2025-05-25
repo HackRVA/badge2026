@@ -3149,8 +3149,8 @@ static struct treasure_clue {
 	{ "\nEXPLORE\nEVO MINES\nDIG AT 55,62\n", &gnarg, 40, -1, -1, clue_type_rando },
 	{ "\nSEEK WITHIN\nEVO MINES\nDIG AT 55,62\n", &gnarg, 40, -1, -1, clue_type_pub },
 	/* clues in gnarg, yarnow */
-	{ "\nDELVE INTO\nSPIDER CAVE\nEXCAVATE x, y\n", &gnarg, 44, -1, -1, clue_type_rando },
-	{ "\nSPELUNK IN\nSPIDER CAVE\nDIG AT x, y\n", &gnarg, 44, -1, -1, clue_type_pub },
+	{ "\nDELVE INTO\nSPIDER CAVE\nEXCAVATE 37, 62\n", &gnarg, 44, -1, -1, clue_type_rando },
+	{ "\nSPELUNK IN\nSPIDER CAVE\nDIG AT 37, 62\n", &gnarg, 44, -1, -1, clue_type_pub },
 	/* clues in gnarg, ilati */
 	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_rando },
 	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_pub },
@@ -3158,8 +3158,8 @@ static struct treasure_clue {
 	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_rando },
 	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_pub },
 	/* clues in gnarg, fruntz */
-	{ "\nDIG IN THE\nSPIDER CAVE\nAT 36,62\n", &gnarg, 43, -1, -1, clue_type_rando },
-	{ "\nDIG IN THE\nSPIDER CAVE\nAT 36,62\n", &gnarg, 43, -1, -1, clue_type_pub },
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 37,62\n", &gnarg, 43, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 37,62\n", &gnarg, 43, -1, -1, clue_type_pub },
 	/* clues in skang, jalta */
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_rando },
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_pub },
