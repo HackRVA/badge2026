@@ -290,7 +290,7 @@ static void draw_monster_avatar_screen(void)
 		FbWriteString("*shiny");
 	}
 
-	char *lower_control_info = "<Back|Down|Desc>";
+	char *lower_control_info = "a: desc | b: back";
 	FbColor(WHITE);
 	FbMove(ui_center_text_x(lower_control_info, 0, LCD_XSIZE), LCD_YSIZE-8);
 	FbWriteLine(lower_control_info);
@@ -412,12 +412,16 @@ static void check_buttons_avatar_screen(void)
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down)) {
 		current_monster_id = (current_monster_id +1) % n;
 		screen_changed = true;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down)) {
+		current_monster_id = (current_monster_id -1) % n;
+		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down)) {
+		current_monster_id = (current_monster_id +1) % n;
+		screen_changed = true;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down)) {
 		show_description = !show_description;
 		screen_changed = true;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down) ||
-		BUTTON_PRESSED(BADGE_BUTTON_A, down) ||
-		BUTTON_PRESSED(BADGE_BUTTON_B, down)) {
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down)) {
 		badgemon_state = BADGEMON_TOP_MENU;
 		show_description = false;
 		screen_changed = true;
