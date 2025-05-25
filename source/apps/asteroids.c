@@ -374,6 +374,7 @@ static int onscreen(int x, int y)
 
 static void draw_player(struct ship *player)
 {
+	FbColor(WHITE);
 	int x1, y1, x2, y2, x3, y3;
 	int dx, dy, a;
 	const int ship_size = 5;
@@ -527,6 +528,7 @@ static void move_asteroids(void)
 
 static void draw_bullets(void)
 {
+	FbColor(GREEN);
 	for (int i = 0; i < nbullets; i++) {
 		struct bullet *b = &bullet[i];
 		if (onscreen(b->p.x / 256, b->p.y / 256))
@@ -563,6 +565,7 @@ static void draw_asteroid(struct asteroid *a)
 
 static void draw_asteroids(void)
 {
+	FbColor(x11_tan);
 	for (int i = 0; i < nasteroids; i++) {
 		struct asteroid *a = &asteroid[i];
 		draw_asteroid(a);
@@ -571,10 +574,10 @@ static void draw_asteroids(void)
 
 static void draw_score(void)
 {
-	char scorestr[20];
+	char scorestr[12];
 	FbColor(WHITE);
 	FbMove(2, 2);
-	snprintf(scorestr, sizeof(scorestr), "%d", score);
+	snprintf(scorestr, sizeof(scorestr), "% 5d", score);
 	FbWriteString(scorestr);
 }
 
