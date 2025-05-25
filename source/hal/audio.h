@@ -98,6 +98,8 @@ typedef int32_t audio_buffer_t;
  */
 typedef void (*audio_input_callback_t)(const audio_sample_t *samples, size_t len);
 
+extern int log_audio; /* set this to 0 to shut up audio logging */
+
 /*----- Output ---------------------------------------------------------------*/
 /** Audio output waveform type. */
 enum audio_out_type {

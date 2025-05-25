@@ -39,7 +39,7 @@
 
 /* TODO: add logging system? -PMW */
 #ifndef LOG
-#define LOG(...) printf("\r\n[audio] " __VA_ARGS__)
+#define LOG(...) do { if (log_audio) { printf("\r\n[audio] " __VA_ARGS__); } } while (0)
 #endif /* LOG */
 
 /*! @addtogroup BADGE_AUDIO Audio Driver

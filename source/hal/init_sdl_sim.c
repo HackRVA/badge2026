@@ -200,6 +200,7 @@ void *main_in_thread(void* params) {
 }
 
 static struct option long_options[] = {
+	{ "log-audio", required_argument, NULL, 'a' },
 	{ "badge-id", required_argument, NULL, 'i' },
 	{ "fullscreen", no_argument, NULL, 'f' },
 	{ "hotrestart", no_argument, NULL, 'h' },
@@ -210,21 +211,31 @@ static struct option long_options[] = {
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] [ --hotrestart ] [ --zoom n ]\n");
+	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] \\\n"
+				"	[ --hotrestart ] [ --zoom n ] [ --log-audio 0/1 ]\n");
 	exit(1);
 }
 
 static void process_options(int argc, char **argv)
 {
-	int c, rc;
+	int c, rc, scratch;
 	uint64_t badge_id;
 
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "fhi:sz:", long_options, &option_index);
+		c = getopt_long(argc, argv, "a:fhi:sz:", long_options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
+		case 'a':
+			rc = sscanf(optarg, "%d", &scratch);
+			if (rc != 1) {
+				usage();
+			} else {
+				extern int log_audio;
+				log_audio = scratch;
+			}
+			break;
 		case 'i':
 			rc = sscanf(optarg, "%lx", &badge_id);
 			if (rc != 1) {

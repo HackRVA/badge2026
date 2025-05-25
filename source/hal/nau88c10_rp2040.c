@@ -24,8 +24,9 @@
 #include "nau88c10_rp2040.h"
 
 /* TODO: add logging system? -PMW */
+extern int log_audio;
 #ifndef LOG
-#define LOG(...) printf("\r\n[nau88c10] " __VA_ARGS__)
+#define LOG(...) do { if (log_audio) { printf("\r\n[nau88c10] " __VA_ARGS__); } } while (0)
 #endif /* LOG */
 
 /*- Private Macro ------------------------------------------------------------*/
