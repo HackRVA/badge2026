@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS builder
+FROM golang:1.24-bookworm AS builder
 
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -16,16 +16,16 @@ WORKDIR /badge2025
 COPY . .
 
 RUN bash run_cmake_wasm.sh
-RUN cd web && make build-user-docs
+RUN cd web && go run ./cmd/generate/
 
 FROM golang:alpine AS server
 
 WORKDIR /app
 
-COPY --from=builder /badge2025/tools/wasm_serve.go .
-COPY --from=builder /badge2025/web/docs/user_docs/.book/ ./static/
+COPY --from=builder /badge2025/web/cmd/server/ .
+COPY --from=builder /badge2025/web/.dist/ ./static/
 
-RUN go build -ldflags="-s -w" -o wasm_serve wasm_serve.go
+RUN go build -ldflags="-s -w" -o wasm_serve main.go 
 
 FROM alpine:latest
 

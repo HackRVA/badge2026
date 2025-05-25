@@ -8,7 +8,7 @@ if [ -d ./build_wasm ]; then
   exit 1
 fi
 
-docker build -t hackrva/badge2025-user-docs -f ./tools/user-docs.dockerfile .
+docker build -t hackrva/badge2025-user-docs -f ./web/deployments/Dockerfile .
 
 
 # run:

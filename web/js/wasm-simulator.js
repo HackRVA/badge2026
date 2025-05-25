@@ -55,10 +55,10 @@ class WasmSimulator extends HTMLElement {
 		}
 
 		.button-container {
+      display: none;
 			position: absolute;
 			top: 10px;
 			left: 10px;
-			display: grid;
 			grid-template-columns: 1fr 1fr 1fr 1fr;
 			gap: 6px;
 		}
@@ -94,6 +94,7 @@ class WasmSimulator extends HTMLElement {
 		.volume-control input[type="range"] {
 			width: 80px;
 		}
+
 
 	</style>
 <div class="emscripten_border" id="canvas-container">
@@ -142,6 +143,7 @@ class WasmSimulator extends HTMLElement {
   }
 
   startWasm() {
+    this.querySelector(".button-container").style.display = "grid";
     // hide the play button
     const btn = this.querySelector("#play-button");
     btn.style.display = "none";
@@ -149,8 +151,8 @@ class WasmSimulator extends HTMLElement {
     // now safe to init audio & run wasm
     this.setupModule();
     this.loadEmscriptenScript();
-    this.sendKey("r");
-    this.sendKey("r");
+    setTimeout(() => this.sendKey("r"), 500);
+    setTimeout(() => this.sendKey("r"), 800);
   }
 
   setupModule() {

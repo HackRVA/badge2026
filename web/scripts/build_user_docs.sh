@@ -1,16 +1,10 @@
 #!/bin/bash
 
-source ./scripts/download_bbook.sh
-mkdir -p .dist
-
-cd docs/user_docs
-../../.bin/bbook build
-cd ../../
-
+mkdir -p .dist/pages/simulator
 
 # check for wasm and js file in build_wasm dest-dir
 BUILD_DIR="../build_wasm/source"
-DST_DIR="docs/user_docs/.book"
+DST_DIR=".dist/pages/simulator"
 FILES=("badge2025_c.js" "badge2025_c.wasm" "badge2025_c.data")
 
 for file in "${FILES[@]}"; do
@@ -25,5 +19,3 @@ for file in "${FILES[@]}"; do
 	cp "$BUILD_DIR/$file" "$DST_DIR/"
 done
 
-cp docs/user_docs/src/images/* $DST_DIR/images
-cp docs/user_docs/simulator.html $DST_DIR

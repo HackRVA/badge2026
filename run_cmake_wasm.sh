@@ -49,6 +49,6 @@ emmake make
 echo ""
 echo ""
 echo "build user docs:"
-echo "  \`cd web && make build-user-docs && cd ..\`"
+echo "  \`cd web && bash ./scripts/build_user_docs.sh\`"
 echo "serve wasm frontend:"
-echo "  \`go run ./tools/wasm_serve.go --dir ./web/docs/user_docs/.book/\`"
+echo "  \`go run ./cmd/generate/ && go run ./cmd/server/ --dir .dist\`"
