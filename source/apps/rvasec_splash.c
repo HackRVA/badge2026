@@ -57,6 +57,111 @@ static const char *splash_word_things[] = {
 static const char splash_words_btn1[] = "Press any button";
 static const char splash_words_btn2[] = "to continue!";
 
+static const struct audio_out_note SPLASH_MUSIC_NOTES[] = {
+    {
+        .v = 0,
+        .ms = 0,
+        .spec = {
+            .callback = NULL,
+            .frequency_hz = NOTE_D4,
+            .duration_ms = 200,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -3,
+            .restart = true,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 3,
+        }
+    },
+    {
+        .v = 0,
+        .ms = 150,
+        .spec = {
+            .callback = NULL,
+            .frequency_hz = NOTE_G4,
+            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -3,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 3,
+        }
+    },
+    {
+        .v = 0,
+        .ms = 300,
+        .spec = {
+            .callback = NULL,
+            .frequency_hz = NOTE_C4,
+            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -4,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 3,
+        }
+    },
+    {
+        .v = 1,
+        .ms = 300,
+        .spec = {
+            .callback = NULL,
+            .frequency_hz = NOTE_E4,
+            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -4,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 3,
+        }
+    },
+    {
+        .v = 2,
+        .ms = 300,
+        .spec = {
+            .callback = NULL,
+            .frequency_hz = NOTE_G4,
+            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -4,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 3,
+        }
+    },
+    {
+        .v = 3,
+        .ms = 300,
+        .spec = {
+            .callback = NULL,
+            .frequency_hz = NOTE_C5,
+            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
+            .decay = 0,
+            .phase = 0,
+            .amplitude_dBFS = -4,
+            .restart = false,
+            .type = AUDIO_OUT_TYPE_SQUARE,
+            .square.duty_cycle = UINT8_MAX / 3,
+        }
+    },
+    {
+        .ms = SPLASH_FINISHED_AUDIO_MS,
+        .spec = {
+            .type = AUDIO_OUT_TYPE_NONE,
+        }
+    },
+};
+
+static const struct audio_out_section SPLASH_MUSIC = {
+    .length = ARRAY_SIZE(SPLASH_MUSIC_NOTES),
+    .notes = SPLASH_MUSIC_NOTES,
+    .next = NULL,
+};
+
 #if PREPRODUCTION_FIRMWARE
 static void brand_preproduction_firmware(bool blink)
 {
@@ -186,30 +291,15 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         } else if (load_bar_frames + SPLASH_WAIT_POST_LOADBAR_FRAMES <= wait) {
             wait = 0;
             m_splash_state = SPLASH_STATE_DONE;
-            spec = (const struct audio_out_spec) {
-                .callback = NULL,
-                .frequency_hz = NOTE_C4,
-                .duration_ms = SPLASH_FINISHED_AUDIO_MS,
-                .decay = 0,
-                .phase = 0,
-                .amplitude_dBFS = -4,
-                .restart = false,
-                .type = AUDIO_OUT_TYPE_SQUARE,
-                .square.duty_cycle = UINT8_MAX / 3,
-            };
 #if TARGET_SIMULATOR
             if (!silent_startup) {
 #endif
-            (void) audio_out_play(0, &spec);   
-            spec.frequency_hz = NOTE_E4;
-            (void) audio_out_play(1, &spec);   
-            spec.frequency_hz = NOTE_G4;
-            (void) audio_out_play(2, &spec);   
-            spec.frequency_hz = NOTE_C5;
-            (void) audio_out_play(3, &spec);   
+            (void) audio_out_stop(0); /* Stop the ongoing noise in voice 0 */
+            (void) audio_out_music_play(&SPLASH_MUSIC, NULL);
 #if TARGET_SIMULATOR
             }
 #endif
+            break;
         }
 
 	FbBackgroundColor(BLACK);
