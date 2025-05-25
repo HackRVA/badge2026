@@ -2994,16 +2994,16 @@ static const struct weapon {
 	unsigned char ranged_weapon;
 	unsigned char exotic;
 } weapon[] = {
-	{ ION_DAGGER,			4, 1, 0, 0 },
-        { LASER_CUTLASS,		5, 1, 0, 0 },
-        { BLASTER,			5, 2, 1, 0 },
-        { PLASMA_PISTOL,		7, 2, 1, 0 },
-        { GRENADE_GUN,			10, 3, 1, 1 },
-        { RAILGUN_RIFLE,		12, 3, 1, 1 },
-        { TESLA_GLAIVE,			13, 3, 0, 1 },
-        { BEAM_CANNON,			18, 4, 1, 1 },
-        { VOID_BLADE,			16, 4, 0, 1 },
-        { GAMMA_RAY_GUN,		14, 3, 1, 1 },
+	{ ION_DAGGER,			10, 1, 0, 0 },
+        { LASER_CUTLASS,		20, 1, 0, 0 },
+        { BLASTER,			30, 2, 1, 0 },
+        { PLASMA_PISTOL,		25, 2, 1, 0 },
+        { GRENADE_GUN,			35, 3, 1, 1 },
+        { RAILGUN_RIFLE,		40, 3, 1, 1 },
+        { TESLA_GLAIVE,			45, 3, 0, 1 },
+        { BEAM_CANNON,			50, 4, 1, 1 },
+        { VOID_BLADE,			60, 4, 0, 1 },
+        { GAMMA_RAY_GUN,		70, 3, 1, 1 },
 };
 
 static const struct armor {
@@ -3734,7 +3734,7 @@ static void missile_collision_detection(int m)
 			int cy = 16 * combat_creature[i].y + 8 + 8;
 			int dist2 = (cx - mx) * (cx - mx) + (cy - my) * (cy - my);
 			if (dist2 < 8 * 8) {
-				int damage = 10;
+				int damage = 4;
 				if (player.equipped_weapon != EQUIPPED_NONE) {
 					int w = shop_to_weapon_index(player.equipped_weapon);
 					if (w >= 0)
