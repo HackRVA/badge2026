@@ -9194,6 +9194,15 @@ teleport:
 	return;
 }
 
+static void cheat_get_all_weapons(void)
+{
+	for (int i = 0; i < (int) ARRAY_SIZE(weapon); i++)
+		player.carrying[weapon[i].i] = 1;
+	for (int i = 0; i < (int) ARRAY_SIZE(armor); i++)
+		player.carrying[armor[i].i] = 1;
+	fprintf(stderr, "All weapons and armor granted.\n");
+}
+
 static void cheat_move(char *cmd)
 {
 	int x, y;
@@ -9258,6 +9267,7 @@ static void cheat_help(void)
 	fprintf(stderr, "n get navigation aids\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
+	fprintf(stderr, "w get all weapons\n");
 	fprintf(stderr, "q quit\n\n");
 }
 
@@ -9325,6 +9335,9 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'q':
 			set_badgey_state(BADGEY_RUN);
+			break;
+		case 'w':
+			cheat_get_all_weapons();
 			break;
 		}
 	}
