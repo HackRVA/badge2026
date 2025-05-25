@@ -187,6 +187,42 @@ struct audio_out_spec {
     };
 };
 
+/*--------- Music ------------------------------------------------------------*/
+/** Audio output music section. */
+struct audio_out_note {
+    /** Output spec for note. */
+    struct audio_out_spec spec;
+    /** Milliseconds since the start of the section to start the note at. */
+    uint32_t ms;
+    /** Voice to use to play the note. */
+    uint8_t v;
+};
+
+/** Audio output music section. */
+struct audio_out_section {
+    /** Number of notes. */
+    uint32_t length;
+
+    /** Array of notes.
+     * 
+     *  @note   These should be in order by the `ms` field.
+     */
+    const struct audio_out_note *notes;
+
+    /** Pointer to the next section to play. */
+    const struct audio_out_section *next;
+};
+
+/** Audio output music section completition callback.
+ *
+ *  @param  prev    The section that just finished playing.
+ *
+ *  @return Pointer to the next section to play.
+ *  @retval NULL    Do not play a new section.
+ */
+typedef const struct audio_out_section *
+(*audio_out_section_callback_t)(const struct audio_out_section *prev);
+
 /*- API ----------------------------------------------------------------------*/
 /*----- Initialization -------------------------------------------------------*/
 /*!
@@ -207,6 +243,8 @@ void audio_init(void);
 void audio_poll(void);
 
 /** Process audio buffer.
+ *
+ *  @note   Should always be called with audio locked.
  *
  *  @param  in  Pointer to audio input buffer.
  *  @param  out Pointer to audio output buffer.
@@ -305,10 +343,59 @@ static inline int audio_out_beep(uint16_t freq, uint16_t duration)
     return audio_out_beep_with_cb(freq, duration, NULL);
 }
 
-/*!
- * @brief Tell us Signal if the audio is on or not.
+/** If the audio is on or not.
+ *
+ *  @retval true    Audio is playing.
+ *  @retval false   Audio is not playing.
  */
 bool audio_is_playing(void);
+
+/*--------- Music ------------------------------------------------------------*/
+/** Start playing a music section. 
+ *
+ *  @note   Playing music always takes lower priority for a given voice than
+ *          sounds played using the direct API. In other words, the music is
+ *          alwyas "in the background".
+ *
+ *  @param  section     Pointer to the section of music to play.
+ *  @param  callback    Callback to run when the section finishes.
+ *
+ *  @retval 0   The section is now playing.
+ */
+int audio_out_music_play(const struct audio_out_section *section,
+                         audio_out_section_callback_t callback);
+
+/** If music is currently playing.
+ *
+ *  @retval true    Music is playing.
+ *  @retval false   Music is not currently playing.
+ */
+bool audio_out_music_playing(void);
+
+/** Pause the currently playing music section.
+ *
+ *  @param  pause   If true, pause the music otherwise unpause.
+ *
+ *  @retval 0       Music is playing.
+ *  @retval 1       Music is paused.
+ *  @retval -EINVAL There is no music currently playing.
+ */
+int audio_out_music_pause(bool pause);
+
+/** If the music is currently paused.
+ *
+ *  @retval 0       Music is playing.
+ *  @retval 1       Music is paused.
+ *  @retval -EINVAL There is no music currently playing.
+ */
+int audio_out_music_paused(void);
+
+/** Stop the currently playing music section.
+ *
+ *  @retval 0       The section was stopped successfully.
+ *  @retval -EINVAL There was no music section playing.
+ */
+int audio_out_music_stop(void);
 
 /*----- Utilities ------------------------------------------------------------*/
 /** Get the RMS level.

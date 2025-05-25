@@ -18,6 +18,8 @@
 #include <fxp_sqrt.h>
 
 #include "audio.h"
+#include "errno.h"
+#include "rtc.h"
 #include "utils.h"
 
 /* TODO: add logging system? -PMW */
@@ -523,11 +525,12 @@ struct audio_out_voice_ctx {
      */
     void (*callback)(int voice, const struct audio_out_spec *spec);
     const struct audio_out_spec *spec;  /**< Audio output waveform spec. */
-    uint32_t duration_samples;  /**< Duration in ms. */
-    uint32_t elapsed_samples;   /**< Elapsed beep duration in ms. */
-    int32_t amplitude;          /**< Amplitude. */
-    int16_t decay;              /**< Linear decay to add every sample. */
-    enum audio_out_type type;   /**< Audio output waveform type. */
+    uint32_t duration_samples;          /**< Duration in ms. */
+    uint32_t elapsed_samples;           /**< Elapsed beep duration in ms. */
+    int32_t amplitude;                  /**< Amplitude. */
+    int16_t decay;                      /**< Linear decay to add every sample. */
+    enum audio_out_type type;           /**< Audio output waveform type. */
+    bool music;                         /**< Music is playing on this voice. */
 
     /*----- Type specific fields. -----*/
     union {
@@ -539,6 +542,23 @@ struct audio_out_voice_ctx {
     };
 };
 
+/*--------- Music ------------------------------------------------------------*/
+struct audio_out_music_ctx {
+    /** Current note index. */
+    uint32_t i;
+    /** Milliseconds count when the section was started. */
+    uint32_t start_ms;
+    /** The ms_diff when the game was paused.*/
+    uint32_t ms_paused;
+    /** If the music is paused. */
+    bool paused;
+    /** Currently playing music section. */
+    struct audio_out_section section;
+    /** Section completion callback. */
+    audio_out_section_callback_t callback;
+
+};
+
 /*- Private Variables --------------------------------------------------------*/
 /*----- Input ----------------------------------------------------------------*/
 static audio_input_callback_t m_audio_in_cb[AUDIO_INPUT_CALLBACKS_MAX];
@@ -547,7 +567,12 @@ static int m_audio_in_cb_count;
 /*----- Output ---------------------------------------------------------------*/
 static struct audio_out_voice_ctx m_audio_out_voices[AUDIO_OUT_VOICE_COUNT];
 
+/*--------- Music ------------------------------------------------------------*/
+static struct audio_out_music_ctx m_audio_out_music;
+
 /*- Private Methods ----------------------------------------------------------*/
+static bool prv_audio_out_music_playing(void);
+
 static uint32_t log2u32(uint32_t x)
 {
     uint32_t n = 0;
@@ -702,8 +727,118 @@ static void prv_audio_out_complete(struct audio_out_voice_ctx *voice)
     }
 }
 
+static int prv_audio_out_play(int v, const struct audio_out_spec *spec, bool music)
+{
+    if ((0 > v) || ((int) ARRAY_SIZE(m_audio_out_voices) < v)) {
+        LOG("Voice index out of range.");
+        return -EINVAL;
+    }
+
+    if (AUDIO_OUT_VOICE_ANY != v) {
+        if (music 
+            && (AUDIO_OUT_TYPE_NONE != m_audio_out_voices[v].type) 
+            && !m_audio_out_voices[v].music) {
+            /* Music voices should not override the direct API voices. */
+            return -ENOTEMPTY;
+        }
+    } else {
+        for (int i = 0; i < (int) ARRAY_SIZE(m_audio_out_voices); i++) {
+            if (m_audio_out_voices[i].type) {
+                v = i;
+            }
+        }
+        if (AUDIO_OUT_VOICE_ANY == v) {
+            LOG("No free output voice.");
+            return -ENOMEM;
+        }
+    }
+
+    // TODO: check for valid type -PMW
+
+    audio_lock();
+    struct audio_out_voice_ctx *voice = m_audio_out_voices + v;
+
+    /* Do common initialization first. */
+    voice->callback = spec->callback;
+    voice->spec = spec;
+    voice->duration_samples = spec->duration_ms * (AUDIO_FS / 1000U);
+    voice->elapsed_samples = 0U;
+    voice->amplitude = prv_audio_ratio(spec->amplitude_dBFS);
+    voice->decay = spec->decay;
+    voice->type = spec->type;
+    voice->music = music;
+
+    int rc = -1;
+    switch (voice->type) {
+        case AUDIO_OUT_TYPE_NONE:
+        case AUDIO_OUT_TYPE_TRIANGE:
+        case AUDIO_OUT_TYPE_SAWTOOTH:
+        case AUDIO_OUT_TYPE_SAMPLES:
+        default:
+            /* Not implemented. */
+            break;
+        case AUDIO_OUT_TYPE_SQUARE:
+            rc = prv_audio_out_square_setup(voice, spec);
+            break;
+        case AUDIO_OUT_TYPE_NES_NOISE:
+            rc = prv_audio_out_nes_noise_setup(voice, spec);
+            break;
+    }
+
+    if (0 != rc) {
+        memset(voice, 0, sizeof(*voice));
+    }
+    audio_unlock();
+
+    return v;
+}
+
+/*--------- Music ------------------------------------------------------------*/
+static void prv_audio_out_music_section_finished(void) {
+#ifdef TARGET_SIMULATOR
+        LOG("finished section");
+#endif /* TARGET_SIMULATOR */
+        const struct audio_out_section *prev = &m_audio_out_music.section;
+        const struct audio_out_section *next = prev->next;
+        if (NULL != m_audio_out_music.callback) {
+            next = m_audio_out_music.callback(prev);
+        }
+        if (NULL != next) {
+            audio_out_music_play(next, m_audio_out_music.callback);
+        } else {
+            audio_out_music_stop();
+        }
+}
+
 static void prv_audio_process_output(audio_buffer_t *out)
 {
+    /* Check music. */
+    if (prv_audio_out_music_playing() && !m_audio_out_music.paused) {
+        uint32_t ms_now = rtc_get_ms_since_boot();
+        uint32_t ms_diff = ms_now - m_audio_out_music.start_ms;
+        uint32_t i = m_audio_out_music.i;
+#ifdef TARGET_SIMULATOR
+#if 0
+        LOG("playing music (ms_now: %u, start_ms: %u, ms_diff: %u, i: %u "
+            "next_ms: %u)",
+            ms_now, m_audio_out_music.start_ms, ms_diff, i,
+            m_audio_out_music.section.notes[i].ms);
+#endif
+#endif /* TARGET_SIMULATOR */
+        while ((i < m_audio_out_music.section.length)
+               && (m_audio_out_music.section.notes[i].ms <= ms_diff)) {
+            const struct audio_out_note *note = m_audio_out_music.section.notes + i;
+            (void) prv_audio_out_play(note->v, &note->spec, true);
+            i++;
+        }
+        m_audio_out_music.i = i;
+        if (m_audio_out_music.section.length <= i) {
+            /* Section complete! */
+            prv_audio_out_music_section_finished();
+        }
+    }
+
+    /* Process samples. */
     for (size_t o = 0; o < AUDIO_BUFFER_LEN; o += AUDIO_BUFFER_CHANS) {
         int32_t sample = 0;
         for (int v = 0; v < (int) ARRAY_SIZE(m_audio_out_voices); v++) {
@@ -819,66 +954,14 @@ int audio_in_cb_count()
 }
 
 /*----- Output ---------------------------------------------------------------*/
-int audio_out_play(int v, const struct audio_out_spec *spec) {
-    if ((0 > v) || ((int) ARRAY_SIZE(m_audio_out_voices) < v)) {
-        LOG("Voice index out of range.");
-        return -EINVAL;
-    }
-
-    if (AUDIO_OUT_VOICE_ANY == v) {
-        for (int i = 0; i < (int) ARRAY_SIZE(m_audio_out_voices); i++) {
-            if (m_audio_out_voices[i].type) {
-                v = i;
-            }
-        }
-        if (AUDIO_OUT_VOICE_ANY == v) {
-            LOG("No free output voice.");
-            return -ENOMEM;
-        }
-    }
-
-    // TODO: check for valid type -PMW
-
-    audio_lock();
-    struct audio_out_voice_ctx *voice = m_audio_out_voices + v;
-
-    /* Do common initialization first. */
-    voice->callback = spec->callback;
-    voice->spec = spec;
-    voice->duration_samples = spec->duration_ms * (AUDIO_FS / 1000U);
-    voice->elapsed_samples = 0U;
-    voice->amplitude = prv_audio_ratio(spec->amplitude_dBFS);
-    voice->decay = spec->decay;
-    voice->type = spec->type;
-
-    int rc = -1;
-    switch (voice->type) {
-        case AUDIO_OUT_TYPE_NONE:
-        case AUDIO_OUT_TYPE_TRIANGE:
-        case AUDIO_OUT_TYPE_SAWTOOTH:
-        case AUDIO_OUT_TYPE_SAMPLES:
-        default:
-            /* Not implemented. */
-            break;
-        case AUDIO_OUT_TYPE_SQUARE:
-            rc = prv_audio_out_square_setup(voice, spec);
-            break;
-        case AUDIO_OUT_TYPE_NES_NOISE:
-            rc = prv_audio_out_nes_noise_setup(voice, spec);
-            break;
-    }
-
-    if (0 != rc) {
-        memset(voice, 0, sizeof(*voice));
-    }
-    audio_unlock();
-
-    return v;
+int audio_out_play(int v, const struct audio_out_spec *spec)
+{
+    return prv_audio_out_play(v, spec, false);
 }
 
 int audio_out_stop(int v) {
     if ((0 > v) || ((int) ARRAY_SIZE(m_audio_out_voices) < v)) {
-        LOG("Voice index out of range.");
+        LOG("voice index out of range");
         return -EINVAL;
     }
     audio_lock();
@@ -892,7 +975,9 @@ int audio_out_stop(int v) {
         prv_audio_out_complete(m_audio_out_voices + v);
     }
     audio_unlock();
-    LOG("Stopped playing. (voice: %d)", v);
+#ifdef TARGET_SIMULATOR
+    LOG("stopped playing (voice: %d)", v);
+#endif /* TARGET_SIMULATOR */
     return v;
 }
 
@@ -954,6 +1039,91 @@ bool audio_is_playing(void) {
         }
     }
     return false;
+}
+
+static bool prv_audio_out_music_playing(void)
+{
+    return 0U != m_audio_out_music.section.length;
+}
+
+/*--------- Music ------------------------------------------------------------*/
+int audio_out_music_play(const struct audio_out_section *section,
+                         audio_out_section_callback_t callback)
+{
+    if ((NULL == section) || (0 == section->length)
+        || (NULL == section->notes)) {
+        LOG("arguments to play music invalid");
+        return -EINVAL;
+    }
+
+    audio_lock();
+    m_audio_out_music.i = 0;
+    m_audio_out_music.start_ms = rtc_get_ms_since_boot();
+    m_audio_out_music.paused = false;
+    m_audio_out_music.ms_paused = m_audio_out_music.start_ms;
+    m_audio_out_music.section = *section;
+    m_audio_out_music.callback = callback;
+    audio_unlock();
+
+    return 0;
+}
+
+bool audio_out_music_playing(void)
+{
+    return prv_audio_out_music_playing();    
+}
+
+int audio_out_music_pause(bool pause)
+{
+    audio_lock();
+    if (prv_audio_out_music_playing()) {
+        bool paused = m_audio_out_music.paused;
+        if (paused != pause) {
+            uint32_t ms_now = rtc_get_ms_since_boot();
+            if (pause) {
+                /* Pause. */
+                m_audio_out_music.ms_paused =
+                    ms_now - m_audio_out_music.start_ms;
+            } else {
+                /* Unpause. */
+                m_audio_out_music.start_ms =
+                    ms_now - m_audio_out_music.ms_paused;
+            }
+            m_audio_out_music.paused = pause;
+        }
+    }
+    audio_unlock();
+    return audio_out_music_paused();
+}
+
+int audio_out_music_paused(void)
+{
+    if (!prv_audio_out_music_playing()) {
+        return -EINVAL;
+    } else {
+        return m_audio_out_music.paused ? 1 : 0;
+    }
+}
+
+int audio_out_music_stop(void)
+{
+    int rc = 0;
+    audio_lock();
+    if (!prv_audio_out_music_playing()) {
+        rc = -EINVAL;
+    } else {
+        if (NULL != m_audio_out_music.callback) {
+            m_audio_out_music.callback(&m_audio_out_music.section);
+        }
+        for (int i = 0; i < (int) ARRAY_SIZE(m_audio_out_voices); i++) {
+            if (m_audio_out_voices[i].music) {
+                (void) audio_out_stop(i);
+            }
+        }
+        memset(&m_audio_out_music, 0, sizeof(m_audio_out_music));
+    }
+    audio_unlock();
+    return rc;
 }
 
 /*----- Utilities ------------------------------------------------------------*/
