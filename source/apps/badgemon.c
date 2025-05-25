@@ -47,6 +47,8 @@ enum badgemon_state_t {
 	BADGEMON_EXIT,
 };
 static enum badgemon_state_t badgemon_state = BADGEMON_INIT;
+static enum badgemon_state_t last_state = BADGEMON_INIT;
+
 static struct palette default_palette = {
 	.colors =
 		{
@@ -316,22 +318,26 @@ static void start_scanline_animation(void)
 
 static void top_menu_action_monsters(void)
 {
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_MONSTER_AVATAR;
 	screen_changed = true;
 }
 static void top_menu_action_show_progress_page(void)
 {
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_PROGRESS;
 	screen_changed = true;
 }
 static void top_menu_action_trade_monsters(void)
 {
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_TRADE_MONSTERS;
 	start_scanline_animation();
 	screen_changed = true;
 }
 static void top_menu_action_help_screen(void)
 {
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_HELP_SCREEN;
 	screen_changed = true;
 }
@@ -347,6 +353,7 @@ static void top_menu_action_lock_all(void)
 }
 static void top_menu_action_exit(void)
 {
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_EXIT;
 }
 static const char *menu_items[] = {
@@ -395,6 +402,7 @@ static void handle_options_top_menu(void)
 
 static void return_to_top_menu(void)
 {
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_TOP_MENU;
 	screen_changed = true;
 	scan_animating = false;
@@ -422,6 +430,7 @@ static void check_buttons_avatar_screen(void)
 		show_description = !show_description;
 		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down)) {
+		last_state = badgemon_state;
 		badgemon_state = BADGEMON_TOP_MENU;
 		show_description = false;
 		screen_changed = true;
@@ -442,6 +451,7 @@ static void check_buttons_top_menu(void)
 		handle_options_top_menu();
 		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down)) {
+		last_state = badgemon_state;
 		badgemon_state = BADGEMON_EXIT;
 	}
 }
@@ -584,6 +594,7 @@ static void trade_monsters(void)
 			(OPCODE_XMIT_MONSTER << 12) | (initial_mon & 0x01ff)
 		);
 		audio_out_beep(500, 100);
+		last_state = badgemon_state;
 		badgemon_state = BADGEMON_TRADE_MONSTERS_DELAY;
 	}
 	if (!trading_monsters_enabled) {
@@ -605,6 +616,7 @@ static void trade_monsters_delay(void)
 		if (now > stop_time) {
 			just_begun = 1;
 			trading_monsters_enabled = false;
+			last_state = badgemon_state;
 			badgemon_state = BADGEMON_TRADE_MONSTERS;
 		}
 	}
@@ -616,6 +628,7 @@ static void badgemon_init(void)
 {
 	FbInit();
 	FbClear();
+	last_state = badgemon_state;
 	badgemon_state = BADGEMON_TOP_MENU;
 	screen_changed = true;
 
@@ -633,7 +646,6 @@ static void badgemon_init(void)
 	monsters[22].shiny = true;
 	monsters[26].shiny = true;
 
-	badgemon_state = BADGEMON_TOP_MENU;
 	screen_changed  = true;
 }
 
@@ -642,6 +654,10 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 	if (app->wake_up) {
 		screen_changed = true;
 		app->wake_up = 0;
+	}
+	if (badgemon_state != last_state) {
+		screen_changed = true;
+		last_state = badgemon_state;
 	}
 
 	switch (badgemon_state) {
