@@ -6,10 +6,7 @@
 
 
 #include "alldark.h"
-#include "downgreen.h"
-#include "leftred.h"
-#include "rightyellow.h"
-#include "upblue.h"
+
 
 #endif /* _simonSays_assets_h_ */
 

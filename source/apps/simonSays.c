@@ -16,10 +16,10 @@
 
 //load instances of all the sprite assets
 const struct asset2 *alldark_p = &alldark;
-const struct asset2 *upblue_p = &upblue;
-const struct asset2 *leftred_p = &leftred;
-const struct asset2 *downgreen_p = &downgreen;
-const struct asset2 *rightyellow_p = &rightyellow;
+const struct asset2 *upblue_p = &allup;
+const struct asset2 *leftred_p = &allleft;
+const struct asset2 *downgreen_p = &alldown;
+const struct asset2 *rightyellow_p = &allright;
 
 //arbitrary max level
 const int MAX_TURNS = 100;
