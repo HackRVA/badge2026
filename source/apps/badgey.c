@@ -2883,6 +2883,59 @@ static const struct line_drawing *creature_drawing[] = { /* indexed by creatures
 #define ITEM_TYPE_SOFTWARE 4
 #define ITEM_TYPE_USELESS 5
 
+/* place_name must match towninfo[], below */
+enum place_name {
+	ZONNU = 0,
+	QUAZON,
+	DORVO,
+	BALF,
+	ONVAL,
+	CAVES_OF_ZOR,
+	XANFIR_MINES,
+	KLON_CAVERNS,
+	CAVES_OF_INSANITY,
+	CHAX_MINE,
+	SURSEE,
+	CALEV,
+	NORJIG,
+	KALFO,
+	BURNIP,
+	UNNAMED_CAVE,
+	CAVE_OF_SORROW,
+	VAST_CAVERNS,
+	MINES_OF_WOE,
+	KRYTEN_CAVE,
+	WASSU,
+	JARLS,
+	KORVIN,
+	LAKNIV,
+	NEPHEST,
+	SCORPIO_CAVERN,
+	SMUGGLERS_CAVE,
+	YOBB_CAVE,
+	KILLU_CAVERNS,
+	TORTILLA_CAVE,
+	HOJAX,
+	SPEVO,
+	TORXUN,
+	TALSU,
+	MERODOX,
+	X_MINES,
+	TUNNELS_OF_DOOM,
+	ENDLESS_CAVERNS,
+	UNDERWORLD_CAVE,
+	CAVES_OF_KORIN,
+	JALTA,
+	RICHMOND,
+	ILATI,
+	FRUNTZ,
+	YARNOW,
+	EVO_MINES,
+	CARNOWULF_CAVERN,
+	WIRM_CAVE,
+	SLIN_CAVERNS,
+	SPIDER_CAVE,
+};
 /* Must match shop_item[], below */
 enum item_index {
 	FOOD,
@@ -4067,17 +4120,17 @@ static void setup_static_treasures(void)
 	add_static_treasure(&ossaria, -1, 10, 10, 1000, -1, CHEST_STATUS_BURIED);
 	/* If you add more static treasures, change NUM_STATIC_CHESTS value */
 	add_static_treasure(&ossaria, -1, 40, 3, 200, LED_SCREEN, CHEST_STATUS_BURIED); /* ossaria, on an island */
-	add_static_treasure(&ossaria, 7, 5, 44, 200, SOLDER, CHEST_STATUS_BURIED); /* ossaria, klon caverns */
+	add_static_treasure(&ossaria, KLON_CAVERNS, 5, 44, 200, SOLDER, CHEST_STATUS_BURIED);
 	add_static_treasure(&NW42, -1, 10, 10, 200, DPAD, CHEST_STATUS_BURIED); /* NW42, NEAR SURSEE */
-	add_static_treasure(&NW42, 11, 11, 12, 200, RP2040_CHIP, CHEST_STATUS_BURIED); /* NW42, CALEV */
-	add_static_treasure(&NW42, 12, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* NW42, NORJIG, SIGTRAP */
-	add_static_treasure(&borton, 23, 34, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED); /* borton, LAKNIV, */
-	add_static_treasure(&borton, 26, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED); /* borton, smuggler's cave, */
-	add_static_treasure(&skang, 36, 1, 42, 200, A_BUTTON, CHEST_STATUS_BURIED); /* skang, tunnels/doom, */
-	add_static_treasure(&skang, 32, 45, 42, 200, RESET_BUTTON, CHEST_STATUS_BURIED); /* skang, torxun */
-	add_static_treasure(&gnarg, 49, 37, 62, 200, B_BUTTON, CHEST_STATUS_BURIED); /* gnarg, spider cave */
-	add_static_treasure(&gnarg, 44, 34, 40, 200, USB_CONNECTOR, CHEST_STATUS_BURIED); /* gnarg, yarnow */
-	add_static_treasure(&gnarg, 45, 55, 62, 200, BATTERY, CHEST_STATUS_BURIED); /* gnarg, evo mines */
+	add_static_treasure(&NW42, CALEV, 11, 12, 200, RP2040_CHIP, CHEST_STATUS_BURIED);
+	add_static_treasure(&NW42, NORJIG, 11, 51, 200, CIRCUIT_BOARD, CHEST_STATUS_BURIED); /* near SIGTRAP */
+	add_static_treasure(&borton, LAKNIV, 34, 29, 200, SMALL_SPEAKER, CHEST_STATUS_BURIED);
+	add_static_treasure(&borton, SMUGGLERS_CAVE, 2, 62, 200, AMP_CHIP, CHEST_STATUS_BURIED);
+	add_static_treasure(&skang, TUNNELS_OF_DOOM, 1, 42, 200, A_BUTTON, CHEST_STATUS_BURIED);
+	add_static_treasure(&skang, TORXUN, 45, 42, 200, RESET_BUTTON, CHEST_STATUS_BURIED);
+	add_static_treasure(&gnarg, SPIDER_CAVE, 37, 62, 200, B_BUTTON, CHEST_STATUS_BURIED);
+	add_static_treasure(&gnarg, YARNOW, 34, 40, 200, USB_CONNECTOR, CHEST_STATUS_BURIED);
+	add_static_treasure(&gnarg, EVO_MINES, 55, 62, 200, BATTERY, CHEST_STATUS_BURIED);
 }
 
 static void badgey_init(void)
@@ -5637,26 +5690,17 @@ enum townfeature {
 	town_spaceship_rental = 1 << 10,
 };
 
+
 static const struct town_info {
 	const char *name;
 	uint32_t feature;
 } towninfo[] = {
 	/* on planet 0 "OSSARIA" */
-	{ "ZONNU",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-	{ "QUAZON",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "DORVO",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "BALF",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "ONVAL",
-		town_creek | town_weapons | town_spaceship_rental | town_temple | town_hackerspace,
-	},
+	{ "ZONNU", town_ponds | town_armoury | town_temple | town_inn, },
+	{ "QUAZON", town_creek | town_armoury | town_weapons, },
+	{ "DORVO", town_armoury | town_temple | town_weapons, },
+	{ "BALF", town_ponds | town_armoury | town_weapons | town_hackerspace, },
+	{ "ONVAL", town_creek | town_weapons | town_spaceship_rental | town_temple | town_hackerspace, },
 	{ "CAVES OF ZOR", 0 },
 	{ "XANFIR MINES", 0 },
 	{ "KLON CAVERNS", 0 },
@@ -5664,21 +5708,11 @@ static const struct town_info {
 	{ "CHAX MINE", 0 },
 
 	/* on planet 1 "NW42" */
-	{ "SURSEE",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "CALEV",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-	{ "NORJIG",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "KALFO",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "BURNIP",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
+	{ "SURSEE", town_armoury | town_temple | town_weapons, },
+	{ "CALEV", town_creek | town_weapons | town_armoury | town_temple, },
+	{ "NORJIG", town_ponds | town_armoury | town_weapons | town_hackerspace, },
+	{ "KALFO", town_creek | town_armoury | town_weapons, },
+	{ "BURNIP", town_ponds | town_armoury | town_temple | town_inn, },
 	{ "UNNAMED CAVE", 0 },
 	{ "CAVE OF SORROW", 0 },
 	{ "VAST CAVERNS", 0 },
@@ -5686,21 +5720,11 @@ static const struct town_info {
 	{ "KRYTEN CAVE", 0 },
 
 	/* on planet 2 "BORTON" */
-	{ "WASSU",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-	{ "JARLS",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-	{ "KORVIN",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "LAKNIV",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "NEPHEST",
-		town_creek | town_armoury | town_weapons | town_spaceship_rental,
-	},
+	{ "WASSU", town_creek | town_weapons | town_armoury | town_temple, },
+	{ "JARLS", town_ponds | town_armoury | town_temple | town_inn, },
+	{ "KORVIN", town_armoury | town_temple | town_weapons, },
+	{ "LAKNIV", town_ponds | town_armoury | town_weapons | town_hackerspace, },
+	{ "NEPHEST", town_creek | town_armoury | town_weapons | town_spaceship_rental, },
 	{ "SCORPIO CAVERN", 0 },
 	{ "SMUGGLERS CAVE", 0 },
 	{ "YOBB CAVE", 0 },
@@ -5708,21 +5732,11 @@ static const struct town_info {
 	{ "TORTILLA CAVE", 0 },
 
 	/* on planet 3 "SKANG" */
-	{ "HOJAX",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "SPEVO",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "TORXUN",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "TALSU",
-		town_ponds | town_armoury | town_temple | town_inn,
-	},
-	{ "MERODOX",
-		town_creek | town_weapons | town_armoury | town_temple | town_spaceship_rental,
-	},
+	{ "HOJAX", town_ponds | town_armoury | town_weapons | town_hackerspace, },
+	{ "SPEVO", town_armoury | town_temple | town_weapons, },
+	{ "TORXUN", town_creek | town_armoury | town_weapons, },
+	{ "TALSU", town_ponds | town_armoury | town_temple | town_inn, },
+	{ "MERODOX", town_creek | town_weapons | town_armoury | town_temple | town_spaceship_rental, },
 	{ "X MINES", 0 },
 	{ "TUNNELS OF DOOM", 0 },
 	{ "ENDLESS CAVERNS", 0 },
@@ -5730,21 +5744,11 @@ static const struct town_info {
 	{ "CAVES OF KORIN", 0 },
 
 	/* on planet 3 "GNARG" */
-	{ "JALTA",
-		town_creek | town_armoury | town_weapons,
-	},
-	{ "RICHMOND",
-		town_ponds | town_armoury | town_weapons | town_hackerspace,
-	},
-	{ "ILATI",
-		town_armoury | town_temple | town_weapons,
-	},
-	{ "FRUNTZ",
-		town_creek | town_weapons | town_armoury | town_temple,
-	},
-	{ "YARNOW",
-		town_ponds | town_armoury | town_temple | town_inn | town_spaceship_rental,
-	},
+	{ "JALTA", town_creek | town_armoury | town_weapons, },
+	{ "RICHMOND", town_ponds | town_armoury | town_weapons | town_hackerspace, },
+	{ "ILATI", town_armoury | town_temple | town_weapons, },
+	{ "FRUNTZ", town_creek | town_weapons | town_armoury | town_temple, },
+	{ "YARNOW", town_ponds | town_armoury | town_temple | town_inn | town_spaceship_rental, },
 	{ "EVO MINES", 0 },
 	{ "CARNOWULF CAVERN", 0 },
 	{ "WIRM CAVE", 0 },
@@ -6973,7 +6977,7 @@ static void add_shop_item(int shoptype, int item)
 	shop[shoptype].nitems++;
 }
 
-static void arrange_shop_contents(__attribute__((unused)) int town)
+static void arrange_shop_contents(int town)
 {
 	for (int i = 0; i < NUMSHOPS; i++)
 		shop[i].nitems = 0;
@@ -7000,10 +7004,8 @@ static void arrange_shop_contents(__attribute__((unused)) int town)
 	}
 
 	/* Here is where we will add specialty items to shops based on town */
-	if (town == 3 && player.world == &ossaria) { /* BALF on OSSARIA */
+	if (town == BALF && player.world == &ossaria)
 		add_shop_item(SHOP_HACKERSPACE, BADGE_BOM);
-		printf("Added badge bom to hackerspace shop\n");
-	}
 }
 
 static void setup_town_treasures(__attribute__((unused)) int town)
@@ -8946,7 +8948,7 @@ static void sanity_check_aux_cave_entrances(void)
 /* Compare two strings like strcpy, except consider - _ and space to be the same
  * plus a few other anomalous cases
  */
-static int str_under_cmp(char *s1, char *s2)
+static int str_under_cmp(const char *s1, const char *s2)
 {
 	int l1, l2;
 
@@ -8982,6 +8984,12 @@ static void sanity_check_shop_enums(void)
 #define CHECK_SHOPITEM(v) \
 	do { if (str_under_cmp(#v, shop_item[v].name) != 0) { \
 		fprintf(stderr, "Bad menu item '%s' vs '%s'\n", #v, shop_item[v].name); \
+		raise(SIGTRAP); \
+	} } while(0)
+
+#define CHECK_PLACENAME(v) \
+	do { if (str_under_cmp(#v, towninfo[v].name) != 0) { \
+		fprintf(stderr, "Bad place_name '%s' vs '%s'\n", #v, towninfo[v].name); \
 		raise(SIGTRAP); \
 	} } while(0)
 
@@ -9025,6 +9033,58 @@ static void sanity_check_shop_enums(void)
 	CHECK_SHOPITEM(BATTERY);
 	CHECK_SHOPITEM(SOLDER);
 	CHECK_SHOPITEM(RVASEC_BADGE);
+
+	CHECK_PLACENAME(ZONNU);
+	CHECK_PLACENAME(QUAZON);
+	CHECK_PLACENAME(DORVO);
+	CHECK_PLACENAME(BALF);
+	CHECK_PLACENAME(ONVAL);
+	CHECK_PLACENAME(CAVES_OF_ZOR);
+	CHECK_PLACENAME(XANFIR_MINES);
+	CHECK_PLACENAME(KLON_CAVERNS);
+	CHECK_PLACENAME(CAVES_OF_INSANITY);
+	CHECK_PLACENAME(CHAX_MINE);
+	CHECK_PLACENAME(SURSEE);
+	CHECK_PLACENAME(CALEV);
+	CHECK_PLACENAME(NORJIG);
+	CHECK_PLACENAME(KALFO);
+	CHECK_PLACENAME(BURNIP);
+	CHECK_PLACENAME(UNNAMED_CAVE);
+	CHECK_PLACENAME(CAVE_OF_SORROW);
+	CHECK_PLACENAME(VAST_CAVERNS);
+	CHECK_PLACENAME(MINES_OF_WOE);
+	CHECK_PLACENAME(KRYTEN_CAVE);
+	CHECK_PLACENAME(WASSU);
+	CHECK_PLACENAME(JARLS);
+	CHECK_PLACENAME(KORVIN);
+	CHECK_PLACENAME(LAKNIV);
+	CHECK_PLACENAME(NEPHEST);
+	CHECK_PLACENAME(SCORPIO_CAVERN);
+	CHECK_PLACENAME(SMUGGLERS_CAVE);
+	CHECK_PLACENAME(YOBB_CAVE);
+	CHECK_PLACENAME(KILLU_CAVERNS);
+	CHECK_PLACENAME(TORTILLA_CAVE);
+	CHECK_PLACENAME(HOJAX);
+	CHECK_PLACENAME(SPEVO);
+	CHECK_PLACENAME(TORXUN);
+	CHECK_PLACENAME(TALSU);
+	CHECK_PLACENAME(MERODOX);
+	CHECK_PLACENAME(X_MINES);
+	CHECK_PLACENAME(TUNNELS_OF_DOOM);
+	CHECK_PLACENAME(ENDLESS_CAVERNS);
+	CHECK_PLACENAME(UNDERWORLD_CAVE);
+	CHECK_PLACENAME(CAVES_OF_KORIN);
+	CHECK_PLACENAME(JALTA);
+	CHECK_PLACENAME(RICHMOND);
+	CHECK_PLACENAME(ILATI);
+	CHECK_PLACENAME(FRUNTZ);
+	CHECK_PLACENAME(YARNOW);
+	CHECK_PLACENAME(EVO_MINES);
+	CHECK_PLACENAME(CARNOWULF_CAVERN);
+	CHECK_PLACENAME(WIRM_CAVE);
+	CHECK_PLACENAME(SLIN_CAVERNS);
+	CHECK_PLACENAME(SPIDER_CAVE);
+	fprintf(stderr, "Sanity checked all place_name and item enumeration values\n");
 #endif
 }
 
