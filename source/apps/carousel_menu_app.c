@@ -123,8 +123,10 @@ static void display_menu_item_description(struct badge_app *app)
 {
 	static int screen_changed = 1;
 
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	if (screen_changed) {
 		struct menu_t *m = app->app_context;

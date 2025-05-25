@@ -9246,8 +9246,10 @@ void badgey_cb(struct badge_app *app)
 	if (claim_particle_pool(sparkpool, 0xB4D63333)) {
 		sparkpool->config.maxparticles = MAXSPARKS;
 	}
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	sanity_check_aux_cave_entrances();
 	sanity_check_shop_enums();

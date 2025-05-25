@@ -637,6 +637,7 @@ void badgemon_cb(__attribute__((unused)) struct badge_app *app)
 {
 	if (app->wake_up) {
 		screen_changed = true;
+		app->wake_up = 0;
 	}
 
 	switch (badgemon_state) {

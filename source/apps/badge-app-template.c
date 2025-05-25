@@ -135,8 +135,10 @@ static void myprogram_exit(void)
 /* You will need to rename myprogram_cb() something else. */
 void myprogram_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (myprogram_state) {
 	case MYPROGRAM_INIT:

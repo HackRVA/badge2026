@@ -1091,8 +1091,10 @@ static void hackingsimulator_quit_confirm(void)
 
 void hacking_simulator_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (hacking_simulator_state)
 	{

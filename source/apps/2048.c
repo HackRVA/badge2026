@@ -594,8 +594,10 @@ static void twenty_forty_eight_exit(void)
 
 void twenty_forty_eight_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (twenty_forty_eight_state) {
 	case TWENTY_FORTY_EIGHT_INIT:

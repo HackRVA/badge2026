@@ -66,8 +66,10 @@ static void about_badge_exit(void)
 
 void about_badge_cb(struct badge_app *app)
 {
-	if (app->wake_up)
+	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
+	}
 
 	switch (about_badge_state) {
 	case ABOUT_BADGE_INIT:

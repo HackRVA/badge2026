@@ -1556,6 +1556,7 @@ void puzzle_attack_cb(struct badge_app *app)
 {
 	if (app->wake_up) {
 		screen_changed = 1;
+		app->wake_up = 0;
 
 		/* when returning to puzzle-attack, we need to reset a cooldown so animations play smoothly */
 		current_particle_start_time = rtc_get_ms_since_boot();
