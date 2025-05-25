@@ -3015,6 +3015,7 @@ enum item_index {
 	SOLDER,
 	RVASEC_BADGE,
 	MEDICINE,
+	VISA_FORGED,
 };
 
 static const struct weapon {
@@ -3143,6 +3144,7 @@ static const struct shop_item {
 	{ "RVASEC BADGE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 
 	{ "MEDICINE", 20, ITEM_TYPE_SUSTENANCE, SHOP_TEMPLE, 1 },
+	{ "VISA (FORGED)", 2000, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 };
 
 static const unsigned char badge_bom[] = {
@@ -4687,6 +4689,11 @@ static void maybe_land_on_planet(void)
 		break;
 	case 1:
 		if (new_world != NULL) {
+			if (new_world == &gnarg && !player.carrying[VISA_FORGED]) {
+				set_badgey_state(BADGEY_RUN);
+				status_message("YOU NEED A\nVISA TO LAND\nON THIS PLANET");
+				return;
+			}
 			player.world_level++;
 			player.wx[player.world_level] = player.x;
 			player.wy[player.world_level] = player.y;
@@ -7123,6 +7130,7 @@ static const struct specialty_item_shop {
 	{ BALF, &ossaria, SHOP_HACKERSPACE, BADGE_BOM },
 	{ ZONNU, &ossaria, SHOP_PUB, MAP_GEMSTONE },
 	{ DORVO, &ossaria, SHOP_PUB, NEVERLOST },
+	{ BURNIP, &NW42, SHOP_PUB, VISA_FORGED },
 };
 
 static void arrange_shop_contents(int town)
@@ -9112,6 +9120,8 @@ static int str_under_cmp(const char *s1, const char *s2)
 		return 0;
 	if (strcmp(s1, "SOLDER") == 0 && strcmp(s2, "ROLL OF SOLDER") == 0)
 		return 0;
+	if (strcmp(s1, "VISA_FORGED") == 0 && strcmp(s2, "VISA (FORGED)") == 0)
+		return 0;
 
 	l1 = strlen(s1);
 	l2 = strlen(s2);
@@ -9188,6 +9198,7 @@ static void sanity_check_shop_enums(void)
 	CHECK_SHOPITEM(SOLDER);
 	CHECK_SHOPITEM(RVASEC_BADGE);
 	CHECK_SHOPITEM(MEDICINE);
+	CHECK_SHOPITEM(VISA_FORGED);
 
 	CHECK_PLACENAME(ZONNU);
 	CHECK_PLACENAME(QUAZON);
