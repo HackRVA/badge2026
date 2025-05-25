@@ -3326,6 +3326,7 @@ static const struct creature_generic_data {
 	int armor_protection; /* out of 256 */
 	unsigned int fire_chance; /* out of 1000 */
 	unsigned int move_chance; /* out of 1000 */
+	unsigned int gold_limit;
 	char *species;
 	union {
 		struct citizen_generic {
@@ -3378,6 +3379,7 @@ static const struct creature_generic_data {
 		.fire_chance = 150,
 		.move_chance = 40,
 		.species = "HUMAN",
+		.gold_limit = 20,
 	},
 	{
 		.guard = {
@@ -3392,6 +3394,7 @@ static const struct creature_generic_data {
 		.fire_chance = 250,
 		.move_chance = 500,
 		.species = "HUMAN",
+		.gold_limit = 20,
 	},
 	{
 		.robot1 = {
@@ -3406,6 +3409,7 @@ static const struct creature_generic_data {
 		.fire_chance = 100,
 		.move_chance = 400,
 		.species = "ROBOT",
+		.gold_limit = 0,
 	},
 	{
 		.robot2 = {
@@ -3420,6 +3424,7 @@ static const struct creature_generic_data {
 		.fire_chance = 100,
 		.move_chance = 500,
 		.species = "ROBOT",
+		.gold_limit = 0,
 	},
 	{
 		.robot3 = {
@@ -3434,6 +3439,7 @@ static const struct creature_generic_data {
 		.fire_chance = 100,
 		.move_chance = 300,
 		.species = "ROBOT",
+		.gold_limit = 0,
 	},
 	{
 		.byrstran = {
@@ -3448,6 +3454,7 @@ static const struct creature_generic_data {
 		.fire_chance = 250,
 		.move_chance = 300,
 		.species = "BYRSTAN",
+		.gold_limit = 20,
 	},
 	{
 		.hargon = {
@@ -3462,6 +3469,7 @@ static const struct creature_generic_data {
 		.fire_chance = 200,
 		.move_chance = 350,
 		.species = "HARGON",
+		.gold_limit = 40,
 	},
 	{
 		.rovdan = {
@@ -3476,6 +3484,7 @@ static const struct creature_generic_data {
 		.fire_chance = 170,
 		.move_chance = 600,
 		.species = "ROVDAN",
+		.gold_limit = 90,
 	},
 	{
 		.skavo = {
@@ -3490,6 +3499,7 @@ static const struct creature_generic_data {
 		.fire_chance = 100,
 		.move_chance = 260,
 		.species = "SKAVO",
+		.gold_limit = 15,
 	},
 	{
 		.tarcon = {
@@ -3504,6 +3514,7 @@ static const struct creature_generic_data {
 		.fire_chance = 80,
 		.move_chance = 650,
 		.species = "TARCON",
+		.gold_limit = 10,
 	},
 	{
 		.zunaro = {
@@ -3518,6 +3529,7 @@ static const struct creature_generic_data {
 		.fire_chance = 250,
 		.move_chance = 450,
 		.species = "ZUNARO",
+		.gold_limit = 50,
 	},
 };
 
@@ -3727,6 +3739,17 @@ static void move_missile(int i)
 		missile[i].alive = 0;
 }
 
+static const struct note money_notes[] = {
+	{ NOTE_A3, 100 },
+	{ NOTE_A4, 100 },
+	{ NOTE_A5, 100 },
+};
+
+static struct tune money_tune = {
+	.num_notes = ARRAY_SIZE(money_notes),
+	.note = &money_notes[0],
+};
+
 static void missile_collision_detection(int m)
 {
 	static unsigned int combat_seed = 0xaaa5555a;
@@ -3763,6 +3786,11 @@ static void missile_collision_detection(int m)
 					int lvl = combat_creature[i].level;
 					int bonus = creature_generic_data[t].experience_bonus;
 					player.experience += lvl * bonus;
+					int max_gold = creature_generic_data[t].gold_limit;
+					if (max_gold > 0) {
+						player.money += xorshift(&combat_seed) % max_gold;
+						play_tune(&money_tune, NULL, NULL);
+					}
 					/* make monster explode */
 					add_explosion(256 * (16 * combat_creature[i].x + 16),
 						256 * (16 * combat_creature[i].y + 16),
