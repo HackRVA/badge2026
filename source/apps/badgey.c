@@ -5968,6 +5968,8 @@ static void badgey_cave_menu(void)
 		dynmenu_add_item(&cave_menu, "USE ITEM", BADGEY_USE_ITEM, 1);
 		dynmenu_add_item(&cave_menu, "DIG", BADGEY_USE_ITEM, 4);
 		dynmenu_add_item(&cave_menu, "MY CLUES", BADGEY_REVIEW_CLUES, 5);
+		dynmenu_add_item(&cave_menu, "INVENTORY", BADGEY_INVENTORY, 6);
+		dynmenu_add_item(&cave_menu, "STATS", BADGEY_STATS, 253);
 		dynmenu_add_item(&cave_menu, "MAIN MENU", BADGEY_INITIAL_MENU, 3);
 #if DEV_CHEATS_ENABLED
 		dynmenu_add_item(&cave_menu, "DEV CHEATS", BADGEY_DEV_CHEATS, 254);
@@ -6025,6 +6027,16 @@ static void badgey_cave_menu(void)
 		screen_changed = 1;
 		menu_setup = 0;
 		set_badgey_state(BADGEY_REVIEW_CLUES);
+		break;
+	case 6: /* inventory */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_INVENTORY);
+		break;
+	case 253: /* stats */
+		screen_changed = 1;
+		menu_setup = 0;
+		set_badgey_state(BADGEY_STATS);
 		break;
 #if DEV_CHEATS_ENABLED
 	case 254:
