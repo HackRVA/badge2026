@@ -1,11 +1,16 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+#include "audio.h"
+#include "badge.h"
+#include "music.h"
 #include "colors.h"
 #include "menu.h"
 #include "button.h"
 #include "framebuffer.h"
 #include "trig.h"
 #include "fxp_sqrt.h"
+#include "utils.h"
 #include "xorshift.h"
 #include "random.h"
 #include "dynmenu.h"
@@ -66,6 +71,74 @@ static struct asteroid {
 	int form;
 } asteroid[MAXASTEROIDS] = { 0 };
 static int nasteroids;
+
+static void sound_death(void)
+{
+	static const struct audio_out_spec ast_boom_spec = {
+		.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xF,
+		.duration_ms = 900,
+		.decay = -1,
+		.amplitude_dBFS = 3,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.nes_noise.lfsr_val = UINT16_MAX,
+		.nes_noise.mode_flag = 0,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &ast_boom_spec);
+}
+
+static void sound_thrust(void)
+{
+        static const struct audio_out_spec thrust_spec = {
+		.frequency_hz = AUDIO_FS,
+		.duration_ms = 80,
+		.decay = -3,
+		.amplitude_dBFS = -9,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.nes_noise.lfsr_val = UINT16_MAX,
+		.nes_noise.mode_flag = 0,
+        };
+        (void) audio_out_play(AUDIO_OUT_VOICE_ANY, &thrust_spec);
+}
+
+#define SOUND_PEW_DURATION_MS (FIRE_COOLDOWN * 1000 / BADGE_FRAME_RATE_FPS)
+
+static void sound_pew(void)
+{
+	static const struct note pew_notes[13] = {
+		{ NOTE_C6, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_B5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_Bf5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_A5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_Af5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_G5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_Gf5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_F5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_E5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_Ef5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_D5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_Df5, SOUND_PEW_DURATION_MS / 13 },
+		{ NOTE_C5, SOUND_PEW_DURATION_MS / 13 },
+	};
+	static const struct tune pew_tune = { 
+		.num_notes = ARRAY_SIZE(pew_notes),
+		.note = pew_notes,
+	};
+	play_tune(&pew_tune, NULL, NULL);
+}
+
+static void sound_boom(void)
+{
+	static const struct audio_out_spec ast_boom_spec = {
+		.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xC,
+		.duration_ms = 500,
+		.decay = -1,
+		.amplitude_dBFS = -3,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.nes_noise.lfsr_val = UINT16_MAX,
+		.nes_noise.mode_flag = 0,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &ast_boom_spec);
+}
 
 /* return a random int between 0 and n - 1 */
 static int random_num(int n)
@@ -222,6 +295,7 @@ static void thrust(struct ship *player, int thrust_amount)
 		svy = player->p.vy - 4 * dvy + random_num(64) - 32;
 		sparkpool->config.add_particle(sparkpool, player->p.x, player->p.y, svx, svy, 15, YELLOW);
 	}
+	sound_thrust();
 }
 
 static void fire(struct ship *player)
@@ -233,6 +307,7 @@ static void fire(struct ship *player)
 	vx += player->p.vx;
 	vy += player->p.vy;
 	add_bullet(player->p.x , player->p.y, vx, vy, bullet_life);
+	sound_pew();
 	fire_cooldown = FIRE_COOLDOWN;
 }
 
@@ -266,6 +341,7 @@ static void check_buttons(void)
 		BUTTON_PRESSED(BADGE_BUTTON_ENCODER_SW, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_ENCODER_2_SW, down_latches) ||
 #endif
+                BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		asteroids_state = ASTEROIDS_MAYBE_EXIT;
 	}
@@ -365,6 +441,7 @@ static void check_player_asteroid_collision(struct ship *p)
 			add_sparks(p->p.x, p->p.y, 3 << 8, 20);
 			init_player(p);
 			lives--;
+			sound_death();
 		}
 	}
 }
@@ -405,6 +482,7 @@ static void check_bullet_asteroid_collision(struct bullet *b)
 			remove_asteroid(i);
 			add_sparks(b->p.x, b->p.y, 2 << 8, 8);
 			b->life = 0;
+			sound_boom();
 		}
 	}
 }
