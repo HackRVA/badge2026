@@ -269,7 +269,7 @@ void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
     int y_min, y_max, x_min, x_max;
     int y, x, texture_row, texture_x, buffer_row;
     unsigned char pixbyte;
-    unsigned short *pixdata;
+    unsigned char *pixdata;
     unsigned short pixel;
 
     if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
@@ -285,7 +285,7 @@ void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
         buffer_row = y * LCD_XSIZE;
         for (x = x_min; x < x_max; x++) {
             texture_x = (x - x_pos + x_source) % asset->x; //factor seqNum here
-            pixdata = (unsigned short*) &(asset->pixel[texture_row + texture_x]);
+            pixdata = (unsigned char*) &(asset->pixel[texture_row + texture_x]);
             pixbyte = *pixdata;
             pixel = asset->colormap[pixbyte];
 
