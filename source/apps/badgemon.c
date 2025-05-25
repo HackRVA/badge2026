@@ -416,15 +416,19 @@ static void check_buttons_avatar_screen(void)
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down)) {
 		current_monster_id = (current_monster_id + n -1) % n;
+		show_description = false;
 		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down)) {
 		current_monster_id = (current_monster_id +1) % n;
+		show_description = false;
 		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down)) {
 		current_monster_id = (current_monster_id -1) % n;
+		show_description = false;
 		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down)) {
 		current_monster_id = (current_monster_id +1) % n;
+		show_description = false;
 		screen_changed = true;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down)) {
 		show_description = !show_description;
