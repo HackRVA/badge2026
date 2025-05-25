@@ -7643,7 +7643,7 @@ static void badgey_use_item(void)
 		dynmenu_add_item(&item_menu, "EXIT THIS MENU", -1, 1);
 
 		for (unsigned int i = 0; i < ARRAY_SIZE(player.carrying); i++) {
-			if (player.carrying[i] & shop_item[i].usable) {
+			if (player.carrying[i] && shop_item[i].usable) {
 				dynmenu_add_item(&item_menu, shop_item[i].name, i, i);
 				count++;
 			}
