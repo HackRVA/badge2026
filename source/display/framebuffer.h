@@ -126,10 +126,12 @@ void FbImage1bit2(const struct asset2 *asset, unsigned char seqNum);
 void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color);
 /* Draw a portion of a 16bit asset, with wrapping. doesn't support G_Fb.pos or seqNum. */
 void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
+void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 void FbImageRect4bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color);
 
 void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap);
+void FbImageRect8bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap);
 
 /* Copy the const colormap into RAM */
 void FbPaletteCycleInit(uint16_t *colormap_dest, const uint16_t *colormap_source, size_t length);

@@ -266,6 +266,10 @@ void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_so
 
 void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
 {
+     FbImageRect8bit_Palette(asset, x_pos, y_pos, x_source, y_source, width, height, key_color, asset->colormap);
+}
+void FbImageRect8bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap)
+{
     int y_min, y_max, x_min, x_max;
     int y, x, texture_row, texture_x, buffer_row;
     unsigned char pixbyte;
@@ -284,7 +288,7 @@ void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
         texture_row = ((y - y_pos + y_source) % asset->y) * asset->x;
         buffer_row = y * LCD_XSIZE;
         for (x = x_min; x < x_max; x++) {
-            texture_x = (x - x_pos + x_source) % asset->x; //factor seqNum here
+            texture_x = (x - x_pos + x_source) % asset->x;
             pixdata = (unsigned char*) &(asset->pixel[texture_row + texture_x]);
             pixbyte = *pixdata;
             pixel = asset->colormap[pixbyte];
