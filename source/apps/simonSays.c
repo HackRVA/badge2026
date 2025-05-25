@@ -1,3 +1,7 @@
+/*simon says was allegedly written by
+ravenBishop for badge 2025 if you believe
+such a person even exists....*/
+
 #include "colors.h"
 #include "menu.h"
 #include "button.h"
@@ -66,8 +70,11 @@ bool timeIsSet=false;
 int usedTurns,it;
 static struct dynmenu menu;
 
-static void simonSaysMenu(void)
-{
+
+//dynamenu setup i've since learned
+//this is not the prefered menu :)
+// so used the UI that dustin wrote :)'
+static void simonSaysMenu(void){
 	static int menu_setup = 0;
 
 	static struct dynmenu_item menu_item[5];
@@ -112,7 +119,7 @@ static void simonSaysMenu(void)
 
 
 
-
+// does callbacks until the right time is reached and then switches state to the pre-arranged desired state
 void waitForState(enum simonSays_state_t returnTo){
 
 	if(timeIsSet){
@@ -130,6 +137,7 @@ void waitForState(enum simonSays_state_t returnTo){
 
 }
 
+//setup function for the waitforstate
 void simonSays_wait(int ms,enum simonSays_state_t state){
 	simonSays_state = SIMONSAYS_WAIT;
 	waitms = ms;
@@ -138,11 +146,12 @@ void simonSays_wait(int ms,enum simonSays_state_t state){
 	then = rtc_get_ms_since_boot()+ms;
 }
 
+//starts a really long sound at a frequency
 void soundStart (int freq){
 	audio_out_beep(freq,30000);
 }
 
-
+//stops all sounds
 void soundStop (void){
 	audio_out_beep(0,0);
 }
@@ -207,18 +216,11 @@ void showChoice(Choice c){
 	FbSwapBuffers();
 }
 
-void playChoice(Choice c){
-	showChoice(c);
-	simonSays_wait(SPEED,SIMONSAYS_PLAYBACK_RUN);
-	showChoice(NONE);
-	soundStop();
-}
 
 //THIS IS TO POLL THE COLLABORATIVE WORKSPACE
 //NOT SURE IF ITS EVEN REALLY NEEDED.
 //PROBABLY KEEPS THE SCREENSAVOR IN CHECK THO
-void checkin(void)
-{
+void checkin(void){
 	button_reset_last_input_timestamp();
 }
 
@@ -230,7 +232,7 @@ void checkin(void)
 }
 
 
-
+//adds a round
 void newRound(void){
 	sequence[usedTurns] = randChoice();
 	if(SPEED>100){
@@ -239,6 +241,7 @@ void newRound(void){
 	usedTurns++;
 }
 
+//resets buttons
 void resetButtons(void){
 	showChoice(NONE);
 	dPad = NONE;
@@ -312,7 +315,7 @@ void check_buttons(void){
 
 }
 
-
+// changes all the possible things at random
 void disco (void){
 	checkin();
 	playing = true;
@@ -354,7 +357,7 @@ void disco (void){
 
 }
 
-
+//lets start over :)
 void clearSequence(void){
 	for(int i=0;i<MAX_TURNS;i++){
 		sequence[i] = NONE;
@@ -365,10 +368,6 @@ void clearSequence(void){
 
 //SETS UP OUR WORK ENVIRONMENT
 	void simonSays_init(void){
-
-
-
-
 	started = false;
 	it = 0;
 	usedTurns=0;
@@ -386,6 +385,7 @@ void clearSequence(void){
 	simonSays_state = SIMONSAYS_MENU;
 }
 
+//setsup the player turn
 	void playerSetup(void){
 		it = 0;
 		dPad = NONE;
@@ -396,6 +396,8 @@ void clearSequence(void){
 		simonSays_state = SIMONSAYS_PLAYER_RUN;
 
 	}
+
+	//player turn gameloop
 	void playerRun(void){
 		now = rtc_get_ms_since_boot();
 		if(now>then){
@@ -439,6 +441,8 @@ void clearSequence(void){
 			return;
 		}
 	}
+	//sets up the environment to
+	//use simon as an instrument
 	void musicSetup(void){
 		showChoice(NONE);
 		dPad = NONE;
@@ -448,6 +452,7 @@ void clearSequence(void){
 		check_buttons();
 		simonSays_state = SIMONSAYS_INSTRUMENT;
 	}
+	//gameloop for play songs
 	void playMusic (void){
 		check_buttons();
 		if(waitingForRelease){
@@ -467,12 +472,13 @@ void clearSequence(void){
 		}
 		check_buttons();
 	}
-
+	//setup for simons turn
 	void playbackSetup(void){
 		playing = false;
 		it = 0;
 		simonSays_state = SIMONSAYS_PLAYBACK_RUN;
 	}
+	//gameloop for simons turn.
 	void playbackRun(void){
 		if(playing){
 			soundStop();
@@ -496,7 +502,7 @@ void clearSequence(void){
 			return;
 		}
 	}
-
+//you lose... make angry noises.
 void playerLose(void){
 
 	spec = (const struct audio_out_spec) {

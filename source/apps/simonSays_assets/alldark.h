@@ -26,11 +26,7 @@ static const uint16_t alldark_colormap[13] = {
 	0x9806,
 }; /* 13 values */
 
-/*
- * static const uint16_t up_colormap[13] = {
- 0 x738e, 0x0000, 0*x3186, 0x06df, 0x8005, 0xc480, 0xb596, 0x7240, 0x6003, 0x02c3, 0x2993, 0x0182,
-0x9806,
-}; /* 13 values */
+/
 
 
 
