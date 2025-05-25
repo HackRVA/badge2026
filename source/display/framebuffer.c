@@ -226,10 +226,6 @@ void FbImage16bit2(const struct asset2 *asset, unsigned char seqNum) {
 
 }
 
-
-// void FbImageSeq(const struct asset2 *asset, int seqNum) {
-//     FbImageRect(asset, G_Fb.pos.x, G_Fb.pos.y, seqNum * asset->x, 0, asset->x, asset->y, G_Fb.transIndex);
-// }
 void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned short key_color)
 {
     FbImageRect(asset, x_pos, y_pos, 0, 0, asset->x, asset->y, key_color);
@@ -263,6 +259,40 @@ void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_so
             if (pixel == key_color) continue;
             fb_mark_row_changed(x, y);
             BUFFER(buffer_row + x) = pixel;
+        }
+    }
+    G_Fb.changed = 1;
+}
+
+void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
+{
+    int y_min, y_max, x_min, x_max;
+    int y, x, texture_row, texture_x, buffer_row;
+    unsigned char pixbyte;
+    unsigned short *pixdata;
+    unsigned short pixel;
+
+    if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
+    if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
+
+    y_min = y_pos < 0 ? 0 : y_pos;
+    y_max = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
+    x_min = x_pos < 0 ? 0 : x_pos;
+    x_max = x_pos + width > LCD_XSIZE ? LCD_XSIZE : x_pos + width;
+
+    for (y = y_min; y < y_max; y++) {
+        texture_row = ((y - y_pos + y_source) % asset->y) * asset->x;
+        buffer_row = y * LCD_XSIZE;
+        for (x = x_min; x < x_max; x++) {
+            texture_x = (x - x_pos + x_source) % asset->x; //factor seqNum here
+            pixdata = (unsigned short*) &(asset->pixel[texture_row + texture_x]);
+            pixbyte = *pixdata;
+            pixel = asset->colormap[pixbyte];
+
+            if (pixel != key_color) {
+                fb_mark_row_changed(x, y);
+                BUFFER(buffer_row + x) = pixel;
+            }
         }
     }
     G_Fb.changed = 1;
@@ -340,6 +370,9 @@ void FbImageRect(const struct asset2 *asset, int x_pos, int y_pos, int x_source,
 	case PICTURE16BIT:
 		FbImageRect16bit(asset, x_pos, y_pos, x_source, y_source, width, height, key_color);
 		break;
+    case PICTURE8BIT:
+        FbImageRect8bit(asset, x_pos, y_pos, x_source, y_source, width, height, key_color);
+        break;
 	case PICTURE4BIT:
 		FbImageRect4bit(asset, x_pos, y_pos, x_source, y_source, width, height, key_color);
 		break;
