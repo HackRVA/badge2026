@@ -3201,55 +3201,55 @@ static struct treasure_clue {
 	enum clue_type type;
 } clue[] = {
 	/* clues in ossaria, dorvo, town 2 */
-	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, 2, 2, 62, clue_type_pub },
-	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, 2, 2, 62, clue_type_rando },
+	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, DORVO, 2, 62, clue_type_pub },
+	{ "\nDIG IN KLON\nCAVERNS AT\n5,44\n", &ossaria, DORVO, 2, 62, clue_type_rando },
 	/* clues in BALF (ossaria, town 3) */
-	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, 3, -1, -1, clue_type_rando },
-	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, 3, -1, -1, clue_type_hacker },
-	{ "\nBE SURE TO\nGET A COMPASS\nBEFORE ENTERING\nTHE CAVES", &ossaria, 3, -1, -1, clue_type_pub },
+	{ "\nHEY YOU KNOW\nTHERE'S GOLD\nIN THE CAVES", &ossaria, BALF, -1, -1, clue_type_rando },
+	{ "\nYOU SHOULD\nGET A MAP\nGEMSTONE", &ossaria, BALF, -1, -1, clue_type_hacker },
+	{ "\nBE SURE TO\nGET A COMPASS\nBEFORE ENTERING\nTHE CAVES", &ossaria, BALF, -1, -1, clue_type_pub },
 	/* clues in ONVAL (ossaria, town 4) */
-	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_pub },
-	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_hacker },
-	{ "\nSEARCH THE ISLANDS", &ossaria, 4, -1, -1, clue_type_rando },
+	{ "\nSEARCH THE ISLANDS", &ossaria, ONVAL, -1, -1, clue_type_pub },
+	{ "\nSEARCH THE ISLANDS", &ossaria, ONVAL, -1, -1, clue_type_hacker },
+	{ "\nSEARCH THE ISLANDS", &ossaria, ONVAL, -1, -1, clue_type_rando },
 	/* clues in the CAVES OF INSANITY (ossaria, cave 8) */
 	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
-			&ossaria, 8, 34, 60, clue_type_engraving, },
+			&ossaria, CAVES_OF_INSANITY, 34, 60, clue_type_engraving, },
 	/* clues in SURSEE (NW42, town 10) */
-	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_rando },
-	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_pub },
-	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, 10, -1, -1, clue_type_temple },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, SURSEE, -1, -1, clue_type_rando },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, SURSEE, -1, -1, clue_type_pub },
+	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, SURSEE, -1, -1, clue_type_temple },
 	/* clues in KALFO, (NW42, town 13) */
-	{ "\nDIG AROUND\nBEHIND SCOOTERS\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_pub },
-	{ "\nDIG AROUND\nBEHIND SCOOTERS\nIN THE TOWN\nOF CALEV\n", &NW42, 13, -1, -1, clue_type_rando },
+	{ "\nDIG AROUND\nBEHIND SCOOTERS\nIN THE TOWN\nOF CALEV\n", &NW42, KALFO, -1, -1, clue_type_pub },
+	{ "\nDIG AROUND\nBEHIND SCOOTERS\nIN THE TOWN\nOF CALEV\n", &NW42, KALFO, -1, -1, clue_type_rando },
 	/* clues in BURNIP, (NW42, town 14) */
 	{ "\nDIG AROUND\nBEHIND RED\nDWARF BAR\nIN THE TOWN\nOF NORJIG\n",
-			&NW42, 14, -1, -1, clue_type_rando },
+			&NW42, BURNIP, -1, -1, clue_type_rando },
 	{ "\nDIG AROUND\nBEHIND RED\nDWARF BAR\nIN THE TOWN\nOF NORJIG\n",
-			&NW42, 14, -1, -1, clue_type_pub },
+			&NW42, BURNIP, -1, -1, clue_type_pub },
 	/* clues in , (BORTON, town 21 JARLS) */
-	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_rando },
-	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, 21, -1, -1, clue_type_pub },
+	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, JARLS, -1, -1, clue_type_rando },
+	{ "\nDIG AROUND\nBEHIND THE INN\nIN THE TOWN\nOF LAKNIV\n", &borton, JARLS, -1, -1, clue_type_pub },
 	/* clues in, (BORTON, town 22 KORVIN) */
-	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, 22, -1, -1, clue_type_rando },
-	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, 22, -1, -1, clue_type_pub },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, KORVIN, -1, -1, clue_type_rando },
+	{ "\nSEARCH\nSMUGGLERS CAVE\nDIG AT 2,62\n", &borton, KORVIN, -1, -1, clue_type_pub },
 	/* clues in gnarg, jalta */
-	{ "\nEXPLORE\nEVO MINES\nDIG AT 55,62\n", &gnarg, 40, -1, -1, clue_type_rando },
-	{ "\nSEEK WITHIN\nEVO MINES\nDIG AT 55,62\n", &gnarg, 40, -1, -1, clue_type_pub },
+	{ "\nEXPLORE\nEVO MINES\nDIG AT 55,62\n", &gnarg, JALTA, -1, -1, clue_type_rando },
+	{ "\nSEEK WITHIN\nEVO MINES\nDIG AT 55,62\n", &gnarg, JALTA, -1, -1, clue_type_pub },
 	/* clues in gnarg, yarnow */
-	{ "\nDELVE INTO\nSPIDER CAVE\nEXCAVATE 37, 62\n", &gnarg, 44, -1, -1, clue_type_rando },
-	{ "\nSPELUNK IN\nSPIDER CAVE\nDIG AT 37, 62\n", &gnarg, 44, -1, -1, clue_type_pub },
+	{ "\nDELVE INTO\nSPIDER CAVE\nEXCAVATE 37, 62\n", &gnarg, YARNOW, -1, -1, clue_type_rando },
+	{ "\nSPELUNK IN\nSPIDER CAVE\nDIG AT 37, 62\n", &gnarg, YARNOW, -1, -1, clue_type_pub },
 	/* clues in gnarg, ilati */
-	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_rando },
-	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, 42, -1, -1, clue_type_pub },
+	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, ILATI, -1, -1, clue_type_rando },
+	{ "\nDIG AT THE\nWEST SIDE OF\nTHE TEMPLE\nIN YARNOW\n", &gnarg, ILATI, -1, -1, clue_type_pub },
 	/* clues in skang, spevo */
-	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_rando },
-	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, 31, -1, -1, clue_type_pub },
+	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, SPEVO, -1, -1, clue_type_rando },
+	{ "\nDIG ON THE\nSOUTH SIDE OF\nNOSTROMO BAR\nIN TORXUN\n", &skang, SPEVO, -1, -1, clue_type_pub },
 	/* clues in gnarg, fruntz */
-	{ "\nDIG IN THE\nSPIDER CAVE\nAT 37,62\n", &gnarg, 43, -1, -1, clue_type_rando },
-	{ "\nDIG IN THE\nSPIDER CAVE\nAT 37,62\n", &gnarg, 43, -1, -1, clue_type_pub },
-	/* clues in skang, jalta */
-	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_rando },
-	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, 40, -1, -1, clue_type_pub },
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 37,62\n", &gnarg, FRUNTZ, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nSPIDER CAVE\nAT 37,62\n", &gnarg, FRUNTZ, -1, -1, clue_type_pub },
+	/* clues in skang, merodox */
+	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, MERODOX, -1, -1, clue_type_rando },
+	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, MERODOX, -1, -1, clue_type_pub },
 };
 
 #define NCLUES (ARRAY_SIZE(clue))
