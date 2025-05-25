@@ -4159,9 +4159,9 @@ static void badgey_init(void)
 	player.experience = 0;
 	memset(player.carrying, 0, sizeof(player.carrying));
 	memset(player.known_clues, 0, sizeof(player.known_clues));
-	player.carrying[NEVERLOST] = 1;
-	player.carrying[MAP_GEMSTONE] = 1;
-	player.carrying[COMPASS] = 1;
+	player.carrying[NEVERLOST] = 0;
+	player.carrying[MAP_GEMSTONE] = 0;
+	player.carrying[COMPASS] = 0;
 	player.carrying_dirty = 1;
 	player.aboard_ship = -1;
 	player.candidate_ship = -1;
@@ -6977,6 +6977,17 @@ static void add_shop_item(int shoptype, int item)
 	shop[shoptype].nitems++;
 }
 
+static const struct specialty_item_shop {
+	unsigned char town;
+	const struct badgey_world *world;
+	unsigned char shop_type;
+	int shop_item;
+} specialty_item_shop[] = {
+	{ BALF, &ossaria, SHOP_HACKERSPACE, BADGE_BOM },
+	{ ZONNU, &ossaria, SHOP_PUB, MAP_GEMSTONE },
+	{ DORVO, &ossaria, SHOP_PUB, NEVERLOST },
+};
+
 static void arrange_shop_contents(int town)
 {
 	for (int i = 0; i < NUMSHOPS; i++)
@@ -7004,8 +7015,12 @@ static void arrange_shop_contents(int town)
 	}
 
 	/* Here is where we will add specialty items to shops based on town */
-	if (town == BALF && player.world == &ossaria)
-		add_shop_item(SHOP_HACKERSPACE, BADGE_BOM);
+	for (int i = 0; i < (int) ARRAY_SIZE(specialty_item_shop); i++) {
+		struct specialty_item_shop const *sis = &specialty_item_shop[i];
+		if (town == sis->town && player.world == sis->world) {
+			add_shop_item(sis->shop_type, sis->shop_item);
+		}
+	}
 }
 
 static void setup_town_treasures(__attribute__((unused)) int town)
@@ -9193,6 +9208,13 @@ static void cheat_move(char *cmd)
 	}
 }
 
+static void cheat_get_navigation_aids(void)
+{
+	player.carrying[COMPASS] = 1;
+	player.carrying[MAP_GEMSTONE] = 1;
+	player.carrying[NEVERLOST] = 1;
+}
+
 static void cheat_planets(void)
 {
 	fprintf(stderr, "PLANETS\n");
@@ -9233,6 +9255,7 @@ static void cheat_help(void)
 	fprintf(stderr, "c list caves/towns\n");
 	fprintf(stderr, "d print dungeon maps\n");
 	fprintf(stderr, "m move x, y\n");
+	fprintf(stderr, "n get navigation aids\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
 	fprintf(stderr, "q quit\n\n");
@@ -9293,6 +9316,9 @@ static void badgey_dev_cheats(void)
 			break;
 		case 'm':
 			cheat_move(input);
+			break;
+		case 'n':
+			cheat_get_navigation_aids();
 			break;
 		case 't':
 			cheat_teleport(input);
