@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include "audio.h"
 #include "badge.h"
@@ -30,6 +31,7 @@
 static int fire_cooldown = 0;
 static const short player_rotation_speed = 3;
 static const short player_thrust_amount = 64;
+static const int decay_speed = 2;
 static const int max_speed = (10 << 8);
 static const int max_speed_squared = (((max_speed >> 8) * (max_speed >> 8)) << 8);
 static const int bullet_speed = (4 << 8);
@@ -414,6 +416,8 @@ static void draw_player(struct ship *player)
 		FbLine(x2, y2, x3, y3);
 	if (p3_onscreen && p1_onscreen)
 		FbLine(x3, y3, x1, y1);
+
+	//int vangle = arctan2(player->p.vy, player->p.vx);
 }
 
 static void apply_position_delta(struct pos_vel *p)
@@ -447,6 +451,22 @@ static void check_player_asteroid_collision(struct ship *p)
 	}
 }
 
+static void slow_player(struct ship *player)
+{
+	if ((0 == player->p.vx) && (0 == player->p.vy)) {
+		return;
+	} else if ((abs(player->p.vx) <= 1) && (abs(player->p.vy) <= 1)) {
+		player->p.vx = 0;
+		player->p.vy = 0;
+		return;
+	}
+
+	int angle = arctan2(player->p.vy, player->p.vx);
+	while (angle < 0) angle += 128;
+	player->p.vx -= (cosine(angle) * decay_speed) >> 8;
+        player->p.vy -= (sine(angle) * decay_speed) >> 8;
+}
+
 static void move_player(struct ship *player)
 {
 	if (player_dead_counter) {
@@ -455,6 +475,7 @@ static void move_player(struct ship *player)
 	}
 	apply_position_delta(&player->p);
 	check_player_asteroid_collision(player);
+	slow_player(player);
 }
 
 static void check_bullet_asteroid_collision(struct bullet *b)
