@@ -6176,7 +6176,7 @@ static void badgey_talk_to_shopkeeper(void)
 		if (player.money < shop_item[shop[st].item[choice]].price) {
 			snprintf(message, sizeof(message), "\n\n"
 					" SORRY YOU DO\n NOT HAVE\n ENOUGH MONEY\n"
-					" MONEY FOR\n THAT\n");
+					" FOR THAT\n");
 			goto done_with_shopping;
 		}
 
