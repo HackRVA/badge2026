@@ -553,11 +553,49 @@ static void draw_centered_text_page(const char *lines[], int n, int start, int h
 	}
 }
 
+/* TODO: it's probably better to not calculate this every time */
+static int get_unlocked_count(void)
+{
+	int total = ARRAY_SIZE(monsters);
+	int unlocked_count = 0;
+	for (int i = 0; i < total; i++) {
+		if (monsters[i].unlocked) {
+			unlocked_count++;
+		}
+	}
+	return unlocked_count;
+}
+
 static void draw_progress_menu(void)
 {
 	FbClear();
+
+	int total = ARRAY_SIZE(monsters);
+	int unlocked_count = get_unlocked_count();
+
+	int pct = (unlocked_count * 100) / total;
+
+	struct ui_progress_bar pb = {
+		.x             = 10,
+		.y             = 24,
+		.width         = LCD_XSIZE - 20,
+		.height        = 10,
+		.outline_size  = 1,
+		.fill_color    = palette_color_from_index(default_palette, 13),
+		.empty_color   = palette_color_from_index(default_palette, 9),
+		.outline_color = palette_color_from_index(default_palette, 7),
+		.fill          = ui_progress_bar_calculate_fill_percentage(pct),
+	};
+	ui_progress_bar_draw(pb);
+
+	char buf[16];
+	snprintf(buf, sizeof(buf), "%d/%d", unlocked_count, total);
+	FbMove(ui_center_text_x(buf,0,LCD_XSIZE), pb.y + pb.height + 8);
+	FbColor(WHITE);
+	FbWriteString(buf);
+
 	const char *lines[] = {
-		"", "", "progress menu", "", ""
+		"", "", "monster unlock", "progress", ""
 	};
 	draw_centered_text_page(lines, ARRAY_SIZE(lines), 16, 16);
 }
