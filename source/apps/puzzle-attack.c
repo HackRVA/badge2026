@@ -1090,9 +1090,7 @@ static struct badge_app badgemon_unlock_app = {
 
 /* this is kind of a proof of concept */
 /* we can reduce the amount of monsters here to allow room for other apps to unlock */
-#define UNLOCKABLE_MONSTER_COUNT 16
-
-static const char *monster_keys[UNLOCKABLE_MONSTER_COUNT] = {
+static const char *monster_keys[] = {
 	"monster/beetlejuice",
 	"monster/chet",
 	"monster/chucky",
@@ -1103,21 +1101,19 @@ static const char *monster_keys[UNLOCKABLE_MONSTER_COUNT] = {
 	"monster/gremlin",
 	"monster/hans gruber",
 	"monster/jack torrance",
-	"monster/jason",
 	"monster/joker",
 	"monster/khan",
 	"monster/richard vernon",
 	"monster/skeletor",
-	"monster/stay puft",
 };
 
-static int badge_monsters_unlocked = 0;
+static size_t badge_monsters_unlocked = 0;
 static int badge_monster_last_unlock_milestone = 0;
 static int badge_monster_unlock_interval = 125;
 
 static void unlock_next_badge_monster(void)
 {
-	if (badge_monsters_unlocked >= UNLOCKABLE_MONSTER_COUNT)
+	if (badge_monsters_unlocked >= ARRAY_SIZE(monster_keys))
 		return;
 
 	const char *key = monster_keys[badge_monsters_unlocked];
@@ -1217,7 +1213,7 @@ static void puzzle_attack_init(void)
 	uint64_t now = rtc_get_ms_since_boot();
 
 	badge_monsters_unlocked = 0;
-	for (int i = 0; i < UNLOCKABLE_MONSTER_COUNT; i++) {
+	for (size_t i = 0; i < ARRAY_SIZE(monster_keys); i++) {
 		int val = 0;
 		flash_kv_get_int(monster_keys[i], &val);
 		if (val)

@@ -357,6 +357,21 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
             led_pwm_disable(BADGE_LED_RGB_RED);
             m_splash_state = SPLASH_STATE_NO_INIT;
             pop_app();
+            spec = (const struct audio_out_spec) {
+                .callback = NULL,
+                .frequency_hz = NOTE_C4,
+                .duration_ms = SPLASH_BOOT_AUDIO_MS / 2,
+                .decay = 0,
+                .phase = 0,
+                .amplitude_dBFS = -3,
+                .restart = false,
+                .type = AUDIO_OUT_TYPE_SQUARE,
+                .square.duty_cycle = UINT8_MAX / 3,
+            };
+#if TARGET_SIMULATOR
+            if (!silent_startup)
+#endif
+            (void) audio_out_play(0, &spec);
         }
 
         wait++;

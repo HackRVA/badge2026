@@ -1671,7 +1671,7 @@ void nau88c10_up(struct nau88c10_ctx *ctx)
         || (0 > prv_nau_set_deemp(ctx, NAU88C10_DEEMP_48_KHZ))
         /* These limiter settings align with the -12 dBFS nominal mixer level. */
         || (0 > prv_nau_set_daclimatk(ctx, NAU88C10_DACLIMATK_68_US))
-        || (0 > prv_nau_set_daclimdcy(ctx, NAU88C10_DACLIMDCY_1_1_S))
+        || (0 > prv_nau_set_daclimdcy(ctx, NAU88C10_DACLIMDCY_4_4_MS))
         || (0 > prv_nau_set_daclimbst(ctx, NAU88C10_DACLIMBST_PLUS_12_DB))
         || (0 > prv_nau_set_daclimthl(ctx, NAU88C10_DACLIMTHL_MINUS_6_DB))
         || (0 > prv_nau_set_daclimen(ctx, NAU88C10_DACLIMEN_ENABLED))

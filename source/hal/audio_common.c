@@ -743,7 +743,7 @@ static int prv_audio_out_play(int v, const struct audio_out_spec *spec, bool mus
         }
     } else {
         for (int i = 0; i < (int) ARRAY_SIZE(m_audio_out_voices); i++) {
-            if (m_audio_out_voices[i].type) {
+            if (AUDIO_OUT_TYPE_NONE == m_audio_out_voices[i].type) {
                 v = i;
             }
         }
@@ -982,7 +982,7 @@ int audio_out_stop(int v) {
 }
 
 #define AUDIO_OUT_VOICE_BEEP            (AUDIO_OUT_VOICE_COUNT - 1)
-#define AUDIO_OUT_BEEP_AMPLITUDE_DBFS   (0)
+#define AUDIO_OUT_BEEP_AMPLITUDE_DBFS   (-3)
 
 static void (*m_audio_out_beep_callback)(void);
 
