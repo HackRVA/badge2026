@@ -3726,6 +3726,8 @@ static void move_missile(int i)
 
 static void missile_collision_detection(int m)
 {
+	static unsigned int combat_seed = 0xaaa5555a;
+
 	int mx = 8 + missile[m].x / 256 - 4;
 	int my = 8 + missile[m].y / 256 - 4;
 	for (int i = 0; i < ncombat_creatures; i++) {
@@ -3781,6 +3783,21 @@ static void missile_collision_detection(int m)
 				if (damage < 0)
 					damage = 0;
 				int hp = player.hp;
+
+				if (hp < 12) { /* If the player is nearly dead, make them harder to kill */
+					unsigned int diceroll = xorshift(&combat_seed);
+					if ((diceroll % 1000) < 500)
+						damage = 0;
+					if (hp < 6) {
+						if (damage > 2)
+							damage = 2;
+					}
+				} else {
+					/* Don't kill player outright, just nearly kill them. */
+					if (damage >= hp)
+						damage = hp - ((xorshift(&combat_seed) % 6) + 6);
+				}
+
 				hp = hp - damage;
 				if (hp < 0)
 					hp = 0;
