@@ -8821,57 +8821,63 @@ static void badgey_review_clues(void)
 	static int last_clue = -2;
 	char buffer[256];
 
-	if (!player.known_clues[current_clue])
-		current_clue = find_next_known_clue(current_clue, 1);
-	if (current_clue == -1 || !player.known_clues[current_clue]) {
-		snprintf(buffer, sizeof(buffer),
-			"UNFORTUNATELY\nIT APPEARS THAT\nYOU DO NOT\nHAVE A CLUE\n");
-		current_clue = 0;
-	} else {
-		char *who_told;
+	if (screen_changed) {
+		if (!player.known_clues[current_clue])
+			current_clue = find_next_known_clue(current_clue, 1);
+		if (current_clue == -1 || !player.known_clues[current_clue]) {
+			snprintf(buffer, sizeof(buffer),
+				"UNFORTUNATELY\nIT APPEARS THAT\nYOU DO NOT\nHAVE A CLUE\n");
+			current_clue = 0;
+		} else {
+			char *who_told;
+			int clue_number = 0;
+			int known_clue_count = 0;
+			for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++)
+				if (player.known_clues[i])
+					known_clue_count++;
 
-		switch (clue[current_clue].type) {
-		case clue_type_engraving:
-			who_told = "FROM AN ENGRAVING:";
-			break;
-		case clue_type_rando:
-			who_told = "SOMEONE TOLD ME:";
-			break;
-		case clue_type_hacker:
-			who_told = "A HACKER TOLD ME:";
-			break;
-		case clue_type_pub:
-			who_told = "A BARKEEPER TOLD ME:";
-			break;
-		case clue_type_temple:
-			who_told = "A GOOROO TOLD ME:";
-			break;
-		case clue_type_spaceship_rental:
-			who_told = "RENTAL AGENT TOLD\nME:";
-			break;
+			for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++) {
+				if (player.known_clues[i])
+					clue_number++;
+				if (i == current_clue)
+					break;
+			}
+
+			switch (clue[current_clue].type) {
+			case clue_type_engraving:
+				who_told = "FROM AN ENGRAVING:";
+				break;
+			case clue_type_rando:
+				who_told = "SOMEONE TOLD ME:";
+				break;
+			case clue_type_hacker:
+				who_told = "A HACKER TOLD ME:";
+				break;
+			case clue_type_pub:
+				who_told = "A BARKEEPER TOLD ME:";
+				break;
+			case clue_type_temple:
+				who_told = "A GOOROO TOLD ME:";
+				break;
+			case clue_type_spaceship_rental:
+				who_told = "RENTAL AGENT TOLD\nME:";
+				break;
+			}
+			snprintf(buffer, sizeof(buffer), "CLUE %d OF %d\n\n%s\n\n%s\n", 
+					clue_number, known_clue_count, who_told,
+					clue[current_clue].clue_text);
 		}
-		snprintf(buffer, sizeof(buffer), "%s\n\n%s\n", who_told,
-				clue[current_clue].clue_text);
-	}
 
-	if (current_clue != last_clue) {
-		FbClear();
-		FbColor(WHITE);
-		FbBackgroundColor(BLACK);
-		FbMove(3, 3);
-		FbWriteString(buffer);
-
-		int clue_count = 0;
-		for (int i = 0; i < (int) ARRAY_SIZE(player.known_clues); i++) {
-			if (player.known_clues[i])
-				clue_count++;
+		if (current_clue != last_clue) {
+			FbColor(WHITE);
+			FbBackgroundColor(BLACK);
+			FbClear();
+			FbMove(3, 3);
+			FbWriteString(buffer);
+			FbSwapBuffers();
+			last_clue = current_clue;
 		}
-
-		snprintf(buffer, sizeof(buffer), "TOTAL CLUES: %d\n", clue_count);
-		FbMove(3, LCD_YSIZE - 8);
-		FbWriteString(buffer);
-		FbSwapBuffers();
-		last_clue = current_clue;
+		screen_changed = 0;
 	}
 
 	int down_latches = button_down_latches();
@@ -8879,14 +8885,17 @@ static void badgey_review_clues(void)
 	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		current_clue = find_next_known_clue(current_clue, -1);
+		screen_changed = 1;
 		return;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		current_clue = find_next_known_clue(current_clue, 1);
+		screen_changed = 1;
 		return;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches) ||
 		BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		set_badgey_state(BADGEY_RUN);
+		screen_changed = 1;
 		last_clue = -2;
 	}
 	if (BUTTON_PRESSED(BADGE_BUTTON_STOP_EJECT, down_latches))
