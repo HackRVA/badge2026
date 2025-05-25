@@ -982,7 +982,7 @@ int audio_out_stop(int v) {
 }
 
 #define AUDIO_OUT_VOICE_BEEP            (AUDIO_OUT_VOICE_COUNT - 1)
-#define AUDIO_OUT_BEEP_AMPLITUDE_DBFS   (0)
+#define AUDIO_OUT_BEEP_AMPLITUDE_DBFS   (-3)
 
 static void (*m_audio_out_beep_callback)(void);
 
