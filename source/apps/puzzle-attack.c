@@ -1605,6 +1605,7 @@ void puzzle_attack_cb(struct badge_app *app)
 		initial_run = true;
 		stop_tune();
 		theme_index = 0;
+		current_menu_item = 0;
 		pop_app();
 		break;
 	default:
