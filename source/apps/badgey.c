@@ -2985,6 +2985,7 @@ enum item_index {
 	BATTERY,
 	SOLDER,
 	RVASEC_BADGE,
+	MEDICINE,
 };
 
 static const struct weapon {
@@ -3111,6 +3112,8 @@ static const struct shop_item {
 	{ "BATTERY", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 	{ "ROLL OF SOLDER", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
 	{ "RVASEC BADGE", 0, ITEM_TYPE_USELESS, SHOP_SPECIALTY, 0 },
+
+	{ "MEDICINE", 20, ITEM_TYPE_SUSTENANCE, SHOP_TEMPLE, 1 },
 };
 
 static const unsigned char badge_bom[] = {
@@ -4675,10 +4678,16 @@ static void badgey_inventory(void)
 
 		int count = 0;
 		for (int i = 0; i < (int) ARRAY_SIZE(player.carrying); i++) {
+			char buffer[20];
 			if (i < first_item)
 				continue;
 			if (player.carrying[i]) {
-				FbWriteString(shop_item[i].name);
+				if (i == MEDICINE)
+					snprintf(buffer, sizeof(buffer), "%d %s",
+						player.carrying[i], shop_item[i].name);
+				else
+					snprintf(buffer, sizeof(buffer), "%s", shop_item[i].name);
+				FbWriteString(buffer);
 				FbWriteString("\n");
 				FbMoveX(0);
 				count++;
@@ -6241,7 +6250,10 @@ static void badgey_talk_to_shopkeeper(void)
 				shop_item[item].name,
 				clue_text);
 		player.money -= shop_item[item].price;
-		player.carrying[item]++;
+		if (item == MEDICINE)
+			player.carrying[item] += 10;
+		else
+			player.carrying[item]++;
 		player.carrying_dirty = 1;
 done_with_shopping:
 		status_message(message);
@@ -7676,6 +7688,13 @@ static void badgey_use_item(void)
 			set_badgey_state(BADGEY_USE_BADGE_BOM);
 			return;
 		}
+		if (choice == MEDICINE && player.carrying[MEDICINE] > 0) {
+			int new_hp = player.hp + 20;
+			if (new_hp > player.level * 100)
+				new_hp = player.level * 100;
+			player.hp = new_hp;
+			player.carrying[MEDICINE]--;
+		}
 	}
 	set_badgey_state(BADGEY_RUN);
 }
@@ -9065,6 +9084,7 @@ static void sanity_check_shop_enums(void)
 	CHECK_SHOPITEM(BATTERY);
 	CHECK_SHOPITEM(SOLDER);
 	CHECK_SHOPITEM(RVASEC_BADGE);
+	CHECK_SHOPITEM(MEDICINE);
 
 	CHECK_PLACENAME(ZONNU);
 	CHECK_PLACENAME(QUAZON);
@@ -9217,6 +9237,8 @@ static void cheat_get_all_weapons(void)
 		player.carrying[weapon[i].i] = 1;
 	for (int i = 0; i < (int) ARRAY_SIZE(armor); i++)
 		player.carrying[armor[i].i] = 1;
+	player.carrying[MEDICINE] = 100; 
+	player.carrying_dirty = 1;
 	fprintf(stderr, "All weapons and armor granted.\n");
 }
 
