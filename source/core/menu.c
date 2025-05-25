@@ -55,7 +55,6 @@
 #include "microban.h"
 #include "drum_machine.h"
 #include "badgemon.h"
-#include "badgemon_unlock.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -72,7 +71,6 @@ static const struct menu_t games_m[] = {
 	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
 	{"Microban", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = microban_cb }, NULL },
 	{"badgemon", VERT_ITEM, FUNCTION, { .func = badgemon_cb }, NULL, },
-	{"badgemon-unlock",VERT_ITEM, FUNCTION, { .func = badgemon_unlock_cb}, NULL, },
 	/* {"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, }, */
 	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, NULL, },
