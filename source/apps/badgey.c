@@ -9488,8 +9488,8 @@ static void print_all_dungeons(void)
 				int cn = world[w]->wm[windex(x, y)];
 				cn = cn - '0';
 				generate_cave(cn, x, y);
-				cn = town_num_to_name_index(w * 10 + cn);
-				printf("PLANET: %s, CAVE: %s x,y = (%d,%d)\n\n\n", world[w]->name, towninfo[cn].name, x, y); 
+				printf("PLANET: %s, CAVE: %s x,y = (%d,%d)\n\n\n",
+						world[w]->name, towninfo[w * 10 + cn].name, x, y);
 			}
 		}
 	}
