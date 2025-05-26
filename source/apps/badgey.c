@@ -7807,8 +7807,8 @@ static void badgey_equip(void)
 	if (!menu_setup) {
 		dynmenu_clear(&item_menu);
 		dynmenu_init(&item_menu, item_menu_item, ARRAY_SIZE(item_menu_item));
-		dynmenu_set_title(&item_menu, title, "", "");
-		for (int i = 0; i < (int) ARRAY_SIZE(shop_item); i++) {
+		dynmenu_set_title(&item_menu, title, "listed from", "best to worst");
+		for (int i = ARRAY_SIZE(shop_item) - 1; i >= 0; i--) {
 			if (player.carrying[i] == 0) {
 				player.carrying_dirty = 1;
 				continue;
