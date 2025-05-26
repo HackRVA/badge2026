@@ -7538,9 +7538,9 @@ static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed, int *
 	dig_cave(map, x + xo8[dir], y + yo8[dir], dir, seed, total_dug);
 }
 
+#if TARGET_SIMULATOR
 static void print_cave(char *map)
 {
-#if TARGET_SIMULATOR
 	for (int i = 0; i < 64; i++) {
 		if (i < 29)
 			continue;
@@ -7568,8 +7568,8 @@ static void print_cave(char *map)
 			printf(" ");
 	}
 	printf("\n");
-#endif
 }
+#endif
 
 static void spawn_cave_monster(unsigned int *seed)
 {
@@ -7681,7 +7681,9 @@ static void generate_cave(int cave_number, int seedx, int seedy)
 	/* cave number will be: 5 <= cave_number <= 9, we need the index into towninfo[] */
 	int correct_caveno = world_no * 10 + cave_number;
 	engrave_cave(correct_caveno);
+#if DEV_CHEATS_ENABLED
 	print_cave(dynmap);
+#endif
 }
 
 static void enter_cave(int cave_number)
@@ -9509,6 +9511,7 @@ static void cheat_help(void)
 	fprintf(stderr, "s get spaceship\n");
 	fprintf(stderr, "t teleports to town or cave, by name or number\n");
 	fprintf(stderr, "t teleport town-name|cave-name\n");
+	fprintf(stderr, "T print town maps\n");
 	fprintf(stderr, "w get all weapons\n");
 	fprintf(stderr, "q quit\n\n");
 }
@@ -9528,6 +9531,55 @@ static void print_all_dungeons(void)
 				cn = cn - '0';
 				generate_cave(cn, x, y);
 				printf("PLANET: %s, CAVE: %s x,y = (%d,%d)\n\n\n",
+						world[w]->name, towninfo[w * 10 + cn].name, x, y);
+			}
+		}
+	}
+	exit(0);
+}
+
+static void print_town(char *townmap)
+{
+	for (int y = 0; y < 64; y++) {
+		if ((y % 5) == 0)
+			printf("%02d ", y);
+		else
+			printf("   ");
+		for (int x = 0; x < 64; x++) {
+			printf("%c", townmap[windex(x, y)]);
+		}
+		printf("\n");
+	}
+	printf("   ");
+	for (int x = 0; x < 64;) {
+		if ((x % 5) == 0) {
+			printf("%02d", x);
+			x += 2;
+		} else {
+			printf(" ");
+			x++;
+		}
+	}
+	printf("\n");
+}
+
+static void print_all_towns(void)
+{
+	const struct badgey_world *world[] = { &ossaria, &NW42, &borton, &skang, &gnarg };
+
+	for (int w = 0; w < (int) ARRAY_SIZE(world); w++) {
+		for (int y = 0; y < 64; y++) {
+			for (int x = 0; x < 64; x++) {
+				if (world[w]->wm[windex(x, y)] < '0' || world[w]->wm[windex(x, y)] > '4')
+					continue;
+				player.world = world[w];
+				int cn = world[w]->wm[windex(x, y)];
+				cn = cn - '0';
+				player.x = x;
+				player.y = y;
+				generate_town(cn);
+				print_town(dynmap);
+				printf("PLANET: %s, TOWN: %s x,y = (%d,%d)\n\n\n",
 						world[w]->name, towninfo[w * 10 + cn].name, x, y);
 			}
 		}
@@ -9583,6 +9635,9 @@ static void badgey_dev_cheats(void)
 			break;
 		case 't':
 			cheat_teleport(input);
+			break;
+		case 'T':
+			print_all_towns();
 			break;
 		case 'q':
 			set_badgey_state(BADGEY_RUN);
