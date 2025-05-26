@@ -7613,6 +7613,13 @@ static void engrave_cave(int cave_number)
 		stela[nstela].x = clue[i].x;
 		stela[nstela].y = clue[i].y;
 		stela[nstela].clue_num = i;
+#if TARGET_SIMULATOR
+		/* Double check the dynmap to make sure we didn't place it inside a wall */
+		if (dynmap[windex(clue[i].x, clue[i].y)] != ' ') {
+			fprintf(stderr, "Bad stele placement for cave: %d, clue %d\n",
+				cave_number, i);
+		}
+#endif
 		nstela++;
 		if (nstela >= MAX_STELA_PER_CAVE)
 			break;
@@ -7634,6 +7641,10 @@ static void generate_cave(int cave_number, int seedx, int seedy)
 		raise(SIGTRAP); /* trigger gdb, in case we're running under gdb. */
 	}
 #endif
+	/* This caveno calculation is incorrect, however it is too late to change it
+	 * as it is used in the seed for generating the cave, and I don't want all the
+	 * caves to change at this late date.  See correct_caveno, below.
+	 */
 	int caveno = cave_number + (world_no * 10) + 5;
 	unsigned int seed = (seedx + 64 * seedy * (caveno + 1)) ^ 0x5a5a5a5a;
 
@@ -7641,7 +7652,9 @@ static void generate_cave(int cave_number, int seedx, int seedy)
 	int total_dug = 0;
 	dig_cave(dynmap, 32, 62, 0, &seed, &total_dug);
 	populate_cave(&seed);
-	engrave_cave(cave_number);
+	/* cave number will be: 5 <= cave_number <= 9, we need the index into towninfo[] */
+	int correct_caveno = world_no * 10 + cave_number;
+	engrave_cave(correct_caveno);
 	print_cave(dynmap);
 }
 
