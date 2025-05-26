@@ -3212,8 +3212,6 @@ static struct treasure_clue {
 	{ "\nSEARCH THE ISLANDS", &ossaria, ONVAL, -1, -1, clue_type_hacker },
 	{ "\nSEARCH THE ISLANDS", &ossaria, ONVAL, -1, -1, clue_type_rando },
 	/* clues in the CAVES OF INSANITY (ossaria, cave 8) */
-	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
-			&ossaria, CAVES_OF_INSANITY, 34, 60, clue_type_engraving, },
 	/* clues in SURSEE (NW42, town 10) */
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, SURSEE, -1, -1, clue_type_rando },
 	{ "\nFROM SURSEE\nHEAD 2 EAST\n3 SOUTH\nAND DIG\nFOR THE\nDPAD", &NW42, SURSEE, -1, -1, clue_type_pub },
@@ -3250,6 +3248,34 @@ static struct treasure_clue {
 	/* clues in skang, merodox */
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, MERODOX, -1, -1, clue_type_rando },
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, MERODOX, -1, -1, clue_type_pub },
+
+	/* Engraved stelae */
+	{ "placeholder", &ossaria, CAVES_OF_ZOR, 26, 59, clue_type_engraving, },
+	{ "placeholder", &ossaria, XANFIR_MINES, 21, 53, clue_type_engraving, },
+	{ "placeholder", &ossaria, KLON_CAVERNS, 26, 54, clue_type_engraving, },
+	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
+			&ossaria, CAVES_OF_INSANITY, 34, 60, clue_type_engraving, },
+	{ "placeholder", &ossaria, CHAX_MINE, 55, 47, clue_type_engraving, },
+	{ "placeholder", &NW42, UNNAMED_CAVE, 20, 59, clue_type_engraving, },
+	{ "placeholder", &NW42, VAST_CAVERNS, 33, 54, clue_type_engraving, },
+	{ "placeholder", &NW42, CAVE_OF_SORROW, 33, 53, clue_type_engraving, },
+	{ "placeholder", &NW42, MINES_OF_WOE, 13, 51, clue_type_engraving, },
+	{ "placeholder", &NW42, KRYTEN_CAVE, 35, 46, clue_type_engraving, },
+	{ "placeholder", &borton, SCORPIO_CAVERN, 15, 62, clue_type_engraving, },
+	{ "placeholder", &borton, SMUGGLERS_CAVE, 28, 51, clue_type_engraving, },
+	{ "placeholder", &borton, YOBB_CAVE, 41, 59, clue_type_engraving, },
+	{ "placeholder", &borton, KILLU_CAVERNS, 32, 56, clue_type_engraving, },
+	{ "placeholder", &borton, TORTILLA_CAVE, 30, 46, clue_type_engraving, },
+	{ "placeholder", &skang, X_MINES, 25, 48, clue_type_engraving, },
+	{ "placeholder", &skang, TUNNELS_OF_DOOM, 18, 51, clue_type_engraving, },
+	{ "placeholder", &skang, ENDLESS_CAVERNS, 47, 52, clue_type_engraving, },
+	{ "placeholder", &skang, UNDERWORLD_CAVE, 25, 46, clue_type_engraving, },
+	{ "placeholder", &skang, CAVES_OF_KORIN, 29, 56, clue_type_engraving, },
+	{ "placeholder", &gnarg, EVO_MINES, 6, 60, clue_type_engraving, },
+	{ "placeholder", &gnarg, CARNOWULF_CAVERN, 47, 54, clue_type_engraving, },
+	{ "placeholder", &gnarg, WIRM_CAVE, 24, 51, clue_type_engraving, },
+	{ "placeholder", &gnarg, SLIN_CAVERNS, 42, 42, clue_type_engraving, },
+	{ "placeholder", &gnarg, SPIDER_CAVE, 55, 60, clue_type_engraving, },
 };
 
 #define NCLUES (ARRAY_SIZE(clue))
