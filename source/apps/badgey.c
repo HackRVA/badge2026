@@ -170,7 +170,7 @@ static const char ossaria_map[4096] = {
 	"wwwwww....ffffmmffmmf.......wwwwwwwwwwwwwwwwwww..........wwwwwww"
 	"wwwwww.....ff.5mmff.ff.....wwww...................wwwwwwwwwwwwww"
 	"wwwwww......f..fmm..ff.....w0..................wwwwwwwwwwwwwwwww"
-	"wwwww..........ff.................................wwwwwwwwwwwwww"
+	"wwwww..........ff.................................wwwwwwww..wwww"
 	"wwwww...........f.............................wwwwwwwwwwwwwwwwww"
 	"wwwwww..w................................wwwwwwwwwwwwwwwwwwwwwww"
 	"wwwww...ww...................wwwwwwm..................wwwwwwwwww"
@@ -3174,7 +3174,7 @@ static struct shop {
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
 #define MAX_CHESTS 100
-#define NUM_STATIC_CHESTS 13
+#define NUM_STATIC_CHESTS 24
 #define NUM_RAND_CHESTS_PER_CAVE 15
 static struct treasure_chest {
 	struct badgey_world *world;
@@ -3250,7 +3250,8 @@ static struct treasure_clue {
 	{ "\nDIG IN THE\nTUNNELS OF\nDOOM, AT\n1, 42\n", &skang, MERODOX, -1, -1, clue_type_pub },
 
 	/* Engraved stelae */
-	{ "placeholder", &ossaria, CAVES_OF_ZOR, 26, 59, clue_type_engraving, },
+	{ "IN THE TOWN OF\nDORVO, BURIED\nBEHIND THE\nWELCOME SIGN\nIS A FORMIDABLE\nWEAPON",
+			&ossaria, CAVES_OF_ZOR, 26, 59, clue_type_engraving, },
 	{ "placeholder", &ossaria, XANFIR_MINES, 21, 53, clue_type_engraving, },
 	{ "placeholder", &ossaria, KLON_CAVERNS, 26, 54, clue_type_engraving, },
 	{ "BEWARE ALL WHO\nENTER HERE FOR SOON\nYOUR MIND WILL\nWANDER AS THOUGH\nLOCKED IN A MAZE\n",
@@ -3258,20 +3259,28 @@ static struct treasure_clue {
 	{ "placeholder", &ossaria, CHAX_MINE, 55, 47, clue_type_engraving, },
 	{ "placeholder", &NW42, UNNAMED_CAVE, 20, 59, clue_type_engraving, },
 	{ "placeholder", &NW42, VAST_CAVERNS, 33, 54, clue_type_engraving, },
-	{ "placeholder", &NW42, CAVE_OF_SORROW, 33, 53, clue_type_engraving, },
-	{ "placeholder", &NW42, MINES_OF_WOE, 13, 51, clue_type_engraving, },
-	{ "placeholder", &NW42, KRYTEN_CAVE, 35, 46, clue_type_engraving, },
-	{ "placeholder", &borton, SCORPIO_CAVERN, 15, 62, clue_type_engraving, },
-	{ "placeholder", &borton, SMUGGLERS_CAVE, 28, 51, clue_type_engraving, },
+	{ "IN THE TOWN\nOF BURNIP NEAR\nTHE SOUTHMOST\nPOINT OF THE\nROAD IS A TREE\nDIG UNDER THE\nTREE",
+			&NW42, CAVE_OF_SORROW, 33, 53, clue_type_engraving, },
+	{ "DIG UNDER THE\nSOUTH WALL OF\nTHE TEMPLE IN\nCALEV TO FIND\nSOMETHING POWERFUL",
+			&NW42, MINES_OF_WOE, 13, 51, clue_type_engraving, },
+	{ "IN THE TOWN OF\nKALFO THERE IS A\nTREE JUST SOUTH\nOF SCOTTYS. NEAR\nTHAT TREE IS\nBURIED A GREAT\nWEAPON",
+			&NW42, KRYTEN_CAVE, 35, 46, clue_type_engraving, },
+	{ "FROM THE MOUTH\nOF YOBB CAVE\nHEAD SOUTH 10\nTHEN WEST 9\nFIND BURIED\nTITANIUM ARMOR",
+			&borton, SCORPIO_CAVERN, 15, 62, clue_type_engraving, },
+	{ "GO TO JARLS\nAND FIND TECH NOIR\nDIG ON THE WEST\nSIDE OF TECH NOIR",
+			&borton, SMUGGLERS_CAVE, 28, 51, clue_type_engraving, },
 	{ "placeholder", &borton, YOBB_CAVE, 41, 59, clue_type_engraving, },
 	{ "placeholder", &borton, KILLU_CAVERNS, 32, 56, clue_type_engraving, },
 	{ "placeholder", &borton, TORTILLA_CAVE, 30, 46, clue_type_engraving, },
 	{ "placeholder", &skang, X_MINES, 25, 48, clue_type_engraving, },
 	{ "placeholder", &skang, TUNNELS_OF_DOOM, 18, 51, clue_type_engraving, },
-	{ "placeholder", &skang, ENDLESS_CAVERNS, 47, 52, clue_type_engraving, },
-	{ "placeholder", &skang, UNDERWORLD_CAVE, 25, 46, clue_type_engraving, },
+	{ "DIG BEHIND THE\nINN IN THE TOWN\nOF TORXUN TO\nFIND A POWERFUL\nWEAPON",
+			&skang, ENDLESS_CAVERNS, 47, 52, clue_type_engraving, },
+	{ "IN SPEVO, ALONG\nTHE SOUTH WALL\nOF THE ARMAMENT\nSHOP IS BURIED\nEXCELLENT\nARMOR",
+		&skang, UNDERWORLD_CAVE, 25, 46, clue_type_engraving, },
 	{ "placeholder", &skang, CAVES_OF_KORIN, 29, 56, clue_type_engraving, },
-	{ "placeholder", &gnarg, EVO_MINES, 6, 60, clue_type_engraving, },
+	{ "IN THE TOWN OF\nJALTA DIG NEAR\nA TREE ON THE\nSOUTH WALL\nOF THE WEAPONS\nSHOP",
+			&gnarg, EVO_MINES, 6, 60, clue_type_engraving, },
 	{ "placeholder", &gnarg, CARNOWULF_CAVERN, 47, 54, clue_type_engraving, },
 	{ "placeholder", &gnarg, WIRM_CAVE, 24, 51, clue_type_engraving, },
 	{ "placeholder", &gnarg, SLIN_CAVERNS, 42, 42, clue_type_engraving, },
@@ -4257,6 +4266,18 @@ static void setup_static_treasures(void)
 	add_static_treasure(&gnarg, SPIDER_CAVE, 37, 62, 200, B_BUTTON, CHEST_STATUS_BURIED);
 	add_static_treasure(&gnarg, YARNOW, 34, 40, 200, USB_CONNECTOR, CHEST_STATUS_BURIED);
 	add_static_treasure(&gnarg, EVO_MINES, 55, 62, 200, BATTERY, CHEST_STATUS_BURIED);
+
+	add_static_treasure(&ossaria, -1, 58, 8, 0, PLASMA_PISTOL, CHEST_STATUS_BURIED);
+	add_static_treasure(&ossaria, DORVO, 10, 27, 97, GRENADE_GUN, CHEST_STATUS_BURIED);
+	add_static_treasure(&NW42, KALFO, 46, 38, 55, RAILGUN_RIFLE, CHEST_STATUS_BURIED);
+	add_static_treasure(&gnarg, JALTA, 14, 51, 0, TESLA_GLAIVE, CHEST_STATUS_BURIED);
+	add_static_treasure(&borton, JARLS, 34, 25, 0, BEAM_CANNON, CHEST_STATUS_BURIED);
+	add_static_treasure(&skang, TORXUN, 16, 18, 0, VOID_BLADE, CHEST_STATUS_BURIED);
+	add_static_treasure(&NW42, CALEV, 36, 47, 0, GAMMA_RAY_GUN, CHEST_STATUS_BURIED);
+	add_static_treasure(&ossaria, -1, 59, 8, 0, FLAK_VEST, CHEST_STATUS_BURIED);
+	add_static_treasure(&NW42, BURNIP, 47, 58, 0, COMBAT_SUIT, CHEST_STATUS_BURIED);
+	add_static_treasure(&borton, -1, 13, 38, 0, TITANIUM_PLATE, CHEST_STATUS_BURIED);
+	add_static_treasure(&skang, SPEVO, 16, 53, 0, ENERGY_SHIELD, CHEST_STATUS_BURIED);
 }
 
 static void badgey_init(void)
