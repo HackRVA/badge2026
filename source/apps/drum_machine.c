@@ -42,7 +42,7 @@ static struct drum_song {
 
 static char drum_machine_err_msg[100];
 
-#define BASS_FREQ 120
+#define BASS_FREQ 240
 #define SNARE_FREQ 5500
 #define CRASH_FREQ 5000
 #define TOM1_FREQ 440
@@ -339,7 +339,7 @@ static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned ch
 				dur = d;
 		}
 		if (instruments & DRUM_BASS) {
-			d = add_drum_note(7, start_time, t, BASS_FREQ, BASS_DUR);
+			d = add_snare_drum_note(7, start_time, t, BASS_FREQ, BASS_DUR);
 			if (d > dur)
 				dur = d;
 		}
