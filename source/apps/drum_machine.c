@@ -23,7 +23,7 @@ enum drum_machine_state_t {
 	DRUM_MACHINE_EXIT,
 };
 
-#define MAX_DRUM_PATTERNS 20
+#define MAX_DRUM_PATTERNS 10
 #define HITS_PER_MEASURE 16
 /* you can't really change NINSTS, as it's 8 because there are 8 bits in a byte */
 #define NINSTS 8
