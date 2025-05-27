@@ -97,6 +97,10 @@ func main() {
 }
 
 func fileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/" {
+		http.Redirect(w, r, "/pages/about/", http.StatusSeeOther)
+		return
+	}
 	fs := http.FileServer(http.Dir(*destDir))
 	// let's explicitly state which files should be handled strictly
 	// this way we can still load in external resources

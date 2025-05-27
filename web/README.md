@@ -31,8 +31,6 @@ The `assets` directory gets copied into the output dir. This is where images can
 ### HTML Templates
 Pages are built with a single html Template `./templates/page.html`.
 
-The main `index.html` is built from `./templates/index.html`
-
 ### Extensions
 
 At the end of the day, this site is just html and js, which means we can extend it however we want.

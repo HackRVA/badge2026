@@ -111,12 +111,6 @@ func main() {
 		return
 	}
 
-	indexTpl, err := template.ParseFiles("templates/index.html")
-	if err != nil {
-		fmt.Println("Error loading index template:", err)
-		return
-	}
-
 	err = filepath.Walk(inputDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -132,8 +126,6 @@ func main() {
 		fmt.Println("Error walking through markdown directory:", err)
 		return
 	}
-
-	generateIndexPage(indexTpl, pages, outputDir)
 
 	os.Mkdir(".dist/assets/", 0o755)
 	if err := CopyDir("./assets/", ".dist/"); err != nil {
@@ -213,20 +205,6 @@ func generateHTMLPage(tpl *template.Template, inputFilePath, outputDir, fileName
 	if err := tpl.Execute(f, pageData); err != nil {
 		fmt.Println("Error executing template:", err)
 		return
-	}
-}
-
-func generateIndexPage(tpl *template.Template, pages []string, outputDir string) {
-	outputPath := filepath.Join(outputDir, "index.html")
-	f, err := os.Create(outputPath)
-	if err != nil {
-		fmt.Println("Error creating index HTML file:", err)
-		return
-	}
-	defer f.Close()
-
-	if err := tpl.Execute(f, pages); err != nil {
-		fmt.Println("Error executing index template:", err)
 	}
 }
 
