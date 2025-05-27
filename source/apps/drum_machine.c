@@ -12,6 +12,8 @@
 #include "audio.h"
 #include "music.h"
 
+#define HAVE_MIXING 1
+
 /* Program states.  Initial state is DRUM_MACHINE_INIT */
 enum drum_machine_state_t {
 	DRUM_MACHINE_INIT,
@@ -185,7 +187,8 @@ static void drum_machine_init(void)
 	memset(drum_song.measure, 255, sizeof(drum_song.measure));
 }
 
-static int add_ride_cymbal_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
+static int add_ride_cymbal_note(int voice, int start_time,
+		struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	if (duration_ms > sixteenth_ms)
@@ -208,12 +211,13 @@ static int add_ride_cymbal_note(int start_time, struct audio_out_section *t, uin
 	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_SQUARE;
 	drumsong_notes[i].spec.square.duty_cycle = 64;
 	drumsong_notes[i].ms = start_time;
-	drumsong_notes[i].v = 0;
+	drumsong_notes[i].v = voice;
 	t->length++;
 	return duration_ms;
 }
 
-static int add_snare_drum_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
+static int add_snare_drum_note(int voice, int start_time,
+		struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	if (duration_ms > sixteenth_ms)
@@ -236,12 +240,13 @@ static int add_snare_drum_note(int start_time, struct audio_out_section *t, uint
 	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_NES_NOISE;
 	drumsong_notes[i].spec.square.duty_cycle = 64;
 	drumsong_notes[i].ms = start_time;
-	drumsong_notes[i].v = 0;
+	drumsong_notes[i].v = voice;
 	t->length++;
 	return duration_ms;
 }
 
-static int add_drum_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
+static int add_drum_note(int voice, int start_time,
+		struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	if (duration_ms > sixteenth_ms)
@@ -264,12 +269,12 @@ static int add_drum_note(int start_time, struct audio_out_section *t, uint16_t f
 	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_SQUARE;
 	drumsong_notes[i].spec.square.duty_cycle = 127;
 	drumsong_notes[i].ms = start_time;
-	drumsong_notes[i].v = 0;
+	drumsong_notes[i].v = voice;
 	t->length++;
 	return duration_ms;
 }
 
-static int add_silence(int start_time, struct audio_out_section *t, uint16_t duration_ms)
+static int add_silence(int voice, int start_time, struct audio_out_section *t, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	if (duration_ms > sixteenth_ms)
@@ -286,6 +291,7 @@ static int add_silence(int start_time, struct audio_out_section *t, uint16_t dur
 	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_NONE;
 	drumsong_notes[i].ms = start_time;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
+	drumsong_notes[i].v = voice;
 	t->length++;
 	return duration_ms;
 }
@@ -293,24 +299,51 @@ static int add_silence(int start_time, struct audio_out_section *t, uint16_t dur
 static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned char instruments)
 {
 	int dur = 0;
-	if (instruments == 0)
-		dur = add_silence(start_time, t, CRASH_DUR);
-	else if (instruments & DRUM_CRASH)
-		dur = add_drum_note(start_time, t, CRASH_FREQ, CRASH_DUR);
-	else if (instruments & DRUM_RIDE)
-		dur = add_ride_cymbal_note(start_time, t, RIDE_FREQ, RIDE_DUR);
-	else if (instruments & DRUM_CHH)
-		dur = add_drum_note(start_time, t, CHH_FREQ, CHH_DUR);
-	else if (instruments & DRUM_OHH)
-		dur = add_drum_note(start_time, t, OHH_FREQ, OHH_DUR);
-	else if (instruments & DRUM_TOM2)
-		dur = add_drum_note(start_time, t, TOM2_FREQ, TOM2_DUR);
-	else if (instruments & DRUM_TOM1)
-		dur = add_drum_note(start_time, t, TOM1_FREQ, TOM1_DUR);
-	else if (instruments & DRUM_SNARE)
-		dur = add_snare_drum_note(start_time, t, SNARE_FREQ, SNARE_DUR);
-	else if (instruments & DRUM_BASS)
-		dur = add_drum_note(start_time, t, BASS_FREQ, BASS_DUR);
+	if (instruments == 0) {
+		dur = add_silence(0, start_time, t, CRASH_DUR);
+	} else {
+		int d;
+		if (instruments & DRUM_CRASH) {
+			d = add_drum_note(0, start_time, t, CRASH_FREQ, CRASH_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_RIDE) {
+			d = add_ride_cymbal_note(1, start_time, t, RIDE_FREQ, RIDE_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_CHH) {
+			d = add_drum_note(2, start_time, t, CHH_FREQ, CHH_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_OHH) {
+			d = add_drum_note(3, start_time, t, OHH_FREQ, OHH_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_TOM2) {
+			d = add_drum_note(4, start_time, t, TOM2_FREQ, TOM2_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_TOM1) {
+			d = add_drum_note(5, start_time, t, TOM1_FREQ, TOM1_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_SNARE) {
+			d = add_snare_drum_note(6, start_time, t, SNARE_FREQ, SNARE_DUR);
+			if (d > dur)
+				dur = d;
+		}
+		if (instruments & DRUM_BASS) {
+			d = add_drum_note(7, start_time, t, BASS_FREQ, BASS_DUR);
+			if (d > dur)
+				dur = d;
+		}
+	}
 	return dur;
 }
 
@@ -340,7 +373,7 @@ static void play_pattern(int current_pattern)
 	/* We need to add silence to the end of the section so it doesn't start
 	 * replaying the section too soon
 	 */
-	add_silence(start_time_ms - sixteenth_ms + t, &drumtune, sixteenth_ms - t);
+	add_silence(0, start_time_ms - sixteenth_ms + t, &drumtune, sixteenth_ms - t);
 	start_playing_tune(&drumtune);
 }
 
@@ -364,7 +397,7 @@ static void play_song(void)
 			start_time_ms += sixteenth_ms;
 		}
 	}
-	add_silence(start_time_ms - sixteenth_ms + t, &drumtune, sixteenth_ms - t);
+	add_silence(0, start_time_ms - sixteenth_ms + t, &drumtune, sixteenth_ms - t);
 	start_playing_tune(&drumtune);
 }
 
