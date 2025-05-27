@@ -6,7 +6,7 @@ img {
 }
 </style>
 
-![badge_specs](/assets/badge2023_specs.png)
+![badge_specs](/assets/badge_pcb_labels.png)
 
 | Component | Description |
 |-----------|-------------|

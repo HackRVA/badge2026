@@ -154,3 +154,25 @@ small {font-size: 0.8em;}
 .backlink:hover .backlink__preview {
     display: block;
 }
+
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 800px;
+  margin: 1em auto;
+  font-family: sans-serif;
+  font-size: 14px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #14122b;
+  font-weight: bold;
+  border: 2px solid #999;
+}
