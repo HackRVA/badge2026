@@ -9,6 +9,7 @@
 #include "dynmenu.h"
 #include "utils.h"
 #include "key_value_storage.h"
+#include "audio.h"
 #include "music.h"
 
 /* Program states.  Initial state is DRUM_MACHINE_INIT */
@@ -48,7 +49,7 @@ static char drum_machine_err_msg[100];
 #define CHH_FREQ 3800
 #define RIDE_FREQ 1000
 
-#define BASS_DUR 16
+#define BASS_DUR 100 
 #define SNARE_DUR 16
 #define CRASH_DUR 16
 #define TOM1_DUR 16
@@ -57,8 +58,12 @@ static char drum_machine_err_msg[100];
 #define CHH_DUR 16
 #define RIDE_DUR 16
 
-static struct note drumtune_hits[2 * 16 * MAX_DRUM_PATTERNS];
-static struct dynamic_tune drumtune;
+/* 8 channels x 16 notes per measure x max measures */
+static struct audio_out_note drumsong_notes[8 * 16 * MAX_DRUM_PATTERNS];
+static struct audio_out_section drumtune = {
+	.length = 0,
+	.notes = drumsong_notes,
+};
 
 #define DRUM_CRASH (1 << 0)
 #define DRUM_RIDE (1 << 1)
@@ -180,78 +185,97 @@ static void drum_machine_init(void)
 	memset(drum_song.measure, 255, sizeof(drum_song.measure));
 }
 
-static void add_drum_note(struct dynamic_tune *t, uint16_t freq, uint16_t duration_ms)
+static void add_drum_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	if (duration_ms > sixteenth_ms)
 		duration_ms = sixteenth_ms;
-	if (t->num_notes >= MAX_DRUM_PATTERNS_PER_SONG * HITS_PER_MEASURE - 1)
+	if (t->length >= (uint32_t) ARRAY_SIZE(drumsong_notes))
 		return;
 
-	t->note[t->num_notes].freq = freq;
-	t->note[t->num_notes].duration = duration_ms;
-	t->num_notes++;
-	int ms_left = sixteenth_ms - duration_ms;
-	if (ms_left > 0) {
-		t->note[t->num_notes].freq = NOTE_REST;
-		t->note[t->num_notes].duration = ms_left;
-		t->num_notes++;
-	}
+	int i = t->length;
+
+	/* Note that t->notes == &drumsong_notes[0], but we can't access
+	 * it through t->notes[] because it's const.
+	 */
+	drumsong_notes[i].spec.callback = NULL;
+	drumsong_notes[i].spec.frequency_hz = freq;
+	drumsong_notes[i].spec.duration_ms = duration_ms;
+	drumsong_notes[i].spec.decay = -1;
+	drumsong_notes[i].spec.phase = 0;
+	drumsong_notes[i].spec.amplitude_dBFS = -3;
+	drumsong_notes[i].spec.restart = false;
+	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_SQUARE;
+	drumsong_notes[i].spec.square.duty_cycle = 127;
+	drumsong_notes[i].ms = start_time;
+	drumsong_notes[i].v = 0;
+	t->length++;
 }
 
-static void add_drum_hit(struct dynamic_tune *t, unsigned char instruments)
+static void add_drum_hit(int start_time, struct audio_out_section *t, unsigned char instruments)
 {
 	if (instruments == 0)
-		add_drum_note(t, NOTE_REST, CRASH_DUR);
+		add_drum_note(start_time, t, NOTE_REST, CRASH_DUR);
 	else if (instruments & DRUM_CRASH)
-		add_drum_note(t, CRASH_FREQ, CRASH_DUR);
+		add_drum_note(start_time, t, CRASH_FREQ, CRASH_DUR);
 	else if (instruments & DRUM_RIDE)
-		add_drum_note(t, RIDE_FREQ, RIDE_DUR);
+		add_drum_note(start_time, t, RIDE_FREQ, RIDE_DUR);
 	else if (instruments & DRUM_CHH)
-		add_drum_note(t, CHH_FREQ, CHH_DUR);
+		add_drum_note(start_time, t, CHH_FREQ, CHH_DUR);
 	else if (instruments & DRUM_OHH)
-		add_drum_note(t, OHH_FREQ, OHH_DUR);
+		add_drum_note(start_time, t, OHH_FREQ, OHH_DUR);
 	else if (instruments & DRUM_TOM2)
-		add_drum_note(t, TOM2_FREQ, TOM2_DUR);
+		add_drum_note(start_time, t, TOM2_FREQ, TOM2_DUR);
 	else if (instruments & DRUM_TOM1)
-		add_drum_note(t, TOM1_FREQ, TOM1_DUR);
+		add_drum_note(start_time, t, TOM1_FREQ, TOM1_DUR);
 	else if (instruments & DRUM_SNARE)
-		add_drum_note(t, SNARE_FREQ, SNARE_DUR);
+		add_drum_note(start_time, t, SNARE_FREQ, SNARE_DUR);
 	else if (instruments & DRUM_BASS)
-		add_drum_note(t, BASS_FREQ, BASS_DUR);
+		add_drum_note(start_time, t, BASS_FREQ, BASS_DUR);
 }
 
-static void repeat_current_tune(__attribute__((unused)) void *cookie)
+static const struct audio_out_section *repeat_current_tune(const struct audio_out_section *prev)
 {
-	play_dynamic_tune(&drumtune, repeat_current_tune, NULL);
+	return prev;
+}
+
+void start_playing_tune(const struct audio_out_section *tune)
+{
+	audio_out_music_play(tune, repeat_current_tune);
 }
 
 static void play_pattern(int current_pattern)
 {
-	drumtune.num_notes = 0;
-	drumtune.note = drumtune_hits;
+	const int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
+	int start_time_ms = 0;
+	drumtune.length = 0;
 	struct drum_pattern *pattern = &drum_song.pattern[current_pattern];
-	for (int i = 0; i < HITS_PER_MEASURE; i++)
-		add_drum_hit(&drumtune, pattern->hit[i]);
-	repeat_current_tune(NULL);
+	for (int i = 0; i < HITS_PER_MEASURE; i++) {
+		add_drum_hit(start_time_ms, &drumtune, pattern->hit[i]);
+		start_time_ms += sixteenth_ms;
+	}
+	start_playing_tune(&drumtune);
 }
 
 static void play_song(void)
 {
 	/* Count how many measures we have */
+	const int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	drum_song.nmeasures = 0;
 	for (int i = 0; i < MAX_DRUM_PATTERNS_PER_SONG; i++)
 		if (drum_song.measure[i] != 255)
 			drum_song.nmeasures = i;
-	drumtune.num_notes = 0;
-	drumtune.note = drumtune_hits;
+	drumtune.length = 0;
+	int start_time_ms = 0;
 	for (int i = 0; i < drum_song.nmeasures; i++) {
 		int m = drum_song.measure[i];
 		struct drum_pattern *p = &drum_song.pattern[m];
-		for (int j = 0; j < HITS_PER_MEASURE; j++)
-			add_drum_hit(&drumtune, p->hit[j]);
+		for (int j = 0; j < HITS_PER_MEASURE; j++) {
+			add_drum_hit(start_time_ms, &drumtune, p->hit[j]);
+			start_time_ms += sixteenth_ms;
+		}
 	}
-	repeat_current_tune(NULL);
+	start_playing_tune(&drumtune);
 }
 
 static void check_buttons(void)
@@ -410,7 +434,7 @@ static void check_buttons(void)
 					copied_pattern = current_pattern;
 					break;
 				case 3: /* stop */
-					stop_tune();
+					audio_out_music_stop();
 					break;
 				case 4: /* play */
 					play_pattern(current_pattern);
@@ -460,7 +484,7 @@ static void check_buttons(void)
 					play_song();
 					break;
 				case 4: /* stop */
-					stop_tune();
+					audio_out_music_stop();
 					break;
 				case 5: /* tempo */
 					drum_machine_state = DRUM_MACHINE_SET_TEMPO;
