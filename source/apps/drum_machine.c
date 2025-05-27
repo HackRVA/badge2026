@@ -226,17 +226,10 @@ static int add_silence(int start_time, struct audio_out_section *t, uint16_t dur
 	/* Note that t->notes == &drumsong_notes[0], but we can't access
 	 * it through t->notes[] because it's const.
 	 */
-	drumsong_notes[i].spec.callback = NULL;
-	drumsong_notes[i].spec.frequency_hz = 20000; /* too high for old geezers to hear */
-	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.decay = -1;
-	drumsong_notes[i].spec.phase = 0;
-	drumsong_notes[i].spec.amplitude_dBFS = -127; /* very, *very* quiet */
-	drumsong_notes[i].spec.restart = false;
-	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_SQUARE;
-	drumsong_notes[i].spec.square.duty_cycle = 127;
+	memset(&drumsong_notes[i], 0, sizeof(drumsong_notes[i]));
+	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_NONE;
 	drumsong_notes[i].ms = start_time;
-	drumsong_notes[i].v = 0;
+	drumsong_notes[i].spec.duration_ms = duration_ms;
 	t->length++;
 	return duration_ms;
 }
@@ -267,6 +260,7 @@ static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned ch
 
 static const struct audio_out_section *repeat_current_tune(const struct audio_out_section *prev)
 {
+	printf("REPEATING!\n");
 	return prev;
 }
 
@@ -280,6 +274,7 @@ static void play_pattern(int current_pattern)
 	const int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
 	int start_time_ms = 0;
 	drumtune.length = 0;
+	memset(&drumsong_notes, 0, sizeof(drumsong_notes));
 	struct drum_pattern *pattern = &drum_song.pattern[current_pattern];
 	int t;
 	for (int i = 0; i < HITS_PER_MEASURE; i++) {
@@ -302,6 +297,7 @@ static void play_song(void)
 		if (drum_song.measure[i] != 255)
 			drum_song.nmeasures = i;
 	drumtune.length = 0;
+	memset(&drumsong_notes, 0, sizeof(drumsong_notes));
 	int start_time_ms = 0;
 	int t;
 	for (int i = 0; i < drum_song.nmeasures; i++) {
