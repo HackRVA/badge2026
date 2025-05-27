@@ -238,7 +238,7 @@ static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned ch
 {
 	int dur = 0;
 	if (instruments == 0)
-		dur = add_drum_note(start_time, t, NOTE_REST, CRASH_DUR);
+		dur = add_silence(start_time, t, CRASH_DUR);
 	else if (instruments & DRUM_CRASH)
 		dur = add_drum_note(start_time, t, CRASH_FREQ, CRASH_DUR);
 	else if (instruments & DRUM_RIDE)
