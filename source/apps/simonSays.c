@@ -211,7 +211,7 @@ void showChoice(Choice c){
 
 	FbClear();
 	FbColor(WHITE);
-	FbMove(16,0);
+	FbMove(0,0);
 	FbImage2(temp, 0);
 	FbSwapBuffers();
 }
@@ -234,6 +234,11 @@ void checkin(void){
 
 //adds a round
 void newRound(void){
+	if(usedTurns>98){
+		//playerwins could do something
+		//will never happen tho :)
+		simonSays_state = SIMONSAYS_INIT;
+	}
 	sequence[usedTurns] = randChoice();
 	if(SPEED>100){
 	SPEED = SPEED - 50;
