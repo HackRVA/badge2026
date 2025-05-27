@@ -1098,7 +1098,7 @@ static const char *monster_keys[] = {
 	"monster/ed rooney",
 	"monster/freddy krueger",
 	"monster/gopher",
-	"monster/gremlin",
+	"monster/gizmo",
 	"monster/hans gruber",
 	"monster/jack torrance",
 	"monster/joker",

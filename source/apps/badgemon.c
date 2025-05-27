@@ -96,15 +96,15 @@ struct monster {
 };
 
 static struct monster monsters[] = {
-	{.name = "birdo", .description = "Egg cannon with obfuscation skills good luck tracing the payload.", .image = &badge_monster_birdo},
+	{.name = "birdo", .description = "Spitting eggs? In this economy?", .image = &badge_monster_birdo},
 	{.name = "bowser", .description = "Firewall admin gone rogue. Kidnaps root access daily.", .image = &badge_monster_bowser},
 	{.name = "jason voorhees", .description = "Persistence malware in hockey-mask form. Won't stay deleted.", .image = &badge_monster_jason_voorhees},
 	{.name = "crawler", .description = "Crawls your brain like a botnet—except squishier.", .image = &badge_monster_crawler},
 	{.name = "ghosts", .description = "really into cardio, for beings without hearts.", .image = &badge_monster_ghosts},
-	{.name = "harpy", .description = "Spams alerts until you rage-quit the SOC.", .image = &badge_monster_harpy},
+	{.name = "siren", .description = "Spams alerts until you rage-quit the SOC.", .image = &badge_monster_harpy},
 	{.name = "medusa", .description = "Social engineer with a killer stare-don't click that link!", .image = &badge_monster_medusa_head},
 	{.name = "nettler", .description = "Evasion expert. IDS can't catch these moves.", .image = &badge_monster_nettler},
-	{.name = "odd eye", .description = "Knows your password. And your secrets. Probably shoulder surfed.", .image = &badge_monster_odd_eye},
+	{.name = "bigeyes", .description = "Knows your password. And your secrets. Probably shoulder surfed.", .image = &badge_monster_odd_eye},
 	{.name = "shredder", .description = "Encrypts everything. Demands pizza for decryption.", .image = &badge_monster_shredder},
 	{.name = "slime", .description = "Credential-stuffing blob. Oozes through weak auth.", .image = &badge_monster_slime},
 	{.name = "metall", .description = "Immutable config. Patch-resistant. Judges your uptime.", .image = &badge_monster_metall},
@@ -120,7 +120,7 @@ static struct monster monsters[] = {
 	{.name = "ed rooney", .description = "Overbearing access control. Gets owned anyway.", .image = &badge_monster_ed_rooney},
 	{.name = "freddy krueger", .description = "Haunts your threat model. Shows up in incident response dreams.", .image = &badge_monster_freddy_krueger},
 	{.name = "gopher", .description = "Legacy protocol. Won't die. Still exfiltrates snacks.", .image = &badge_monster_gopher_caddyshack},
-	{.name = "gremlin", .description = "Post-update chaos agent. Breaks everything after midnight.", .image = &badge_monster_gremlin},
+	{.name = "gizmo", .description = "Post-update chaos agent. Breaks everything after midnight.", .image = &badge_monster_gremlin},
 	{.name = "hans gruber", .description = "Ransomware with an accent and a plan.", .image = &badge_monster_hans_gruber},
 	{.name = "jack torrance", .description = "Rogue sysadmin with an axe to grind.", .image = &badge_monster_jack_torrance},
 	{.name = "joker", .description = "Injects chaos into secure environments. Laughs while doing it.", .image = &badge_monster_joker},
