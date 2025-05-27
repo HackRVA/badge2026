@@ -135,8 +135,6 @@ func main() {
 	if err := CopyDir("./js/", ".dist/"); err != nil {
 		logrus.Error(err)
 	}
-
-	os.WriteFile(".dist/CNAME", []byte("brain.dustinfirebaugh.com"), 0o755)
 }
 
 func removeYAMLFrontmatter(content string) string {
