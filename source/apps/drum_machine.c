@@ -47,7 +47,7 @@ static char drum_machine_err_msg[100];
 #define TOM2_FREQ 550
 #define OHH_FREQ 3700
 #define CHH_FREQ 3800
-#define RIDE_FREQ 1000
+#define RIDE_FREQ 600
 
 #define BASS_DUR 100 
 #define SNARE_DUR 100
@@ -56,7 +56,7 @@ static char drum_machine_err_msg[100];
 #define TOM2_DUR 16
 #define OHH_DUR 16
 #define CHH_DUR 16
-#define RIDE_DUR 16
+#define RIDE_DUR 250
 
 /* 8 channels x 16 notes per measure x max measures, plus 1 for silence at end of section */
 static struct audio_out_note drumsong_notes[8 * 16 * MAX_DRUM_PATTERNS + 1];
@@ -185,6 +185,34 @@ static void drum_machine_init(void)
 	memset(drum_song.measure, 255, sizeof(drum_song.measure));
 }
 
+static int add_ride_cymbal_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
+{
+	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
+	if (duration_ms > sixteenth_ms)
+		duration_ms = sixteenth_ms;
+	if (t->length >= (uint32_t) ARRAY_SIZE(drumsong_notes))
+		return 0;
+
+	int i = t->length;
+
+	/* Note that t->notes == &drumsong_notes[0], but we can't access
+	 * it through t->notes[] because it's const.
+	 */
+	drumsong_notes[i].spec.callback = NULL;
+	drumsong_notes[i].spec.frequency_hz = freq;
+	drumsong_notes[i].spec.duration_ms = duration_ms;
+	drumsong_notes[i].spec.decay = -3;
+	drumsong_notes[i].spec.phase = 0;
+	drumsong_notes[i].spec.amplitude_dBFS = -3;
+	drumsong_notes[i].spec.restart = false;
+	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_SQUARE;
+	drumsong_notes[i].spec.square.duty_cycle = 64;
+	drumsong_notes[i].ms = start_time;
+	drumsong_notes[i].v = 0;
+	t->length++;
+	return duration_ms;
+}
+
 static int add_snare_drum_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
@@ -270,7 +298,7 @@ static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned ch
 	else if (instruments & DRUM_CRASH)
 		dur = add_drum_note(start_time, t, CRASH_FREQ, CRASH_DUR);
 	else if (instruments & DRUM_RIDE)
-		dur = add_drum_note(start_time, t, RIDE_FREQ, RIDE_DUR);
+		dur = add_ride_cymbal_note(start_time, t, RIDE_FREQ, RIDE_DUR);
 	else if (instruments & DRUM_CHH)
 		dur = add_drum_note(start_time, t, CHH_FREQ, CHH_DUR);
 	else if (instruments & DRUM_OHH)
