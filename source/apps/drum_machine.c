@@ -41,7 +41,7 @@ static struct drum_song {
 static char drum_machine_err_msg[100];
 
 #define BASS_FREQ 120
-#define SNARE_FREQ 2100
+#define SNARE_FREQ 5500
 #define CRASH_FREQ 5000
 #define TOM1_FREQ 440
 #define TOM2_FREQ 550
@@ -50,7 +50,7 @@ static char drum_machine_err_msg[100];
 #define RIDE_FREQ 1000
 
 #define BASS_DUR 100 
-#define SNARE_DUR 16
+#define SNARE_DUR 100
 #define CRASH_DUR 16
 #define TOM1_DUR 16
 #define TOM2_DUR 16
@@ -185,6 +185,34 @@ static void drum_machine_init(void)
 	memset(drum_song.measure, 255, sizeof(drum_song.measure));
 }
 
+static int add_snare_drum_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
+{
+	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
+	if (duration_ms > sixteenth_ms)
+		duration_ms = sixteenth_ms;
+	if (t->length >= (uint32_t) ARRAY_SIZE(drumsong_notes))
+		return 0;
+
+	int i = t->length;
+
+	/* Note that t->notes == &drumsong_notes[0], but we can't access
+	 * it through t->notes[] because it's const.
+	 */
+	drumsong_notes[i].spec.callback = NULL;
+	drumsong_notes[i].spec.frequency_hz = freq;
+	drumsong_notes[i].spec.duration_ms = duration_ms;
+	drumsong_notes[i].spec.decay = -5;
+	drumsong_notes[i].spec.phase = 0;
+	drumsong_notes[i].spec.amplitude_dBFS = -3;
+	drumsong_notes[i].spec.restart = false;
+	drumsong_notes[i].spec.type = AUDIO_OUT_TYPE_NES_NOISE;
+	drumsong_notes[i].spec.square.duty_cycle = 64;
+	drumsong_notes[i].ms = start_time;
+	drumsong_notes[i].v = 0;
+	t->length++;
+	return duration_ms;
+}
+
 static int add_drum_note(int start_time, struct audio_out_section *t, uint16_t freq, uint16_t duration_ms)
 {
 	int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
@@ -252,7 +280,7 @@ static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned ch
 	else if (instruments & DRUM_TOM1)
 		dur = add_drum_note(start_time, t, TOM1_FREQ, TOM1_DUR);
 	else if (instruments & DRUM_SNARE)
-		dur = add_drum_note(start_time, t, SNARE_FREQ, SNARE_DUR);
+		dur = add_snare_drum_note(start_time, t, SNARE_FREQ, SNARE_DUR);
 	else if (instruments & DRUM_BASS)
 		dur = add_drum_note(start_time, t, BASS_FREQ, BASS_DUR);
 	return dur;
