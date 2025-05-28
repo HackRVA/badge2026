@@ -5624,7 +5624,7 @@ static void draw_creature(int i)
 	cy += screen_cells_centery;
 
 	/* Check visibility */
-	if (!(visibility_cache[cy] & (1 << cx)))
+	if (!(visibility_cache[cx] & (1 << cy)))
 		return;
 
 	/* up to now coordinates have been in cells, convert to pixels */
@@ -5673,7 +5673,7 @@ static void draw_ship(int i)
 	cy += screen_cells_centery;
 
 	/* Check visibility */
-	if (!(visibility_cache[cy] & (1 << cx)))
+	if (!(visibility_cache[cx] & (1 << cy)))
 		return;
 
 	/* up to now coordinates have been in cells, convert to pixels */
@@ -6014,7 +6014,7 @@ static void draw_screen(void)
 		if (player.world->type == WORLD_TYPE_SPACE ||
 			visibility_check(player.x, player.y, rx, ry)) {
 			draw_cell(sx, sy, c);
-			visibility_cache[sy / 16] |= (1 << (sx / 16));
+			visibility_cache[sx / 16] |= (1 << (sy / 16));
 		}
 		x++;
 		rx++;
