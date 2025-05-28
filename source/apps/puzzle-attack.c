@@ -194,7 +194,7 @@ static struct note sfx_two[] = {
 	{NOTE_C6, thirtysecond_note},
 };
 
-static const struct note puzzle_attack_theme_notes[] = {
+static struct note puzzle_attack_theme_notes[] = {
 	/* just bass */
   kick_drum,
 	{ NOTE_C3, sixteenth_note, },
@@ -1052,7 +1052,7 @@ static int calculate_tune_duration(struct note *notes, size_t note_count)
 static void update_audio(uint64_t now)
 {
 	if (audio_mode == AUDIO_SFX) {
-		struct note *n = &current_sfx[sfx_index];
+		const struct note *n = &current_sfx[sfx_index];
 
 		if (now < sfx_note_start + n->duration)
 		  return;
@@ -1069,11 +1069,11 @@ static void update_audio(uint64_t now)
 		return;
 	}
 
-	struct note *n = &puzzle_attack_theme_notes[theme_index];
+	const struct note *n = &puzzle_attack_theme_notes[theme_index];
 	if (now >= theme_note_start + n->duration) {
 		theme_index = (theme_index + 1) % puzzle_attack_theme.num_notes;
 		theme_note_start = now;
-		struct note *next = &puzzle_attack_theme_notes[theme_index];
+		const struct note *next = &puzzle_attack_theme_notes[theme_index];
 		audio_out_beep(next->freq, next->duration);
 	}
 }
