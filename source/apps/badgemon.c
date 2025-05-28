@@ -27,14 +27,13 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define NUM_MENU_ITEMS ARRAY_SIZE(menu_items)
-#define MAX_SPARKLES 16
-#define SPARKLE_INTERVAL_MS 250
-#define SPARKLE_LIFETIME_MS 400
 #define MENU_ITEM_SPACING 30
 #define MENU_ITEM_WIDTH 120
 #define MENU_ITEM_HEIGHT 20
 #define MENU_X (LCD_XSIZE/2 - MENU_ITEM_WIDTH/2)
 #define MENU_Y (LCD_YSIZE/2 - MENU_ITEM_HEIGHT/2)
+#define MAX_SPARKLES 16
+#define SPARKLE_LIFETIME_MS 400
 
 enum badgemon_state_t {
 	BADGEMON_INIT = 0,
@@ -79,13 +78,18 @@ static uint8_t scanline_animation_y = 0;
 static unsigned int initial_mon;
 
 struct sparkle {
-	int x, y;
-	uint64_t birth_ms;
-	bool alive;
+	uint32_t born_ms;
 };
-static struct sparkle sparkles[MAX_SPARKLES];
 static uint64_t sparkle_cooldown = 0;
 static unsigned sparkle_state = 2463534242;
+static struct sparkle sparkles[MAX_SPARKLES];
+static uint8_t sparkle_head = 0;
+static const struct point sparkle_defs[MAX_SPARKLES] = {
+	{ 90, 38 }, { 50, 75 }, {105, 42 }, { 65, 85 },
+	{ 75, 30 }, { 95, 80 }, { 85, 55 }, { 60, 40 },
+	{ 55, 50 }, {110, 70 }, { 45, 35 }, {100, 60 },
+	{ 40, 60 }, { 70, 65 }, { 80, 90 }, {115, 55 },
+};
 
 static const char *progress_lines[] = {
 	"", "", "monster unlock", "progress", ""
@@ -172,6 +176,7 @@ void set_shiny(int i,bool v) {
 	if (v) shiny_mask |= (1u << i);
 	else shiny_mask &= ~(1u << i);
 }
+
 static char kvbuf[32];
 static const char *flash_key_from_monster(int id)
 {
@@ -191,42 +196,32 @@ static void load_monsters_from_flash(void)
 static void save_monsters_to_flash(void)
 {
 	for (int i = 0; i < (int)ARRAY_SIZE(monster_info); i++)
-	  flash_kv_store_int(flash_key_from_monster(i), is_unlocked(i) ? 1 : 0);
+		flash_kv_store_int(flash_key_from_monster(i), is_unlocked(i) ? 1 : 0);
 }
 
-static void spawn_sparkles(uint64_t now, int x, int y, int w, int h)
-{
-	for (int s = 0; s < 3; s++) {
-		for (int i = 0; i < MAX_SPARKLES; i++) {
-			if (!sparkles[i].alive) {
-				sparkles[i].alive    = true;
-				sparkles[i].birth_ms = now;
-				uint32_t r1 = xorshift(&sparkle_state);
-				uint32_t r2 = xorshift(&sparkle_state);
-				sparkles[i].x = x + (r1 % w);
-				sparkles[i].y = y + (r2 % h);
-				break;
-			}
-		}
-	}
+static void spawn_sparkle(uint32_t now) {
+	uint8_t idx = sparkle_head++;
+	if (sparkle_head >= MAX_SPARKLES) sparkle_head = 0;
+	sparkles[idx].born_ms = now ? now : 1;
 }
 
-static void draw_sparkles(uint64_t now)
-{
+static void draw_sparkles(uint32_t now) {
 	for (int i = 0; i < MAX_SPARKLES; i++) {
-		if (!sparkles[i].alive) continue;
-		uint64_t age = now - sparkles[i].birth_ms;
-		if (age > SPARKLE_LIFETIME_MS) {
-			sparkles[i].alive = false;
+		uint32_t born = sparkles[i].born_ms;
+		if (!born) continue;
+		if ((now - born) > SPARKLE_LIFETIME_MS) {
+			sparkles[i].born_ms = 0;
 			continue;
 		}
+		uint8_t x = sparkle_defs[i].x;
+		uint8_t y = sparkle_defs[i].y;
+
 		FbColor(WHITE);
-		int x = sparkles[i].x, y = sparkles[i].y;
 		FbPoint(x, y);
-		FbPoint(x-1, y);
-		FbPoint(x+1, y);
-		FbPoint(x, y-1);
-		FbPoint(x, y+1);
+		FbPoint(x - 1, y);
+		FbPoint(x + 1, y);
+		FbPoint(x, y - 1);
+		FbPoint(x, y + 1);
 	}
 }
 
@@ -315,12 +310,6 @@ static void draw_monster_avatar_screen(void)
 		FbWriteString("starter");
 	}
 
-	if(is_shiny(id) && now >= sparkle_cooldown) {
-		spawn_sparkles(now, 16, 4, LCD_XSIZE, LCD_YSIZE);
-		sparkle_cooldown = now + SPARKLE_INTERVAL_MS;
-		screen_changed = true;
-	}
-
 	if (show_description) {
 		struct ui_text_box box = {
 			.x = 8,
@@ -347,8 +336,11 @@ static void draw_monster_avatar_screen(void)
 	FbWriteString(idbuf);
 
 	if (is_shiny(id) && now >= sparkle_cooldown) {
-		spawn_sparkles(now, 16, 4, LCD_XSIZE, LCD_YSIZE);
-		sparkle_cooldown = now + SPARKLE_INTERVAL_MS;
+		FbMove(100, 16);
+		FbColor(WHITE);
+		FbWriteString("*shiny");
+		spawn_sparkle(now);
+		sparkle_cooldown = now + SPARKLE_LIFETIME_MS;
 		screen_changed = true;
 	}
 	draw_sparkles(now);
