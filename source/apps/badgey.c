@@ -3663,15 +3663,15 @@ static const char *level_modifier[NLEVEL_MODIFIERS][MAX_LEVEL] = {
 #define ROBOT3_PER_TOWN 2
 static struct creature planet_creature[MAX_CREATURES];
 static struct creature town_creature[MAX_CREATURES];
-static struct creature space_creature[MAX_CREATURES];
+static struct creature space_creature[1]; /* there are never any space creatures */
 static struct creature combat_creature[MAX_COMBAT_CREATURES];
 static int overworld_combat_creature = -1;
 static int nplanet_creatures = 0;
 static int ntown_creatures = 0;
 static int nspace_creatures = 0;
 static int ncombat_creatures = 0;
-static struct creature *creature = space_creature; /* points to one of planet_, town_ or space_ creature[] */
-static int *ncreatures = &nspace_creatures; /* points to one of nplanet_, ntown_ or nspace_ creatures */
+static struct creature *creature = planet_creature; /* points to one of planet_, town_ or space_ creature[] */
+static int *ncreatures = &nplanet_creatures; /* points to one of nplanet_, ntown_ or nspace_ creatures */
 #define NUM_SHIPS 2
 static struct ship {
 	int x, y;
