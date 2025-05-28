@@ -40,7 +40,7 @@ typedef enum  {
 } MENU_STYLE;
 
 struct menu_t {
-   char name[16];
+   char name[20]; /* If we change the screen orientation, might need to shorten this. */
    unsigned short attrib;
    enum menu_item_type type;
    union { /* when initializing the union, use designated
@@ -93,5 +93,9 @@ void select_menu_speed_medium(struct menu_t *m);
 void select_menu_speed_slow(struct menu_t *m);
 void enable_down_as_select(struct menu_t *m);
 void disable_down_as_select(struct menu_t *m);
+
+#if TARGET_SIMULATOR
+void sanity_check_menu_strings(void);
+#endif
 
 #endif

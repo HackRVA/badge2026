@@ -122,3 +122,29 @@ const struct menu_t main_m[] = {
    {"About Badge",    VERT_ITEM|LAST_ITEM, FUNCTION, { .func = about_badge_cb }, NULL, },
 };
 
+#if TARGET_SIMULATOR
+
+#include <signal.h>
+
+static void check_menu_strings(const struct menu_t *m)
+{
+	for (int i = 0; ; i++) {
+		size_t x = strlen(m[i].name);
+		if (x >= sizeof(m[i].name)) {
+			fprintf(stderr, "Menu item '%s' is too long (%lu vs %lu)\n", m[i].name, x, sizeof(m[i].name));
+			fflush(stderr);
+			raise(SIGABRT);
+		}
+		if (m[i].type == MENU)
+			check_menu_strings(m[i].data.menu);
+		if (m[i].attrib & LAST_ITEM)
+			break;
+	}
+}
+
+void sanity_check_menu_strings(void)
+{
+	check_menu_strings(main_m);
+}
+#endif
+
