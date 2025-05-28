@@ -94,4 +94,8 @@ void select_menu_speed_slow(struct menu_t *m);
 void enable_down_as_select(struct menu_t *m);
 void disable_down_as_select(struct menu_t *m);
 
+#if TARGET_SIMULATOR
+void sanity_check_menu_strings(void);
+#endif
+
 #endif

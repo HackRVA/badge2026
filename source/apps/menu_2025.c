@@ -383,6 +383,12 @@ static void tape_deck_menu_app_exit(void)
 
 void tape_deck_menu_app_cb(struct badge_app *app)
 {
+#if TARGET_SIMULATOR
+	static int checked = 0;
+	if (!checked)
+		sanity_check_menu_strings();
+	checked = 1;
+#endif
 	current_context = app->app_context;
 	if (app->wake_up)
 		current_context->screen_changed = 1;
