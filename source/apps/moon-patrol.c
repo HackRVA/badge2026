@@ -171,7 +171,7 @@ static struct bomb {
 } bomb[MAXBOMBS];
 static int nbombs = 0;
 
-static struct point moon_buggy_points[] = {
+static const struct point moon_buggy_points[] = {
 	{ -63, 3 },
 	{ -54, -6 },
 	{ -32, -7 },
@@ -199,7 +199,7 @@ static struct point moon_buggy_points[] = {
 	{ 55, -4 },
 };
 
-static struct point wheel_points[] = {
+static const struct point wheel_points[] = {
 	{ -62, -2 },
 	{ -55, -26 },
 	{ -42, -42 },
@@ -245,7 +245,7 @@ static struct point wheel_points[] = {
 
 #define ARRAYSIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-static struct note moon_patrol_theme_one[] = {
+static const struct note moon_patrol_theme_one[] = {
         { NOTE_E3, eighth_note, },
 	{ 0, 1 },
         { NOTE_E3, eighth_note, },
@@ -261,7 +261,7 @@ static struct note moon_patrol_theme_one[] = {
         { NOTE_E4, eighth_note, },
 };
 
-static struct note moon_patrol_theme_four[] = {
+static const struct note moon_patrol_theme_four[] = {
         { NOTE_A4, eighth_note, },
 	{ 0, 1 },
         { NOTE_A4, eighth_note, },
@@ -277,7 +277,7 @@ static struct note moon_patrol_theme_four[] = {
         { NOTE_A5, eighth_note, },
 };
 
-static struct note moon_patrol_theme_five[] = {
+static const struct note moon_patrol_theme_five[] = {
         { NOTE_B4, eighth_note, },
 	{ NOTE_REST, 1 },
         { NOTE_B4, eighth_note, },
@@ -293,22 +293,22 @@ static struct note moon_patrol_theme_five[] = {
         { NOTE_B5, eighth_note, },
 };
 
-static struct tune moon_patrol_theme_1 = {
+static const struct tune moon_patrol_theme_1 = {
 	.num_notes = ARRAYSIZE(moon_patrol_theme_one),
 	.note = &moon_patrol_theme_one[0],
 };
 
-static struct tune moon_patrol_theme_4 = {
+static const struct tune moon_patrol_theme_4 = {
 	.num_notes = ARRAYSIZE(moon_patrol_theme_four),
 	.note = &moon_patrol_theme_four[0],
 };
 
-static struct tune moon_patrol_theme_5 = {
+static const struct tune moon_patrol_theme_5 = {
 	.num_notes = ARRAYSIZE(moon_patrol_theme_five),
 	.note = &moon_patrol_theme_five[0],
 };
 
-static struct note moonpatrol_intermission_notes[] = {
+static const struct note moonpatrol_intermission_notes[] = {
 	{ NOTE_C3, eighth_note, },
 	{ NOTE_D3, eighth_note, },
 	{ NOTE_E3, eighth_note, },
@@ -319,7 +319,7 @@ static struct note moonpatrol_intermission_notes[] = {
 	{ NOTE_C4, eighth_note, },
 };
 
-static struct tune moonpatrol_intermission_tune = {
+static const struct tune moonpatrol_intermission_tune = {
 	.num_notes = ARRAYSIZE(moonpatrol_intermission_notes),
 	.note = &moonpatrol_intermission_notes[0],
 };
