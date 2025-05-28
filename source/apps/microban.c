@@ -916,9 +916,9 @@ static void draw_main_menu(void) {
     if (menu_newgame_popup) {
 
         struct ui_text_box info_box = {
-            .x = 16,
-            .y = 16,
-            .width = LCD_XSIZE - 32,
+            .x = LCD_XSIZE - 88 - 16,
+            .y = LCD_YSIZE - 24 - 16,
+            .width = 88,
             .height = 24,
             .text = "reset progress??",
             .outline_size = 1,
