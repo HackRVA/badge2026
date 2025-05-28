@@ -308,7 +308,7 @@ static void draw_screen(void)
 		for (int i = 0; i < len; i++) {
 			s_upper[i] = toupper(s_upper[i]);
 		}
-		if (current_menu_stack_idx == -1) {
+		if (current_menu_stack_idx == -1) { 
 			FbImageRect(&cassettedrawer, 0, 0, -14, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
 			text_x = (LCD_XSIZE - 8 * len) / 2;
 			text_y = 87;
@@ -325,10 +325,6 @@ static void draw_screen(void)
 			FbColor(BLACK);
 			FbMove(text_x, text_y);
 			FbWriteString(s_upper);
-
-
-
-
 		} else {
 			FbImageRect(&cassettepixel, 0, 0, -8, 0, LCD_XSIZE, LCD_YSIZE, MAGENTA);
 			text_x = (LCD_XSIZE - 8 * len) / 2;

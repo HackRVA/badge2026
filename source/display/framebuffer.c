@@ -230,12 +230,11 @@ void FbImagePlace(const struct asset2 *asset, int x_pos, int y_pos, unsigned sho
 {
     FbImageRect(asset, x_pos, y_pos, 0, 0, asset->x, asset->y, key_color);
 }
-//todo: Multiply asset width by asset seqNum field of asset
 //optimization: remove modulus ops
 //optimization: bitmasking for powers of two
 void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color)
 {
-    int y_min, y_max, x_min, x_max;
+    int yStart, yEnd, xStart, xEnd;
     int y, x, texture_row, texture_x, buffer_row;
     unsigned short *pixdata;
     unsigned short pixel;
@@ -244,15 +243,15 @@ void FbImageRect16bit(const struct asset2 *asset, int x_pos, int y_pos, int x_so
     if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
     if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
 
-    y_min = y_pos < 0 ? 0 : y_pos;
-    y_max = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
-    x_min = x_pos < 0 ? 0 : x_pos;
-    x_max = x_pos + width > LCD_XSIZE ? LCD_XSIZE : x_pos + width;
+    yStart = y_pos < 0 ? 0 : y_pos;
+    yEnd = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
+    xStart = x_pos < 0 ? 0 : x_pos;
+    xEnd = x_pos + width > LCD_XSIZE ? LCD_XSIZE : x_pos + width;
 
-    for (y = y_min; y < y_max; y++) {
+    for (y = yStart; y < yEnd; y++) {
         texture_row = ((y - y_pos + y_source) % asset->y) * asset->x;
         buffer_row = y * LCD_XSIZE;
-        for (x = x_min; x < x_max; x++) {
+        for (x = xStart; x < xEnd; x++) {
             texture_x = (x - x_pos + x_source) % asset->x; //factor seqNum here
             pixdata = (unsigned short*) &(asset->pixel16[texture_row + texture_x]);
             pixel = *pixdata; /* 1 pixel per 2 bytes */
@@ -270,7 +269,7 @@ void FbImageRect8bit(const struct asset2 *asset, int x_pos, int y_pos, int x_sou
 }
 void FbImageRect8bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, int x_source, int y_source, int width, int height, unsigned short key_color, const uint16_t *colormap)
 {
-    int y_min, y_max, x_min, x_max;
+    int yStart, yEnd, xStart, xEnd;
     int y, x, texture_row, texture_x, buffer_row;
     unsigned char pixbyte;
     unsigned char *pixdata;
@@ -279,15 +278,15 @@ void FbImageRect8bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, i
     if (x_source < 0) x_source = ((x_source % asset->x) + asset->x) % asset->x;
     if (y_source < 0) y_source = ((y_source % asset->y) + asset->y) % asset->y;
 
-    y_min = y_pos < 0 ? 0 : y_pos;
-    y_max = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
-    x_min = x_pos < 0 ? 0 : x_pos;
-    x_max = x_pos + width > LCD_XSIZE ? LCD_XSIZE : x_pos + width;
+    yStart = y_pos < 0 ? 0 : y_pos;
+    yEnd = y_pos + height > LCD_YSIZE ? LCD_YSIZE : y_pos + height;
+    xStart = x_pos < 0 ? 0 : x_pos;
+    xEnd = x_pos + width > LCD_XSIZE ? LCD_XSIZE : x_pos + width;
 
-    for (y = y_min; y < y_max; y++) {
+    for (y = yStart; y < yEnd; y++) {
         texture_row = ((y - y_pos + y_source) % asset->y) * asset->x;
         buffer_row = y * LCD_XSIZE;
-        for (x = x_min; x < x_max; x++) {
+        for (x = xStart; x < xEnd; x++) {
             texture_x = (x - x_pos + x_source) % asset->x;
             pixdata = (unsigned char*) &(asset->pixel[texture_row + texture_x]);
             pixbyte = *pixdata;
@@ -351,7 +350,7 @@ void FbImageRect4bit_Palette(const struct asset2 *asset, int x_pos, int y_pos, i
 		break; /* clip x */
             if((x + x_pos) < 0) {
                 x++;
-                continue;
+        continue;
             }
 
             ci = pixbyte & 0xF;
