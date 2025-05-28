@@ -49,7 +49,7 @@ enum badgemon_state_t {
 static enum badgemon_state_t badgemon_state = BADGEMON_INIT;
 static enum badgemon_state_t last_state = BADGEMON_INIT;
 
-static struct palette default_palette = {
+static const struct palette default_palette = {
 	.colors =
 		{
 			PACKRGB888(0, 0, 0),
@@ -87,15 +87,44 @@ static struct sparkle sparkles[MAX_SPARKLES];
 static uint64_t sparkle_cooldown = 0;
 static unsigned sparkle_state = 2463534242;
 
-struct monster {
-	char *name;
-	char *description;
-	bool unlocked;
-	bool shiny;
-	const struct asset2 *image;
+static const char *progress_lines[] = {
+	"", "", "monster unlock", "progress", ""
+};
+static const char *help_lines[] = {
+	"unlock monsters!",
+	"you can share your",
+	"starter monster",
+	"with other attendees",
+	"",
+	"interact with other",
+	"badge apps to",
+	"possibly find more",
+	"",
+	"do your best to",
+	"collect them all",
+	"",
+	"can you acquire",
+	"most of them?",
+};
+static const char *trade_lines[] = {
+	"trading monsters",
+	"",
+	"be brave",
+	"",
+	"point your badge",
+	"at another badge",
+	"to send/receive",
+	"",
+	"<---------->",
+	"",
+	"",
 };
 
-static struct monster monsters[] = {
+static const struct {
+    const char *name;
+    const char *description;
+    const struct asset2 *image;
+} monster_info[] = {
 	{.name = "birdo", .description = "Spitting eggs? In this economy?", .image = &badge_monster_birdo},
 	{.name = "bowser", .description = "Firewall admin gone rogue. Kidnaps root access daily.", .image = &badge_monster_bowser},
 	{.name = "jason voorhees", .description = "Persistence malware in hockey-mask form. Won't stay deleted.", .image = &badge_monster_jason_voorhees},
@@ -129,26 +158,40 @@ static struct monster monsters[] = {
 	{.name = "skeletor", .description = "Yells about power, has none over his cat.", .image = &badge_monster_skeltor},
 };
 
+static uint32_t unlocked_mask;
+static uint32_t shiny_mask;
+
+bool is_unlocked(int i) { return unlocked_mask & (1u << i); }
+void set_unlocked(int i,bool v) {
+	if (v) unlocked_mask |= (1u << i);
+	else unlocked_mask &= ~(1u << i);
+}
+
+bool is_shiny(int i) { return shiny_mask & (1u << i); }
+void set_shiny(int i,bool v) {
+	if (v) shiny_mask |= (1u << i);
+	else shiny_mask &= ~(1u << i);
+}
 static char kvbuf[32];
 static const char *flash_key_from_monster(int id)
 {
-	snprintf(kvbuf, sizeof(kvbuf), "monster/%s", monsters[id].name);
+	snprintf(kvbuf, sizeof(kvbuf), "monster/%s", monster_info[id].name);
 	return kvbuf;
 }
 
 static void load_monsters_from_flash(void)
 {
-	for (int i = 0; i < (int)ARRAY_SIZE(monsters); i++) {
+	for (int i = 0; i < (int)ARRAY_SIZE(monster_info); i++) {
 		int val = 0;
 		flash_kv_get_int(flash_key_from_monster(i), &val);
-		monsters[i].unlocked = (val != 0);
+		set_unlocked(i, (val != 0));
 	}
 }
 
 static void save_monsters_to_flash(void)
 {
-	for (int i = 0; i < (int)ARRAY_SIZE(monsters); i++)
-		flash_kv_store_int(flash_key_from_monster(i), monsters[i].unlocked ? 1 : 0);
+	for (int i = 0; i < (int)ARRAY_SIZE(monster_info); i++)
+	  flash_kv_store_int(flash_key_from_monster(i), is_unlocked(i) ? 1 : 0);
 }
 
 static void spawn_sparkles(uint64_t now, int x, int y, int w, int h)
@@ -249,59 +292,61 @@ static void draw_monster_avatar_screen_locked(uint64_t now)
 	FbMove(ui_center_text_x(lower_control_info, 0, LCD_XSIZE), LCD_YSIZE-8);
 	FbWriteLine(lower_control_info);
 }
+
 static void draw_monster_avatar_screen(void)
 {
 	uint64_t now = rtc_get_ms_since_boot();
-	struct monster *m = &monsters[current_monster_id];
-	if (!m->unlocked) {
+	const size_t id = current_monster_id;
+	if (!is_unlocked(id)) {
 		draw_monster_avatar_screen_locked(now);
 		return;
 	}
 
 	FbClear();
-	draw_monster_avatar(m->image);
+	draw_monster_avatar(monster_info[id].image);
 
-	struct ui_text_box box = {
-		.x = 8,
-		.y = LCD_YSIZE - 30,
-		.width = LCD_XSIZE -16,
-		.height = 24,
-		.outline_size = 2,
-		.outline_color = palette_color_from_index(default_palette, 13),
-		.fill_color = palette_color_from_index(default_palette, 0),
-		.text_color = palette_color_from_index(default_palette, 11),
-	};
-
-	if (show_description) {
-		box.y = LCD_YSIZE - 60;
-		box.height = 48;
-		box.text = m->description;
-		ui_text_box_draw(box);
-	}
 	FbMove(0, 0);
 	FbColor(WHITE);
-	FbWriteString(m->name);
-	if (current_monster_id == initial_mon) {
+	FbWriteString(monster_info[id].name);
+
+	if (id == initial_mon) {
 		FbMove(100, 8);
 		FbColor(YELLOW);
 		FbWriteString("starter");
 	}
-	if (m->unlocked && m->shiny) {
-		FbMove(100, 16);
-		FbColor(WHITE);
-		FbWriteString("*shiny");
+
+	if(is_shiny(id) && now >= sparkle_cooldown) {
+		spawn_sparkles(now, 16, 4, LCD_XSIZE, LCD_YSIZE);
+		sparkle_cooldown = now + SPARKLE_INTERVAL_MS;
+		screen_changed = true;
 	}
 
-	char *lower_control_info = "a: desc | b: back";
+	if (show_description) {
+		struct ui_text_box box = {
+			.x = 8,
+			.y = LCD_YSIZE - 60,
+			.width = LCD_XSIZE - 16,
+			.height = 48,
+			.outline_size = 2,
+			.outline_color = palette_color_from_index(default_palette, 13),
+			.fill_color = palette_color_from_index(default_palette, 0),
+			.text_color = palette_color_from_index(default_palette, 11),
+			.text = monster_info[id].description,
+		};
+		ui_text_box_draw(box);
+	}
+
+	const char *ctrl = "a: desc | b: back";
 	FbColor(WHITE);
-	FbMove(ui_center_text_x(lower_control_info, 0, LCD_XSIZE), LCD_YSIZE-8);
-	FbWriteLine(lower_control_info);
+	FbMove(ui_center_text_x(ctrl, 0, LCD_XSIZE), LCD_YSIZE - 8);
+	FbWriteLine(ctrl);
+
 	char idbuf[8];
-	snprintf(idbuf, sizeof(idbuf), "#%03u", current_monster_id + 1);
-	FbMove(LCD_XSIZE - 4*8, 0);
+	snprintf(idbuf, sizeof(idbuf), "#%03u", (unsigned)(id + 1));
+	FbMove(LCD_XSIZE - 4 * 8, 0);
 	FbWriteString(idbuf);
 
-	if (monsters[current_monster_id].shiny && now >= sparkle_cooldown) {
+	if (is_shiny(id) && now >= sparkle_cooldown) {
 		spawn_sparkles(now, 16, 4, LCD_XSIZE, LCD_YSIZE);
 		sparkle_cooldown = now + SPARKLE_INTERVAL_MS;
 		screen_changed = true;
@@ -343,13 +388,13 @@ static void top_menu_action_help_screen(void)
 }
 static void top_menu_action_unlock_all(void)
 {
-	for (size_t i = 0; i < ARRAY_SIZE(monsters); i++)
-		monsters[i].unlocked = true;
+	for (size_t i = 0; i < ARRAY_SIZE(monster_info); i++)
+		set_unlocked(i, true);
 }
 static void top_menu_action_lock_all(void)
 {
-	for (size_t i = 0; i < ARRAY_SIZE(monsters); i++)
-		monsters[i].unlocked = false;
+	for (size_t i = 0; i < ARRAY_SIZE(monster_info); i++)
+		set_unlocked(i, false);
 }
 static void top_menu_action_exit(void)
 {
@@ -412,7 +457,7 @@ static void return_to_top_menu(void)
 static void check_buttons_avatar_screen(void)
 {
 	int down = button_down_latches();
-	int n = ARRAY_SIZE(monsters);
+	int n = ARRAY_SIZE(monster_info);
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_UP, down)) {
 		current_monster_id = (current_monster_id + n - 1) % n;
@@ -509,42 +554,6 @@ static void draw_scanline_animation(void)
 	screen_changed = true;
 }
 
-static void draw_trade_monsters_screen(void)
-{
-	FbClear();
-
-	const char *lines[] = {
-		"trading monsters",
-		"",
-		"be brave",
-		"",
-		"point your badge",
-		"at another badge",
-		"to send/receive",
-		"",
-		"",
-		"",
-		"<---------->",
-		"",
-		"",
-	};
-
-	int y = 16;
-	for (size_t i = 0; i < sizeof(lines) / sizeof(lines[0]); i++) {
-		y += 8;
-		if (lines[i][0] == '\0') {
-			/* Skip empty lines for spacing */
-			continue;
-		}
-		FbColor(GREEN);
-		FbMove(ui_center_text_x(lines[i], 0, LCD_XSIZE), y);
-		FbWriteString(lines[i]);
-	}
-
-	if (scan_animating)
-		draw_scanline_animation();
-}
-
 static void draw_centered_text_page(const char *lines[], int n, int start, int h)
 {
 	int y = start;
@@ -557,13 +566,24 @@ static void draw_centered_text_page(const char *lines[], int n, int start, int h
 	}
 }
 
+static void draw_trade_monsters_screen(void)
+{
+	FbClear();
+
+	draw_centered_text_page(trade_lines, ARRAY_SIZE(trade_lines), 16, 8);
+
+	if (scan_animating)
+		draw_scanline_animation();
+}
+
+
 /* TODO: it's probably better to not calculate this every time */
 static int get_unlocked_count(void)
 {
-	int total = ARRAY_SIZE(monsters);
+	int total = ARRAY_SIZE(monster_info);
 	int unlocked_count = 0;
 	for (int i = 0; i < total; i++) {
-		if (monsters[i].unlocked) {
+		if (is_unlocked(i)) {
 			unlocked_count++;
 		}
 	}
@@ -574,21 +594,21 @@ static void draw_progress_menu(void)
 {
 	FbClear();
 
-	int total = ARRAY_SIZE(monsters);
+	int total = ARRAY_SIZE(monster_info);
 	int unlocked_count = get_unlocked_count();
 
 	int pct = (unlocked_count * 100) / total;
 
 	struct ui_progress_bar pb = {
-		.x             = 10,
-		.y             = 24,
-		.width         = LCD_XSIZE - 20,
-		.height        = 10,
-		.outline_size  = 1,
-		.fill_color    = palette_color_from_index(default_palette, 13),
-		.empty_color   = palette_color_from_index(default_palette, 9),
+		.x = 10,
+		.y = 24,
+		.width = LCD_XSIZE - 20,
+		.height = 10,
+		.outline_size = 1,
+		.fill_color = palette_color_from_index(default_palette, 13),
+		.empty_color = palette_color_from_index(default_palette, 9),
 		.outline_color = palette_color_from_index(default_palette, 7),
-		.fill          = ui_progress_bar_calculate_fill_percentage(pct),
+		.fill = ui_progress_bar_calculate_fill_percentage(pct),
 	};
 	ui_progress_bar_draw(pb);
 
@@ -598,33 +618,15 @@ static void draw_progress_menu(void)
 	FbColor(WHITE);
 	FbWriteString(buf);
 
-	const char *lines[] = {
-		"", "", "monster unlock", "progress", ""
-	};
-	draw_centered_text_page(lines, ARRAY_SIZE(lines), 16, 16);
+	draw_centered_text_page(progress_lines, ARRAY_SIZE(progress_lines), 16, 16);
 }
+
 
 static void draw_help_screen(void)
 {
 	FbClear();
 
-	const char *lines[] = {
-		"unlock monsters!",
-		"you can share your",
-		"starter monster",
-		"with other attendees",
-		"",
-		"interact with other",
-		"badge apps to",
-		"possibly find more",
-		"",
-		"do your best to",
-		"collect them all",
-		"",
-		"can you acquire",
-		"most of them?",
-	};
-	draw_centered_text_page(lines, sizeof(lines) / sizeof(lines[0]), 0, 8);
+	draw_centered_text_page(help_lines, sizeof(help_lines) / sizeof(help_lines[0]), 0, 8);
 }
 
 static bool trading_monsters_enabled = false;
@@ -683,13 +685,14 @@ static void badgemon_init(void)
 	sparkle_cooldown = rtc_get_ms_since_boot();
 	initial_mon = badge_system_data()->badgeId % 16;
 	current_monster_id = initial_mon;
-	monsters[initial_mon].unlocked = true;
+	set_shiny(initial_mon, true);
+	set_unlocked(initial_mon, true);
 
-	monsters[4].shiny = true;
-	monsters[8].shiny = true;
-	monsters[19].shiny = true;
-	monsters[22].shiny = true;
-	monsters[26].shiny = true;
+	set_shiny(4, true);
+	set_shiny(8, true);
+	set_shiny(19, true);
+	set_shiny(22, true);
+	set_shiny(26, true);
 
 	screen_changed  = true;
 }
@@ -760,19 +763,19 @@ void badgemon_draw_screen_saver_monster(void)
 {
 	static unsigned char current_index = 0;
 	current_index++;
-	current_index %= ARRAY_SIZE(monsters) - 1;
-	struct monster current_monster = monsters[current_index];
+	current_index %= ARRAY_SIZE(monster_info) - 1;
+	const struct asset2 *img = monster_info[current_index].image;
 
 	FbClear();
 	FbColor(BLACK);
-	FbMove(LCD_XSIZE/2 - (current_monster.image->x/2), LCD_YSIZE/2 - (current_monster.image->y/2));
-	FbImage4bit2(current_monster.image, 0);
+	FbMove(LCD_XSIZE/2 - (img->x/2), LCD_YSIZE/2 - (img->y/2));
+	FbImage4bit2(img, 0);
 }
 
 void badgemon_unlock_monster(int monster_id)
 {
 	flash_kv_store_int(flash_key_from_monster(monster_id), 1);
-	monsters[monster_id].unlocked = 1;
+	set_unlocked(monster_id, 1);
 
 	audio_out_beep(1200, 600);
 }
