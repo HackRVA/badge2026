@@ -3173,9 +3173,9 @@ static struct shop {
  * some randomly placed chests.  chest[0] .. chest[NUM_STATIC_CHESTS - 1] are the static
  * ones, while chest[NUM_STATIC_CHESTS] .. chest[MAX_CHESTS - 1] are the random ones.
  */
-#define MAX_CHESTS 100
+#define MAX_CHESTS 50
 #define NUM_STATIC_CHESTS 24
-#define NUM_RAND_CHESTS_PER_CAVE 15
+#define NUM_RAND_CHESTS_PER_CAVE 15 
 static struct treasure_chest {
 	struct badgey_world *world;
 	int town_or_cave;
