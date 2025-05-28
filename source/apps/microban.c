@@ -121,24 +121,17 @@ static int level_height(void) {
 
 static void microban_save_game(void)
 {
-    // struct badgey_state state;
-    // badgey_serialize_state(&state);
-    // stats.level_number = stats.level_number;
     bool saved = flash_kv_store_binary("MICROBAN_SAVED_GAME", &stats, sizeof(stats));
     if (!saved) {
 #if TARGET_SIMULATOR
-        fprintf(stderr, "Failed to save game.\n");
+        fprintf(stderr, "Failed to save microban state\n");
 #endif
-        // set_badgey_state(BADGEY_INITIAL_MENU);
-        // status_message("Failed to save\ngame\n");
         return;
     } else {
         #if TARGET_SIMULATOR
-            fprintf(stderr,"SAVED THE MICROBAN\n");
+            fprintf(stderr,"SAVED THE MICROBAN STATE\n");
         #endif
     }
-
-    // set_badgey_state(BADGEY_INITIAL_MENU);
 }
 
 
@@ -153,10 +146,8 @@ static void microban_restore_game(void)
     bool ok = flash_kv_get_binary("MICROBAN_SAVED_GAME", &state, sizeof(state));
     if (!ok) {
 #if TARGET_SIMULATOR
-        // fprintf(stderr, "Failed to read MICROBAN_SAVED_GAME: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to read MICROBAN_SAVED_GAME");
 #endif
-        // set_badgey_state(BADGEY_INITIAL_MENU);
-        // status_message("Failed to read\nsaved game\n");
         return;
     } else {
         stats = state;
