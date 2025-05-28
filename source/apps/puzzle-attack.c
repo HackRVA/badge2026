@@ -194,7 +194,7 @@ static struct note sfx_two[] = {
 	{NOTE_C6, thirtysecond_note},
 };
 
-static struct note puzzle_attack_theme_notes[] = {
+static const struct note puzzle_attack_theme_notes[] = {
 	/* just bass */
   kick_drum,
 	{ NOTE_C3, sixteenth_note, },
