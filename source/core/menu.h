@@ -40,7 +40,7 @@ typedef enum  {
 } MENU_STYLE;
 
 struct menu_t {
-   char name[16];
+   char name[20]; /* If we change the screen orientation, might need to shorten this. */
    unsigned short attrib;
    enum menu_item_type type;
    union { /* when initializing the union, use designated

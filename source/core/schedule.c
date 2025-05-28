@@ -6,7 +6,7 @@
 
 const struct menu_t day2_p1_m[] = {
    {"Wednesday", VERT_ITEM|SKIP_ITEM, TEXT, {NULL}, NULL},
-   {" 7:59 Registrat", VERT_ITEM, ITEM_DESC,
+   {" 7:59 Registration", VERT_ITEM, ITEM_DESC,
 	{ .description =
 		"Registration\n\n"
 		"7:59-5:00\n"
@@ -26,7 +26,7 @@ const struct menu_t day2_p1_m[] = {
    {" 9:00 Welcome", VERT_ITEM, ITEM_DESC,
 	{ .description =
 		"Welcome to Day\n"
-		"2 RVAsec 13!\n\n"
+		"2 RVAsec 14!\n\n"
 		"8:50-9:00\n"
 		"Grand\n"
 		"Ballroom\n"
@@ -42,7 +42,7 @@ const struct menu_t day2_p1_m[] = {
 		"Grand\n"
 		"Ballroom\n"
 		"D/E/F/G\n"
-		"Caleb Sima",
+		"Bruce Potter",
 	},
 	NULL,
    },
@@ -71,7 +71,7 @@ const struct menu_t day2_p1_m[] = {
 	{.description =
 		"Badge Training\n"
 		"and Repair\n\n"
-		"10:30am-4:30pm\n"
+		"10:00am-4:00pm\n"
 		"Downstairs,\n"
 		"Dominion\n\n"
 		"Come learn about\n"
@@ -88,7 +88,7 @@ const struct menu_t day2_p1_m[] = {
 		"Lock Picking\n"
 		"Village and\n"
 		"Contest\n\n"
-		"10:30am-5pm\n"
+		"10:00am-4pm\n"
 		"Shenandoah\n\n"
 		"A variety of\n"
 		"locks, from\n"
@@ -102,47 +102,45 @@ const struct menu_t day2_p1_m[] = {
 	},
 	NULL,
    },
-   {"10:30 AI Chat", VERT_ITEM, ITEM_DESC,
+   {"10:30 Incident Resp", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"QuickStart To\n"
-		"Building Your\n"
-		"Own Private AI\n"
-		"Chat\n\n"
+		"The Importance of an\n"
+		"Incident Response\n"
+		"Plan\n\n"
 		"10:30-11:20\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Samuel Panicker",
+		"Stacey Aitken",
 	},
 	NULL,
    },
-   {"10:30 Apples", VERT_ITEM, ITEM_DESC,
+   {"10:30 What Scope", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Apples to\n"
-		"Apples\n\n"
+		"What The Scope?\n"
+		"Sh** my Consultant/\n"
+		"Client Says\n\n"
 		"10:30-11:20\n"
-		"Grand\n"
-		"Ballroom\n"
-		"D/E/F/G\n"
-		"Pyr0 (Luke\n"
-		"McOmie)",
+		"Grand Ballroom D/E\n"
+		"Luke McOmie\n"
+		"Qasim Ijaz\n",
 	},
 	NULL,
    },
-   {"10:30 Patch", VERT_ITEM, ITEM_DESC,
+   {"10:30 ServiceNow", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Patch Perfect:\n"
-		"Harmonizing\n"
-		"with LLMs to\n"
-		"Find Security\n"
-		"Vulns\n\n" 
+		"Attacking &\n"
+		"Defending\n"
+		"ServiceNow: A\n"
+		"Hands-on Lab for Red\n"
+		"and Blue Teams\n\n"
 		"10:30-11:20\n"
 		"Grand\n"
 		"Ballroom\n"
 		"F/G\n"
-		"Josh Shomo\n"
-		"Caleb Gross",
+		"Mike Bailey\n"
+		"Nicholas Popovich",
 	},
 	NULL,
    },
@@ -156,52 +154,46 @@ const struct menu_t day2_p1_m[] = {
 	},
 	NULL,
    },
-   {"11:30 Mindful", VERT_ITEM, ITEM_DESC,
+   {"11:30 MacOS Intrnls", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Mindfulness,\n"
-		"Meditation,\n"
-		"and Cyber\n"
-		"Security\n\n"
+		"Unlocking MacOS\n"
+		"Internals: A\n"
+		"Beginner's Guide\n"
+		"to Apple's Open\n"
+		"Source Code\n\n"
 		"11:30-12:20\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Aqeel Yaseen",
+		"Olivia Gallucci",
 	},
 	NULL,
    },
-   {"11:30 GRC", VERT_ITEM, ITEM_DESC,
+   {"11:30 Breach Mgmt", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Strategic\n"
-		"Alliances:\n"
-		"How GRC Teams\n"
-		"Can Empower\n"
-		"Offensive\n"
-		"Security\n"
-		"Effors\n\n"
+		"Data Breach\n"
+		"Management and\n"
+		"Legal Issues for\n"
+		"Information\n"
+		"Technology\n"
+		"Professionals\n\n"
 		"11:30-12:20\n"
 		"Upstairs,\n"
-		"Grand\n"
-		"Ballroom\n"
-		"D/E\n"
-		"Darryl MacLeod",
+		"Grand Ballroom D/E\n"
+		"Bobby N. Turnage, Jr.",
 	},
 	NULL,
    },
-   {"11:30 Gen AI", VERT_ITEM, ITEM_DESC,
+   {"11:30 SPF Shadowing", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Unlocking\n"
-		"Generative\n"
-		"AI: Balancing\n"
-		"Innovation with\n"
-		"Security\n\n"
+		"SPF Shadowing:\n"
+		"Give Old Services\n"
+		"a Chance to Shine\n\n"
 		"11:30-12:20\n"
 		"Upstairs,\n"
-		"Grand\n"
-		"Ballroom\n"
-		"F/G\n"
-		
+		"Grand Ballroom F/G\n"
+		"Caleb Crable",
 	},
 	NULL,
    },
@@ -214,36 +206,44 @@ const struct menu_t day2_p1_m[] = {
 	},
 	NULL,
    },
-   {" 1:00 SocEng", VERT_ITEM, ITEM_DESC,
+   {" 1:00 Key Mgmt", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Social\n"
-		"Engineering\n"
-		"the Social\n"
-		"Engineers:\n"
-		"How To Not\n"
-		"Suck At Buying\n"
-		"Software\n\n"
+		"Key Management\n"
+		"and Basic Key Usage\n"
+		"for Encryption 101\n\n"
 		"1:00-1:50\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"David Girvin",
+		"Alain Petit",
 	},
 	NULL,
    },
-   {" 1:00 Human Exp", VERT_ITEM, ITEM_DESC,
+   {" 1:00 Win Budgets", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"The Human\n"
-		"Experience of\n"
-		"Security\n"
-		"Operations\n\n"
+		"How to Win Budgets\n"
+		"and Influence\n"
+		"Stakeholders:\n"
+		"Articulate Cyber\n"
+		"Value to\n"
+		"Non-Technical\n"
+		"Audiences\n\n"
 		"1:00-1:50\n"
 		"Upstairs,\n"
-		"Grand\n"
-		"Ballroom\n"
-		"D/E\n"
-		"Chris Tillett",
+		"Grand Ballroom D/E\n"
+		"Jeremy Dorrough",
+	},
+	NULL,
+   },
+   {" 1:00 Purple Team", VERT_ITEM, ITEM_DESC,
+	{ .description =
+		"Running a Proper\n"
+		"Purple Team\n\n"
+		"1:00-1:50\n"
+		"Upstairs,\n"
+		"Grand Ballroom F/G\n"
+		"Travis Altman",
 	},
 	NULL,
    },
@@ -257,50 +257,45 @@ const struct menu_t day2_p1_m[] = {
 	},
 	NULL,
    },
-   {" 2:00 API", VERT_ITEM, ITEM_DESC,
+   {" 2:00 Oh Hotel No!", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"API-ocalypse\n\n"
+		"Oh Hotel No!:\n"
+		"How a Helpless\n"
+		"Hooligan Helped a\n"
+		"Homie from\n"
+		"Homelessness to\n"
+		"Homeownership in\n"
+		"9 Months\n\n"
 		"2:00-2:50\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Jennifer Shannon",
+		"Justin Varner",
 	},
 	NULL,
    },
-   {" 2:00 Creative", VERT_ITEM, ITEM_DESC,
+   {" 2:00 Local Models", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Scaling Your\n"
-		"Creative\n"
-		"Output with AI:\n"
-		"Lessons Learned\n"
-		"from SANS\n"
-		"Holiday Hack\n"
-		"Challenge\n\n"
+		"Cybersecurity is\n"
+		"Ready for Local\n"
+		"Models\n\n"
 		"2:00-2:50\n"
 		"Upstairs,\n"
-		"Grand\n"
-		"Ballroom\n"
-		"D/E\n"
-		"Evan Booth",
+		"Grand Ballroom D/E\n"
+		"Michael Roytman",
 	},
 	NULL,
    },
-   {" 2:00 Illusions", VERT_ITEM, ITEM_DESC,
+   {" 2:00 Volatility 3", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Building\n"
-		"Illusions in\n"
-		"the Cloud:\n"
-		"Deception\n"
-		"Engineering\n\n"
+		"Using Volatility\n"
+		"3 to Combat Modern\n"
+		"Malware\n\n"
 		"2:00-2:50\n"
 		"Upstairs,\n"
-		"Grand\n"
-		"Ballroom\n"
-		"F/G\n"
-		"Ayush Priya\n"
-		"Saksham Tushar",
+		"Grand Ballroom F/G\n"
+		"Andrew Case\n",
 	},
 	NULL,
    },
@@ -314,21 +309,17 @@ const struct menu_t day2_p1_m[] = {
 	},
 	NULL,
    }, 
-   {" 3:10 Shaping", VERT_ITEM, ITEM_DESC,
+   {" 3:10 Linux Desktop", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"My Way Is Not\n"
-		"Very\n"
-		"Sportsmanlike:\n"
-		"Shaping Adversary\n"
-		"Behavior to\n"
-		"Strengthen\n"
-		"Defenses\n\n"
+		"The Security\n"
+		"Professional's\n"
+		"Guide to the\n"
+		"Linux Desktop\n\n"
 		"3:10-4:00\n"
 		"Upstairs,\n"
-		"Grand\n"
-		"Ballroom\n"
-		"F/G\n"
-		"David J. Bianco",
+		"Grand Ballroom\n"
+		"D/E/F/G\n"
+		"Paul Asadoorian",
 	},
 	NULL,
    },
@@ -350,7 +341,7 @@ const struct menu_t day2_p1_m[] = {
 
 const struct menu_t day1_p1_m[] = {
    {"Tuesday", VERT_ITEM|SKIP_ITEM, TEXT, {NULL}, NULL},
-   {" 7:59 Registrat", VERT_ITEM, ITEM_DESC,
+   {" 7:59 Registration", VERT_ITEM, ITEM_DESC,
 	{ .description =
 		"Upstairs, Desk\n",
 	},
@@ -368,14 +359,14 @@ const struct menu_t day1_p1_m[] = {
    {" 9:00 Welcome", VERT_ITEM, ITEM_DESC,
 	{ .description =
 		"Welcome to\n"
-		"RVAsec 13!\n\n"
+		"RVAsec 14!\n\n"
 		"9:00-9:30\n"
 		"Upstairs, Grand\n"
 		"Ballroom\n"
 		"Jake Kouns,\n"
+		"Nikola Bura\n"
 		"Peter Maxwell\n"
-		" Warsila,\n"
-		"Roman Bohuk",
+		"Warsila\n",
 	},
 	NULL,
    },
@@ -385,7 +376,7 @@ const struct menu_t day1_p1_m[] = {
 		"9:30-10:30\n"
 		"Upstairs, Grand\n"
 		"Ballroom\n"
-		"Kymberlee Price",
+		"Christofer Hoff",
 	},
 	NULL,
    },
@@ -432,16 +423,38 @@ const struct menu_t day1_p1_m[] = {
 	},
 	NULL,
    },
-   {"11:00 Payload", VERT_ITEM, ITEM_DESC,
+   {"11:00 Ninjas", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"That Shouldn't\n"
-		"Have Worked - \n"
-		"Payload\n"
-		"Development\n\n"
+		"It's Not All\n"
+		"Ninjas and\n"
+		"Anonymous Masks\n\n"
+		"11-11:50\n"
+		"Downstairs\n"
+		"Madison/Jefferson\n"
+		"/Monroe\n"
+		"David Young",
+	},
+	NULL,
+   },
+   {"11:00 CISO of 2030", VERT_ITEM, ITEM_DESC,
+	{ .description =
+		"(A Sequel of CISO\n"
+		"of 2025)\n\n"
 		"11-11:50\n"
 		"Upstairs\n"
-		"Grand Ballroom\n"
-		"Corey Overstreet",
+		"Grand Ballroom D/E\n"
+		"Dan Holden",
+	},
+	NULL,
+   },
+   {"11:00 DNS Collision", VERT_ITEM, ITEM_DESC,
+	{ .description =
+		"Internal Domain\n"
+		"Name Collision 2.0\n\n"
+		"11-11:50\n"
+		"Upstairs\n"
+		"Grand Ballroom F/G\n"
+		"Philippe Caturegli",
 	},
 	NULL,
    },
@@ -454,53 +467,48 @@ const struct menu_t day1_p1_m[] = {
 	},
 	NULL,
    },
-   {" 1:00 Phy Pntst", VERT_ITEM, ITEM_DESC,
+   {" 1:00 Hckr/Hipstr", VERT_ITEM, ITEM_DESC,
 	{. description =
-		"It's Coming\n"
-		"From Inside the\n"
-		"House: A Guide\n"
-		"to Physical\n"
-		"Facility\n"
-		"Pen Testing\n"
+		"Hacker, Hipster,\n"
+		"Hustler, Humanist:\n"
+		"Est. the Govt's\n"
+		"Role in Public\n"
+		"Interest\n"
+		"Cybersecurity\n\n"
 		"1:00-1:50\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Ariyan Suroosh",
+		"Christopher Cruz",
 	},
 	NULL,
    },
-   {" 1:00 Risk Rem", VERT_ITEM, ITEM_DESC,
+   {" 1:00 AI Surveil", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Verified for\n"
-		"Business\n"
-		"Continuity:\n"
-		"How to Re-\n"
-		"mediate Risk\n"
-		"Safely across\n"
-		"the Enterprise\n"
+		"Leveraging AI\n"
+		"in Surveillance\n"
+		"for Public Safety\n"
+		"Amid Privacy\n"
+		"Concerns\n\n"
 		"1:00-1:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"D/E\n"
-		"Oren Koren"
+		"Vennard Wright"
 	},
 	NULL,
    },
-   {" 1:00 RCE Elec", VERT_ITEM, ITEM_DESC,
+   {" 1:00 Pentest Guide", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Some Assembly\n"
-		"Required: Weap-\n"
-		"onizing Chrome\n"
-		"CVE-2023-2033\n"
-		"for RCE in\n"
-		"Electron\n"
+		"The Lazy Pentester's\n"
+		"Guide to Coasting\n"
+		"Through Internals\n\n"
 		"1:00-1:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"F/G\n"
-		"Nick Copi",
+		"Matthew Fisher",
 	},
 	NULL,
    },
@@ -528,46 +536,45 @@ const struct menu_t day1_p1_m[] = {
 	},
 	NULL,
    },
-   {" 2:00 DevSecOps", VERT_ITEM, ITEM_DESC,
+   {" 2:00 Kernel Xploit", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"The ABCs of\n"
-		"DevSecOps\n\n"
+		"Linux Kernel\n"
+		"Exploitation\n"
+		"For Beginners\n\n"
 		"2:00-2:50\n"
 		"Downstairs,\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Steve Pressman",
+		"Kevin Massey",
 	},
 	NULL,
    },
-   {" 2:00 APT Aware", VERT_ITEM, ITEM_DESC,
+   {" 2:00 Vendor Mgmt", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Once Upon a\n"
-		"Cyber Threat:\n"
-		"The Brothers\n"
-		"Grimm's\n"
-		"Teachings on\n"
-		"APT Awareness\n\n"
+		"Vendor Management\n"
+		"2025: How to Make\n"
+		"Better Vendor\n"
+		"Management\n"
+		"Decisions\n\n"
 		"2:00-2:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"D/E\n"
-		"Ell Marquez",
+		"John Waldman",
 	},
 	NULL,
    },
-   {" 2:00 Routers", VERT_ITEM, ITEM_DESC,
+   {" 2:00 JSON -> RCE", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Consumer\n"
-		"Routers\n"
-		"Still Suck\n\n"
+		"Following the JSON\n"
+		"Path: A Road Paved\n"
+		"in RCE\n\n"
 		"2:00-2:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"F/G\n"
-		"Evan Grant\n"
-		"Jim Sebree",
+		"Nick Copi",
 	},
 	NULL,
    },
@@ -581,50 +588,44 @@ const struct menu_t day1_p1_m[] = {
 	},
 	NULL,
    },
-   {" 3:00 Impostor", VERT_ITEM, ITEM_DESC,
+   {" 3:00 MalwareAnalys", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Embracing My\n"
-		"Inner Cyber\n"
-		"Wizard To\n"
-		"Defeat\n"
-		"Impostor\n"
-		"Syndrome\n\n"
+		"Look Ma, No IDA!\n"
+		"Malware Analysis\n"
+		"Without Reverse\n"
+		"Engineering\n\n"
 		"3:00-3:50\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Corey Brennan",
+		"Christina Johns",
 	},
 	NULL,
    },
-   {" 3:00 AI Advers", VERT_ITEM, ITEM_DESC,
+   {" 3:00 AI Who Watch", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Defending\n"
-		"Against the\n"
-		"Deep: Is Your\n"
-		"Workforce Ready\n"
-		"For Generative\n"
-		"AI Adversaries\n\n"
+		"AI: Who's Watching\n"
+		"Whom?\n\n"
 		"3:00-3:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"D/E\n"
-		"Tucker Mahan",
+		"Kyle King",
 	},
 	NULL,
    },
-   {" 3:00 Hack Exch", VERT_ITEM, ITEM_DESC,
+   {" 3:00 GraphRunner", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Hacking\n"
-		"Exchange\n"
-		"From The\n"
-		"Outside In\n\n"
+		"Defending Entra ID\n"
+		"and Office 365\n"
+		"Using the Prism\n"
+		"of GraphRunner\n\n"
 		"3:00-3:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"F/G\n"
-		"Ali Ahmad",
+		"John Stoner",
 	},
 	NULL,
    },
@@ -638,35 +639,31 @@ const struct menu_t day1_p1_m[] = {
 	},
 	NULL,
     },
-   {" 4:00 Improv", VERT_ITEM, ITEM_DESC,
+   {" 4:00 Why No Casino", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Improv\n"
-		"Comedy for\n"
-		"Social\n"
-		"Engineering\n\n"
+		"Why There is No\n"
+		"Casino Night at\n"
+		"RVASec This Year\n"
+		"(Sorry)\n\n"
 		"4:00-4:50\n"
 		"Downstairs\n"
 		"Madison/\n"
 		"Jefferson/\n"
 		"Monroe\n"
-		"Ross Merritt",
+		"Ben Haynes",
 	},
 	NULL,
    },
-   {" 4:00 PenTest", VERT_ITEM, ITEM_DESC,
+   {" 4:00 Hackers LLM", VERT_ITEM, ITEM_DESC,
 	{ .description =
-		"Orion's Quest:\n"
-		"Navigating\n"
-		"the Cyber\n"
-		"Wilderness -\n"
-		"Tales of Modern\n"
-		"Penetration\n"
-		"Testing\n\n"
+		"Large Language\n"
+		"Models for\n"
+		"Hackers\n\n"
 		"4:00-4:50\n"
 		"Upstairs,\n"
 		"Grand Ballroom\n"
 		"F/G\n"
-		"Kevin Johnson",
+		"Morgan Stuart",
 	},
 	NULL,
    },
@@ -693,14 +690,14 @@ const struct menu_t day1_p1_m[] = {
 	},
 	NULL,
    },
-   {" 5:30 Aft Party", VERT_ITEM, ITEM_DESC,
+   {" 5:30 After Party", VERT_ITEM, ITEM_DESC,
 	{ .description =
 		"RVAsec After\n"
 		"Party\n\n"
 		"5:30-9:00\n"
-		"Downstairs\n"
-		"Capitol\n"
-		"Ballroom",
+		"Upstairs\n"
+		"Grand Ballroom\n"
+		"D/E/F/G",
 	},
 	NULL,
    },
