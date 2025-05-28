@@ -194,7 +194,7 @@ static struct note sfx_two[] = {
 	{NOTE_C6, thirtysecond_note},
 };
 
-static struct note puzzle_attack_theme_notes[] = {
+static const struct note puzzle_attack_theme_notes[] = {
 	/* just bass */
   kick_drum,
 	{ NOTE_C3, sixteenth_note, },
@@ -1040,7 +1040,7 @@ static void swap_blocks_at_cursor(void)
 static int theme_duration = 200;
 static int sfx_duration = 0;
 
-static int calculate_tune_duration(struct note *notes, size_t note_count)
+static int calculate_tune_duration(const struct note *notes, size_t note_count)
 {
 	int total_duration = 0;
 	for (size_t i = 0; i < note_count; ++i) {
