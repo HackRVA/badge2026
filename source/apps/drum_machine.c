@@ -61,7 +61,7 @@ static char drum_machine_err_msg[100];
 #define RIDE_DUR 250
 
 /* 8 channels x 16 notes per measure x max measures, plus 1 for silence at end of section */
-static struct audio_out_note drumsong_notes[8 * 16 * MAX_DRUM_PATTERNS + 1];
+static struct audio_out_note drumsong_notes[8 * 16 + 1];
 static struct audio_out_section drumtune = {
 	.length = 0,
 	.notes = drumsong_notes,
@@ -349,7 +349,6 @@ static int add_drum_hit(int start_time, struct audio_out_section *t, unsigned ch
 
 static const struct audio_out_section *repeat_current_tune(const struct audio_out_section *prev)
 {
-	printf("REPEATING!\n");
 	return prev;
 }
 
@@ -377,28 +376,77 @@ static void play_pattern(int current_pattern)
 	start_playing_tune(&drumtune);
 }
 
-static void play_song(void)
+static const struct audio_out_section *get_next_measure(const struct audio_out_section *prev);
+
+static void play_one_pattern_of_song(int which_pattern)
 {
-	/* Count how many measures we have */
 	const int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
-	drum_song.nmeasures = 0;
-	for (int i = 0; i < MAX_DRUM_PATTERNS_PER_SONG; i++)
-		if (drum_song.measure[i] != 255)
-			drum_song.nmeasures = i;
+	int start_time_ms = 0;
 	drumtune.length = 0;
 	memset(&drumsong_notes, 0, sizeof(drumsong_notes));
-	int start_time_ms = 0;
+	struct drum_pattern *pattern = &drum_song.pattern[which_pattern];
 	int t;
-	for (int i = 0; i < drum_song.nmeasures; i++) {
-		int m = drum_song.measure[i];
-		struct drum_pattern *p = &drum_song.pattern[m];
-		for (int j = 0; j < HITS_PER_MEASURE; j++) {
-			t = add_drum_hit(start_time_ms, &drumtune, p->hit[j]);
-			start_time_ms += sixteenth_ms;
-		}
+	for (int i = 0; i < HITS_PER_MEASURE; i++) {
+		t = add_drum_hit(start_time_ms, &drumtune, pattern->hit[i]);
+		start_time_ms += sixteenth_ms;
 	}
+	/* We need to add silence to the end of the section so it doesn't start
+	 * replaying the section too soon
+	 */
 	add_silence(0, start_time_ms - sixteenth_ms + t, &drumtune, sixteenth_ms - t);
-	start_playing_tune(&drumtune);
+	audio_out_music_play(&drumtune, get_next_measure);
+}
+
+static int playing_measure = 0;
+
+static int get_next_measure_number(void)
+{
+	playing_measure++;
+	int wrapped = playing_measure;
+	int p = drum_song.measure[playing_measure];
+	while (p == 255) {
+		playing_measure++;
+		if (playing_measure == wrapped) /* nothing to play */
+			return -1;
+		if (playing_measure >= (int) ARRAY_SIZE(drum_song.measure))
+			playing_measure = 0;
+		p = drum_song.measure[playing_measure];
+	}
+	return playing_measure;
+}
+
+static const struct audio_out_section *get_next_measure(__attribute__((unused)) const struct audio_out_section *prev)
+{
+	playing_measure = get_next_measure_number();
+	if (playing_measure < 0)
+		return NULL;
+	int p = drum_song.measure[playing_measure];
+
+	const int sixteenth_ms = (256 * 60000) / (tempo * 4); /* times 4, because 4 beats per measure */
+	int start_time_ms = 0;
+	drumtune.length = 0;
+	memset(&drumsong_notes, 0, sizeof(drumsong_notes));
+	struct drum_pattern *pattern = &drum_song.pattern[p];
+	int t;
+	for (int i = 0; i < HITS_PER_MEASURE; i++) {
+		t = add_drum_hit(start_time_ms, &drumtune, pattern->hit[i]);
+		start_time_ms += sixteenth_ms;
+	}
+	/* We need to add silence to the end of the section so it doesn't start
+	 * playing the next section too soon
+	 */
+	add_silence(0, start_time_ms - sixteenth_ms + t, &drumtune, sixteenth_ms - t);
+	return &drumtune;
+}
+
+static void play_song(void)
+{
+	playing_measure = -1;
+	playing_measure = get_next_measure_number();
+	if (playing_measure == -1)
+		return;
+	int p = drum_song.measure[playing_measure];
+	play_one_pattern_of_song(p);
 }
 
 static void check_buttons(void)
