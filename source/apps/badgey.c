@@ -3779,7 +3779,7 @@ static enum badgey_state_t previous_badgey_state = BADGEY_RUN;
 
 static int screen_changed = 0;
 
-#define MAX_MISSILES 50
+#define MAX_MISSILES 20
 static struct missile {
 	int x, y, vx, vy; /* 24.8 fixed point */
 	int alive;
