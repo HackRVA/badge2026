@@ -3316,7 +3316,7 @@ static const struct cave_aux_entrance {
 };
 #define NCAVE_AUX_ENTRANCES ARRAY_SIZE(cave_aux_entrance)
 
-const char *proprietor[NUMSHOPS] = { /* indexed by shop type */
+static const char *proprietor[NUMSHOPS] = { /* indexed by shop type */
 	"  INNKEEP",
 	"  BARKEEP",
 	"  ARMOURER",
@@ -3327,7 +3327,7 @@ const char *proprietor[NUMSHOPS] = { /* indexed by shop type */
 	"  JAKE",
 };
 
-const char *shopname[NUMSHOPS] = { /* indexed by shop type */
+static const char *shopname[NUMSHOPS] = { /* indexed by shop type */
 	"INN",
 	"PUB",
 	"ARMOURER",
@@ -6834,7 +6834,7 @@ static int town_num_to_name_index(int town_num)
 	return (town_num / 10) * 5 + (town_num % 10);
 }
 
-const char *hackerspacename[] = {
+static const char *hackerspacename[] = {
 	"SEGVAULT",
 	"BODGERY",
 	"HACKALOT",
@@ -6866,7 +6866,7 @@ const char *hackerspacename[] = {
 	"OHMS_LAW",
 };
 
-const char *weapons_store_name[] = {
+static const char *weapons_store_name[] = {
 	"WEAPONS",
 	"ARMAMENTS",
 	"ARMS_INC",
@@ -6874,7 +6874,7 @@ const char *weapons_store_name[] = {
 	"GUNS_N_STUF",
 };
 
-const char *armoury_name[] = {
+static const char *armoury_name[] = {
 	"ARMOR",
 	"ARMOR_INC",
 	"SHIELDS",
@@ -6882,7 +6882,7 @@ const char *armoury_name[] = {
 	"BLASTPROOF",
 };
 
-const char *pubname[] = {
+static const char *pubname[] = {
 	"BABELFISH",
 	"SPACE_BAR",
 	"TRADER_VI",
