@@ -24,11 +24,22 @@ enum microban_state_run {
     WIN,
     LEVEL_MENU,
     ABOUT,
+    MAIN_MENU,
+};
+
+#define MAIN_MENU_ENTRIES 3
+enum microban_main_menu {
+    MAIN_MENU_CONTINUE,
+    MAIN_MENU_NEW_GAME,
+    MAIN_MENU_EXIT
 };
 
 #define MENU_ENTRIES 4
 enum microcan_menu {
-    MENU_RESET, /*MENU_SKIP,*/ MENU_LEVEL_MENU, MENU_ABOUT, MENU_EXIT
+    MENU_RESET,
+    MENU_LEVEL_MENU,
+    MENU_ABOUT,
+    MENU_EXIT
 };
 
 typedef enum Tile {
@@ -89,6 +100,7 @@ static int tick;
 static int menu_selection = 0;
 static int menu_selection_level = 1;
 static bool menu_streak_popup = false;
+static bool menu_newgame_popup = false;
 
 static Camera camera;
 static Player player;
@@ -356,7 +368,7 @@ static void microban_init(void)
     FbClear();
     input = input_clear;
     microban_state = MICROBAN_RUN;
-    run_state = GAMEPLAY;
+    run_state = MAIN_MENU;
     screen_changed = 1;
     player.position = (Point){0,0};
     player.facing = S;
@@ -382,13 +394,61 @@ static void microban_init(void)
         if (stats.levels_unlocked[lvl] && !stats.levels_completed[lvl]) {
             stats.level_number = lvl;
             set_level(stats.level_number);
-            run_state = GAMEPLAY;
+            // run_state = GAMEPLAY;
             break;
         }
     }
 
     FbPaletteCycleInit(nice_clear_cycle, NICE_CLEAR_colormap, ARRAY_SIZE(NICE_CLEAR_colormap));
 
+}
+
+static void clear_stats(void) {
+    memset(&stats, 0, sizeof(stats));
+    for (int lvl = 0; lvl < MAX_LEVELS; lvl += 1) {
+        stats.levels_completed[lvl] = false;
+        stats.best_moves[lvl] = 0;
+        if (lvl < PROGRESS_BREAKPOINTS[1]) {
+            stats.levels_unlocked[lvl] = true;
+        }
+    }
+    stats.level_number = 1;
+}
+
+static void process_input_MAIN_MENU(void) {
+
+    if (input.downPressed) {
+        menu_selection = wrap(menu_selection + 1, MAIN_MENU_ENTRIES);
+        menu_newgame_popup = false;
+    } else if (input.upPressed) {
+        menu_selection = wrap(menu_selection - 1, MAIN_MENU_ENTRIES);
+        menu_newgame_popup = false;
+    } else if (input.APressed) {
+        if (menu_selection == MAIN_MENU_CONTINUE) {
+            run_state = GAMEPLAY;
+        }
+        else if (menu_selection == MAIN_MENU_NEW_GAME) {
+            if (!menu_newgame_popup) {
+                menu_newgame_popup = true;
+            } else {
+                clear_stats();
+                set_level(stats.level_number);
+                run_state = GAMEPLAY;
+                menu_newgame_popup = false;
+            }
+
+        }
+        else if (menu_selection == MAIN_MENU_EXIT) {
+            if (moves > 0) stats.streak = 0;
+            microban_state = MICROBAN_EXIT;
+        }
+
+        if(menu_selection != MAIN_MENU_NEW_GAME) {
+            menu_selection = 0;            
+        }
+    } else if (input.BPressed) {
+        menu_newgame_popup = false;
+    }
 }
 
 static void process_input_WIN(void) {
@@ -464,16 +524,17 @@ static void process_input_PAUSE(void) {
         //     }
 
         // }
-        if (menu_selection == MENU_LEVEL_MENU) {
+        else if (menu_selection == MENU_LEVEL_MENU) {
             run_state = LEVEL_MENU;
         }
-        if (menu_selection == MENU_ABOUT) {
+        else if (menu_selection == MENU_ABOUT) {
             run_state = ABOUT;
         }
-        if (menu_selection == MENU_EXIT) {
+        else if (menu_selection == MENU_EXIT) {
             if (moves > 0) stats.streak = 0;
             microban_state = MICROBAN_EXIT;
         }
+
         if (menu_selection != MENU_ABOUT) menu_selection = 0;
 
     } else if (input.BPressed) {
@@ -667,7 +728,8 @@ static void draw_level(const struct asset2 *asset, Camera camera) {
 
 static void draw_hud(void)
 {   
-    unsigned const short color = PACKRGB888(255, 255, 128);
+    // unsigned const short color = PACKRGB888(255, 255, 128);
+    unsigned const short color = WHITE;
     // unsigned const short color = YELLOW;
     char buf_top[20];
     char buf_bottom[20];
@@ -826,6 +888,50 @@ static void draw_level_menu(void) {
 }
 
 
+static int possum_frame = 0;
+
+static void draw_main_menu(void) {
+    if (tick % 61 == 0) possum_frame += tick % 3083;
+
+    if (!screen_changed)
+        return;
+    FbBackgroundColor(BLACK);
+    FbClear();
+
+
+    FbImageRect(&possum2, 16, LCD_YSIZE - 32, possum_frame*16, 6*16, 16, 16, MAGENTA);
+
+    unsigned const short shadow = GREY8;
+    unsigned const short color = WHITE;
+    DrawStringDropshadow("MICROBAN", 16, 16, color, shadow);
+
+    int y = 32;
+    DrawStringDropshadow(">", 8, y + 12*menu_selection, color, shadow);
+    DrawStringDropshadow("continue", 16, y, color, shadow);
+    y += 12;
+    DrawStringDropshadow("new game", 16, y, color, shadow);
+    y += 12;
+    DrawStringDropshadow("exit", 16, y, color, shadow);
+
+    if (menu_newgame_popup) {
+
+        struct ui_text_box info_box = {
+            .x = 16,
+            .y = 16,
+            .width = LCD_XSIZE - 32,
+            .height = 24,
+            .text = "reset progress??",
+            .outline_size = 1,
+            .outline_color = WHITE,
+            .fill_color = BLUE,
+            .text_color = WHITE,
+        };
+        ui_text_box_draw(info_box);
+    }
+
+    FbSwapBuffers();
+    screen_changed = 1;
+}
 
 static void draw_screen(void)
 {
@@ -980,6 +1086,8 @@ static void draw_screen(void)
         DrawStringDropshadow("& Zach Smith.", x + 24, y, WHITE, shadow);
         break;
         }
+    case MAIN_MENU:
+        break;
     }
 
 
@@ -1017,6 +1125,9 @@ static void microban_run(void)
             run_state = PAUSE;
         }
         break;
+    case MAIN_MENU:
+        process_input_MAIN_MENU();
+        break;
     }
 
     if (old_state != run_state) {
@@ -1038,6 +1149,9 @@ static void microban_run(void)
         break;
     case ABOUT:
         draw_screen();
+        break;
+    case MAIN_MENU:
+        draw_main_menu();
         break;
     }
     FbBackgroundColor(BLACK);
