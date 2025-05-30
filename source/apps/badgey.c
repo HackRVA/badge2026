@@ -7,7 +7,7 @@
 #endif
 
 #if TARGET_SIMULATOR
-#define DEV_CHEATS_ENABLED 1
+#define DEV_CHEATS_ENABLED 0
 #else
 #define DEV_CHEATS_ENABLED 0
 #endif
@@ -7562,6 +7562,7 @@ static void dig_cave(char *map, int x, int y, int dir, unsigned int *seed, int *
 }
 
 #if TARGET_SIMULATOR
+#if DEV_CHEATS
 static void print_cave(char *map)
 {
 	for (int i = 0; i < 64; i++) {
@@ -7592,6 +7593,7 @@ static void print_cave(char *map)
 	}
 	printf("\n");
 }
+#endif
 #endif
 
 static void spawn_cave_monster(unsigned int *seed)
