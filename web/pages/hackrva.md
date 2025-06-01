@@ -2,7 +2,7 @@
 
 HackRVA is a local hackerspace/makerspace with over 220 members and we are entirely community driven. 
 
-We have been around in some form or fashion since 2009 and we have made the badges for RVAsec for somewhere around/over a decade.
+We have been around in some form or fashion since 2009 and we have made the badges for RVAsec for somewhere around 14 years.
 
 Check out our website: [hackrva.org](https://hackrva.org)
 

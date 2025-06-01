@@ -8,10 +8,10 @@ iframe {
 ## About
 
 - [[Simulator]]
-- [[Hardware]]
 - [[History]]
-- [[Software]]
 - [[HackRVA]]
+<!-- - [[Software]] -->
+[https://github.com/hackrva/badge2024/](https://github.com/hackrva/badge2024/)
 
 ![solder](https://i0.wp.com/www.hackrva.org/wp-content/uploads/2020/02/IMG_1324.jpg?resize=269%2C341&ssl=1)
 ![solder](https://i0.wp.com/www.hackrva.org/wp-content/uploads/2020/02/IMG_5673-1.jpg?resize=256%2C192&ssl=1)

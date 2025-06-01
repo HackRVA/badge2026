@@ -14,4 +14,4 @@
 
 ### Write your own game
 Check out our github repository and follow the instructions to write your own game.
-[https://github.com/hackrva/badge2025](https://github.com/hackrva/badge2025)
+[https://github.com/hackrva/badge2025](https://github.com/hackrva/badge2024)

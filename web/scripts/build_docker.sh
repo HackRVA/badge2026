@@ -2,11 +2,11 @@
 
 # this script is intended to run from the root of the repo
 
-if [ -d ./build_wasm ]; then
-  echo "The directory ./build_wasm already exists."
-  echo "Please remove it before running this script again."
-  exit 1
-fi
+# if [ -d ./build_wasm ]; then
+#   echo "The directory ./build_wasm already exists."
+#   echo "Please remove it before running this script again."
+#   exit 1
+# fi
 
 docker build -t hackrva/badge2025-user-docs -f ./web/deployments/Dockerfile .
 
