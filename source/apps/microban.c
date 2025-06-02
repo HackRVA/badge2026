@@ -90,6 +90,7 @@ typedef struct Player {
 } Player;
 
 
+const bool MICROBAN_UNLOCK_ALL = false;
 
 static enum microban_state_t microban_state = MICROBAN_INIT;
 static enum microban_state_run run_state = GAMEPLAY;
@@ -121,6 +122,14 @@ static struct Stats {
     int  best_streak;
     int  level_number;
 } stats;
+
+int get_levels_completed(void) {
+    int count = 0;
+    for (int i = 0; i < MAX_LEVELS; i++) {
+        if (stats.levels_completed[i] == true) count++;
+    }
+    return count;
+}
 
 static bool levelmenufromcompleted;
 
@@ -401,6 +410,15 @@ static void microban_init(void)
 
     FbPaletteCycleInit(nice_clear_cycle, NICE_CLEAR_colormap, ARRAY_SIZE(NICE_CLEAR_colormap));
 
+
+    if(MICROBAN_UNLOCK_ALL) {
+        for (int lvl = 0; lvl < MAX_LEVELS; lvl += 1) {
+            // if (lvl <= 155 && lvl > 0) {
+            //     stats.levels_completed[lvl] = true;
+            // }
+            stats.levels_unlocked[lvl] = true;
+        }
+    }
 }
 
 static void clear_stats(void) {
@@ -491,10 +509,12 @@ static void process_input_LEVEL_MENU(void) {
                 run_state = GAMEPLAY;
             }
         }
-    } else if (input.downPressed && !menu_streak_popup) {
+    } else if (input.downPressed) {
+        menu_streak_popup = false;
         menu_selection_level += 1;
         if (menu_selection_level > MAX_LEVELS - 1) menu_selection_level = MAX_LEVELS - 1;
-    } else if (input.upPressed && !menu_streak_popup) {
+    } else if (input.upPressed) {
+        menu_streak_popup = false;
         menu_selection_level -= 1;
         if (menu_selection_level < 1) menu_selection_level = 1;
     }
@@ -876,7 +896,7 @@ static void draw_level_menu(void) {
             .text = "Sure? Streak will be lost!",
             .outline_size = 1,
             .outline_color = WHITE,
-            .fill_color = BLACK,
+            .fill_color = BLUE,
             .text_color = WHITE,
         };
         ui_text_box_draw(info_box);
@@ -895,6 +915,9 @@ static void draw_main_menu(void) {
 
     if (!screen_changed)
         return;
+
+    char buf[20];
+
     FbBackgroundColor(BLACK);
     FbClear();
 
@@ -907,14 +930,16 @@ static void draw_main_menu(void) {
 
     int y = 32;
     DrawStringDropshadow(">", 8, y + 12*menu_selection, color, shadow);
-    DrawStringDropshadow("continue", 16, y, color, shadow);
+    int levels_completed = get_levels_completed();
+    levels_completed = (levels_completed * 100)/(MAX_LEVELS);
+    snprintf(buf, sizeof(buf), "continue (%d%%)", levels_completed);
+    DrawStringDropshadow(buf, 16, y, color, shadow);
     y += 12;
     DrawStringDropshadow("new game", 16, y, color, shadow);
     y += 12;
     DrawStringDropshadow("exit", 16, y, color, shadow);
 
     if (menu_newgame_popup) {
-
         struct ui_text_box info_box = {
             .x = LCD_XSIZE - 88 - 16,
             .y = LCD_YSIZE - 24 - 16,
