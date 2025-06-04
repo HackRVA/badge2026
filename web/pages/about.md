@@ -10,6 +10,7 @@ iframe {
 - [[Simulator]]
 - [[History]]
 - [[HackRVA]]
+- [Badge Inspiration](/pages/inspirational_figures)
 <!-- - [[Software]] -->
 [https://github.com/hackrva/badge2024/](https://github.com/hackrva/badge2024/)
 
