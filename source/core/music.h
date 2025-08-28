@@ -124,4 +124,7 @@ void play_dynamic_tune(const struct dynamic_tune *tune, void (*finished_callback
 
 void stop_tune(void);
 
+void play_tune_from_index(const struct tune *tune, int note_index, void (*finished_callback)(void *kookie), void *kookie);
+int get_current_note_index(void);
+
 #endif

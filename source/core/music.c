@@ -46,6 +46,24 @@ void play_dynamic_tune(const struct dynamic_tune *tune, void (*finished_callback
 	play_tune((const struct tune *) tune, finished_callback, kookie);
 }
 
+int get_current_note_index(void)
+{
+	if (!current_tune)
+		return -1;
+	return current_note;
+}
+
+void play_tune_from_index(const struct tune *tune, int note_index, void (*finished_callback)(void *kookie), void *kookie)
+{
+	stop_the_music = 0;
+	current_note = note_index;
+	current_tune = tune;
+	cookie = kookie;
+	finish_callback = finished_callback;
+	audio_out_beep_with_cb(current_tune->note[current_note].freq,
+			current_tune->note[current_note].duration, next_note);
+}
+
 void stop_tune(void)
 {
 	stop_the_music = 1;
