@@ -25,7 +25,6 @@
 #include "ui.h"
 #include "xorshift.h"
 #include "particle.h"
-#include "audio.h"
 #include "music.h"
 #include "key_value_storage.h"
 
@@ -164,18 +163,7 @@ static uint64_t current_particle_start_time = 0;
 #define kick_drum { NOTE_A3, 10, }
 #define snare_drum { NOTE_B6, 10, }
 
-static enum {
-	AUDIO_THEME,
-	AUDIO_SFX,
-} audio_mode = AUDIO_THEME;
-
-static size_t theme_index = 0;
-static uint64_t theme_note_start = 0;
-
-static struct note *current_sfx = NULL;
-static size_t current_sfx_len = 0;
-static size_t sfx_index = 0;
-static uint64_t sfx_note_start = 0;
+static int current_note_index = 0;
 
 static struct note sfx_one[] = {
 	{ NOTE_C5, thirtysecond_note },
@@ -192,6 +180,17 @@ static struct note sfx_two[] = {
 	{NOTE_C6, thirtysecond_note},
 	{NOTE_C6, thirtysecond_note},
 	{NOTE_C6, thirtysecond_note},
+};
+
+
+static struct tune sfx_one_tune = {
+	.num_notes = ARRAY_SIZE(sfx_one),
+	.note = &sfx_one[0],
+};
+
+static struct tune sfx_two_tune = {
+	.num_notes = ARRAY_SIZE(sfx_two),
+	.note = &sfx_two[0],
 };
 
 static const struct note puzzle_attack_theme_notes[] = {
@@ -596,12 +595,16 @@ static void reset_game(void)
 	puzzle_attack_state = PUZZLE_ATTACK_INIT;
 	initial_run = true;
 	score = 0;
+	current_note_index = 0;
 }
+
+static void theme_finished_callback(__attribute__((unused)) void *cookie);
 static void handle_menu_options(void)
 {
 	switch (current_menu_item) {
 	case 0:
 		puzzle_attack_state = PUZZLE_ATTACK_RUN;
+		play_tune_from_index(&puzzle_attack_theme, current_note_index, theme_finished_callback, NULL);
 		break;
 	case 1:
 		reset_game();
@@ -674,6 +677,8 @@ static void check_buttons(void)
 		swap_requested = true;
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+		current_note_index = get_current_note_index();
+		stop_tune();
 		puzzle_attack_state = PUZZLE_ATTACK_MENU;
 		screen_changed = 1;
 	}
@@ -1037,45 +1042,28 @@ static void swap_blocks_at_cursor(void)
 	screen_changed = 1;
 }
 
-static int theme_duration = 200;
-static int sfx_duration = 0;
-
-static int calculate_tune_duration(const struct note *notes, size_t note_count)
+static void theme_finished_callback(__attribute__((unused)) void *cookie)
 {
-	int total_duration = 0;
-	for (size_t i = 0; i < note_count; ++i) {
-		total_duration += notes[i].duration;
-	}
-	return total_duration;
+	current_note_index = 0;
+	play_tune(&puzzle_attack_theme, theme_finished_callback, NULL);
 }
 
-static void update_audio(uint64_t now)
+static void sfx_finished_callback(__attribute__((unused)) void *cookie)
 {
-	if (audio_mode == AUDIO_SFX) {
-		const struct note *n = &current_sfx[sfx_index];
+	play_tune_from_index(&puzzle_attack_theme, current_note_index, theme_finished_callback, NULL);
+}
 
-		if (now < sfx_note_start + n->duration)
-		  return;
 
-		sfx_index++;
+static void play_sound_effect(struct tune *sfx)
+{
+	if (!sfx) return;
 
-		if (sfx_index < current_sfx_len) {
-			audio_out_beep(n->freq, n->duration);
-			sfx_note_start = now;
-			return;
-		}
-		audio_mode = AUDIO_THEME;
-		theme_note_start += sfx_duration;
-		return;
+	int saved_index = get_current_note_index();
+	if (saved_index >= 0 && saved_index < puzzle_attack_theme.num_notes) {
+		current_note_index = saved_index;
 	}
-
-	const struct note *n = &puzzle_attack_theme_notes[theme_index];
-	if (now >= theme_note_start + n->duration) {
-		theme_index = (theme_index + 1) % puzzle_attack_theme.num_notes;
-		theme_note_start = now;
-		const struct note *next = &puzzle_attack_theme_notes[theme_index];
-		audio_out_beep(next->freq, next->duration);
-	}
+	stop_tune();
+	play_tune(sfx, sfx_finished_callback, NULL);
 }
 
 void badgemon_unlock_cb(__attribute__((unused)) struct menu_t *m);
@@ -1160,19 +1148,13 @@ static void puzzle_attack_update(void)
 		register_blocks_for_removal();
 		unlock_badge_monster();
 
-		if (match_count > 0 && audio_mode == AUDIO_THEME) {
+		if (match_count > 0) {
 			if (match_count > MATCH_LEVEL_LIGHTNING) {
-				current_sfx = sfx_two;
-				current_sfx_len = ARRAY_SIZE(sfx_two);
+				play_sound_effect(&sfx_two_tune);
 			} else {
-				current_sfx = sfx_one;
-				current_sfx_len = ARRAY_SIZE(sfx_one);
+				play_sound_effect(&sfx_one_tune);
 			}
-			audio_mode = AUDIO_SFX;
-			sfx_index = 0;
-			sfx_note_start = now;
 		}
-		sfx_duration = calculate_tune_duration(current_sfx, current_sfx_len);
 	}
 	if (now > grid_shift_cooldown) {
 		grid_shift_cooldown = rtc_get_ms_since_boot()+GRID_SHIFT_MS;
@@ -1571,12 +1553,9 @@ void puzzle_attack_cb(struct badge_app *app)
 	switch (puzzle_attack_state) {
 	case PUZZLE_ATTACK_INIT:
 		puzzle_attack_init();
-		theme_duration = calculate_tune_duration(puzzle_attack_theme_notes, puzzle_attack_theme.num_notes);
-		theme_duration += quarter_note;
 		break;
 	case PUZZLE_ATTACK_RUN:
 		puzzle_attack_update();
-		update_audio(rtc_get_ms_since_boot());
 		draw_screen();
 		break;
 	case PUZZLE_ATTACK_SHOW_HELP:
@@ -1604,7 +1583,6 @@ void puzzle_attack_cb(struct badge_app *app)
 		puzzle_attack_state = PUZZLE_ATTACK_INIT;
 		initial_run = true;
 		stop_tune();
-		theme_index = 0;
 		current_menu_item = 0;
 		pop_app();
 		break;
