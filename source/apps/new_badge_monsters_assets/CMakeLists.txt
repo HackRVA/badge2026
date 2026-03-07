@@ -1,7 +1,7 @@
 # THIS CMakeLists.txt AUTOMATICALLY GENERATED
 
 target_sources(
-    badge2025_c PUBLIC
+    badge2026_c PUBLIC
 
     # ${CMAKE_CURRENT_LIST_DIR}/AccessControlAlligator.h
     # ${CMAKE_CURRENT_LIST_DIR}/DNS_Dolphin.h
@@ -36,4 +36,4 @@ target_sources(
     ${CMAKE_CURRENT_LIST_DIR}/2024-badge-monsters/2024-badge-monsters.h
 )
 
-target_include_directories(badge2025_c PUBLIC .)
+target_include_directories(badge2026_c PUBLIC .)

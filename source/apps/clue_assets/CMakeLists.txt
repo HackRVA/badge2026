@@ -2,7 +2,7 @@
 
 # THIS CMakeLists.txt AUTOMATICALLY GENERATED
 
-target_sources(badge2025_c PUBLIC
+target_sources(badge2026_c PUBLIC
 
 ${CMAKE_CURRENT_LIST_DIR}/ballroom.h
 ${CMAKE_CURRENT_LIST_DIR}/billiards_room.h
@@ -29,5 +29,5 @@ ${CMAKE_CURRENT_LIST_DIR}/clue_assets.h
 
 )
 
-target_include_directories(badge2025_c PUBLIC .)
+target_include_directories(badge2026_c PUBLIC .)
 
