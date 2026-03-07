@@ -212,7 +212,8 @@ static struct option long_options[] = {
 static void usage(void)
 {
 	fprintf(stderr, "usage: badge [--badge-id 0x1234567812345678 ] [ --fullscreen ] \\\n"
-				"	[ --hotrestart ] [ --zoom n ] [ --log-audio 0/1 ]\n");
+				"	[ --hotrestart ] [ --zoom n ] [ --log-audio 0/1 ]\\\n"
+				"	[ --silent-start ]\n");
 	exit(1);
 }
 
