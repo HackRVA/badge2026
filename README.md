@@ -1,5 +1,5 @@
-# badge2025
-RVASec Badge 2025 Firmware
+# badge2026
+RVASec Badge 2026 Firmware
 
 # Initial Setup
 
@@ -90,7 +90,7 @@ cd build_sdl_sim
 
 ```bash
 make
-./source/badge2025_c
+./source/badge2026_c
 ```
 
 > note: when iterating on code, you only need to rerun the `make` command.  This will rebuild the binary with your new changes.
@@ -130,7 +130,7 @@ will typically appear at `/media/*username*/RPI-RP2`. Copy the firmware to this
 location:
 
 ```bash
-cp source/badge2025_c.uf2 /media/$USER/RPI-RP2/
+cp source/badge2026_c.uf2 /media/$USER/RPI-RP2/
 ```
 
 > note: on Windows WSL, you can run `explorer.exe .` from within linux to launch a file explorer with your linux dir opened. From here, you can copy the uf2 file to the mounted RPI-RP2 external media.
@@ -148,7 +148,7 @@ You can use Ninja, if you like, as well. \(Specify `-G Ninja` instead of Makefil
 
 Apps are mostly contained within a single .c/.h file in the apps folder. Take a look at the comments inside the
 `badge-app-template` files for help getting started.  See also
-[BADGE-APP-HOWTO.md](https://github.com/HackRVA/badge2025/blob/main/BADGE-APP-HOWTO.md)
+[BADGE-APP-HOWTO.md](https://github.com/HackRVA/badge2026/blob/main/BADGE-APP-HOWTO.md)
 
 # Dir Layout
 
