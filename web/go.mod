@@ -1,6 +1,6 @@
 module badge-site
 
-go 1.24.2
+go 1.26
 
 require (
 	github.com/alecthomas/chroma/v2 v2.18.0
