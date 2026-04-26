@@ -55,6 +55,7 @@
 #include "microban.h"
 #include "drum_machine.h"
 #include "badgemon.h"
+#include "mixtape.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -69,6 +70,7 @@ extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 static const struct menu_t games_m[] = {
 	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
 	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
+	{"mixtape", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = mixtape_cb}, NULL },
 	{"Microban", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = microban_cb }, NULL },
 	{"badgemon", VERT_ITEM, FUNCTION, { .func = badgemon_cb }, NULL, },
 	/* {"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, }, */

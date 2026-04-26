@@ -36,11 +36,13 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/menu_2025.c
 	${CMAKE_CURRENT_LIST_DIR}/screensaver_app.c
 	${CMAKE_CURRENT_LIST_DIR}/drum_machine.c
+	${CMAKE_CURRENT_LIST_DIR}/mixtape.c
         )
 add_subdirectory(simonSays_assets)
 add_subdirectory(clue_assets)
 add_subdirectory(new_badge_monsters_assets)
 add_subdirectory(new_badge_monsters)
+add_subdirectory(mixtape-assets)
 target_include_directories(${PRODUCT} PUBLIC .)
 
 badge_png_asset_add(badgemon 4 ${CMAKE_CURRENT_LIST_DIR}/badge_monster_assets/badge_monster_birdo.png)
