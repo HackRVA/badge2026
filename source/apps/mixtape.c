@@ -4,6 +4,7 @@
 #include "menu.h"
 #include "button.h"
 #include "framebuffer.h"
+#include "mixtape-assets/button_masher.h"
 #include "random.h"
 #include "ui.h"
 #include "xorshift.h"
@@ -18,6 +19,7 @@
 #include "mixtape-assets/stroodle_doodle.h"
 #include "mixtape-assets/nerd_buster.h"
 #include "mixtape-assets/coders_digest.h"
+#include "mixtape-assets/button_masher.h"
 
 enum mixtape_state_t {
 	MIXTAPE_INIT = 0,
@@ -86,6 +88,7 @@ static struct track playlist[] = {
 	{ "hooper-hero", HOOPER_HERO },
 	{ "dr-bad-guy", DR_BAD_GUY },
 	{ "coders-digest", CODERS_DIGEST },
+	{ "button-masher", BUTTON_MASHER },
 	/* new_song seems to be broken and needs a better name anyways */
 	/* { "new_song", NEW_SONG }, */
 };
