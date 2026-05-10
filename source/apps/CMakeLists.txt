@@ -37,6 +37,7 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/screensaver_app.c
 	${CMAKE_CURRENT_LIST_DIR}/drum_machine.c
 	${CMAKE_CURRENT_LIST_DIR}/mixtape.c
+	${CMAKE_CURRENT_LIST_DIR}/screamo.c
         )
 add_subdirectory(simonSays_assets)
 add_subdirectory(clue_assets)

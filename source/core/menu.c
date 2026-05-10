@@ -54,6 +54,7 @@
 #include "puzzle-attack.h"
 #include "microban.h"
 #include "drum_machine.h"
+#include "screamo.h"
 #include "badgemon.h"
 #include "mixtape.h"
 
@@ -90,6 +91,7 @@ static const struct menu_t games_m[] = {
 	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, NULL, },
 	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, NULL, },
 	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
+	{"SCREAMO", VERT_ITEM, FUNCTION, { .func = screamo_cb }, NULL, },
 #ifdef BUILD_IMAGE_TEST_PROGRAM
 	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
 #endif
