@@ -1106,6 +1106,7 @@ static void blast_image_to_screen(void)
 {
 	FbColor(WHITE);
 	FbClear();
+	FbBackgroundColor(FbGetTransparentIndex());
 	FbMove(0, 0);
 	FbImage2(&screamo_image, 0);
 	FbMove(0, 30);
