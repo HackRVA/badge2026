@@ -1129,13 +1129,19 @@ static void draw_screen(void)
 			screen_changed = 0;
 		}
 	} else if (screamo_counter <= 0 && screamo_counter > -SCREAMING_TIME) {
+		screen_changed = 0;
 		if (screamo_counter == 0) {
 			screamo_taunt_instance = xorshift(&screamo_prng_state) % NUM_SCREAMO_TAUNTS;
-			screen_changed = 1;
 			blast_image_to_screen();
 			FbWriteString("\n\n  SCREAM NOW!!!\n");
-		} else {
-			screen_changed = 0;
+			screen_changed = 1;
+		} else if (((-screamo_counter % 8) & 0x7) == 0) {
+			blast_image_to_screen();
+			FbWriteString("\n\n  SCREAM NOW!!!\n");
+			screen_changed = 1;
+		} else if (((-screamo_counter % 8) & 0x7) == 4) {
+			blast_image_to_screen();
+			screen_changed = 1;
 		}
 	} else if (screamo_counter <= -SCREAMING_TIME && screamo_counter > -RESULTS_TIME) {
 		if (screamo_counter == -SCREAMING_TIME) {
