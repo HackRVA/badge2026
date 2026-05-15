@@ -401,18 +401,24 @@ static int playing_measure = 0;
 
 static int get_next_measure_number(void)
 {
-	playing_measure++;
+	int next_measure = (playing_measure + 1) % ARRAY_SIZE(drum_song.measure);
 	int wrapped = playing_measure;
-	int p = drum_song.measure[playing_measure];
+	int p = drum_song.measure[next_measure];
+
 	while (p == 255) {
-		playing_measure++;
-		if (playing_measure == wrapped) /* nothing to play */
+		int hit_end_of_array = 0;
+		next_measure++;
+		if (next_measure >= (int) ARRAY_SIZE(drum_song.measure)) {
+			hit_end_of_array = 1;
+			next_measure = 0;
+		}
+		p = drum_song.measure[next_measure];
+		if (hit_end_of_array)
+			next_measure = -1;
+		if (next_measure == wrapped) /* nothing to play */
 			return -1;
-		if (playing_measure >= (int) ARRAY_SIZE(drum_song.measure))
-			playing_measure = 0;
-		p = drum_song.measure[playing_measure];
 	}
-	return playing_measure;
+	return next_measure;
 }
 
 static const struct audio_out_section *get_next_measure(__attribute__((unused)) const struct audio_out_section *prev)
