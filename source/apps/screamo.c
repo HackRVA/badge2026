@@ -1102,35 +1102,55 @@ static void check_buttons(void)
 	}
 }
 
-static void draw_screen(void)
+static void blast_image_to_screen(void)
 {
-	char buf[100];
-	if (!screen_changed)
-		return;
 	FbColor(WHITE);
 	FbClear();
 	FbMove(0, 0);
 	FbImage2(&screamo_image, 0);
 	FbMove(0, 30);
+}
+
+static void draw_screen(void)
+{
+	char buf[100];
+	static int last_screamo_counter = 100000;
+
 	if (screamo_counter > 0) {
-		FbWriteString("GET READY TO\nSCREAM INTO\nTHE BADGE!\n\nHIGHER VOLUME AND\nHIGHER PITCH\nSCORES HIGHER\n\n");
-		snprintf(buf, sizeof(buf), "\nGET READY TO\nSCREAM! %d\n", screamo_counter / 40);
-		FbWriteString(buf);
-		screen_changed = 1;
+		if ((screamo_counter / 40) != last_screamo_counter) {
+			blast_image_to_screen();
+			FbWriteString("GET READY TO\nSCREAM INTO\nTHE BADGE!\n\nHIGHER VOLUME AND\nHIGHER PITCH\nSCORES HIGHER\n\n");
+			snprintf(buf, sizeof(buf), "\nGET READY TO\nSCREAM IN %d SECONDS!\n", screamo_counter / 40);
+			FbWriteString(buf);
+			screen_changed = 1;
+			last_screamo_counter = (screamo_counter / 40);
+		} else {
+			screen_changed = 0;
+		}
 	} else if (screamo_counter <= 0 && screamo_counter > -SCREAMING_TIME) {
-		if (screamo_counter == 0)
+		if (screamo_counter == 0) {
 			screamo_taunt_instance = xorshift(&screamo_prng_state) % NUM_SCREAMO_TAUNTS;
-		FbWriteString("\n\n  SCREAM NOW!!!\n");
-		screen_changed = 1;
+			screen_changed = 1;
+			blast_image_to_screen();
+			FbWriteString("\n\n  SCREAM NOW!!!\n");
+		} else {
+			screen_changed = 0;
+		}
 	} else if (screamo_counter <= -SCREAMING_TIME && screamo_counter > -RESULTS_TIME) {
-		FbWriteString(screamo_taunt[screamo_taunt_instance]);
-		screen_changed = 1;
+		if (screamo_counter == -SCREAMING_TIME) {
+			blast_image_to_screen();
+			FbWriteString(screamo_taunt[screamo_taunt_instance]);
+			screen_changed = 1;
+		} else{
+			screen_changed = 0;
+		}
 	} else {
 		screamo_state = SCREAMO_EXIT;
 		screamo_counter = INTRO_TIME;
 		screen_changed = 1;
 	}
-	FbSwapBuffers();
+	if (screen_changed)
+		FbSwapBuffers();
 }
 
 static void screamo_run(void)
