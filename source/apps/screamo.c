@@ -13,6 +13,10 @@ enum screamo_state_t {
 	SCREAMO_EXIT,
 };
 
+#define INTRO_TIME 200
+#define SCREAMING_TIME 120
+#define RESULTS_TIME (SCREAMING_TIME + 200)
+
 static enum screamo_state_t screamo_state = SCREAMO_INIT;
 static int screen_changed = 0;
 static int screamo_counter = 0;
@@ -1079,7 +1083,7 @@ static void screamo_init(void)
 	FbClear();
 	screamo_state = SCREAMO_RUN;
 	screen_changed = 1;
-	screamo_counter = 200;
+	screamo_counter = INTRO_TIME;
 	/* Seed the prng with a hardware random number generator value */
 	random_insecure_bytes((uint8_t *) &screamo_prng_state, sizeof(screamo_prng_state));
 }
@@ -1113,17 +1117,17 @@ static void draw_screen(void)
 		snprintf(buf, sizeof(buf), "\nGET READY TO\nSCREAM! %d\n", screamo_counter / 40);
 		FbWriteString(buf);
 		screen_changed = 1;
-	} else if (screamo_counter <= 0 && screamo_counter > -200) {
+	} else if (screamo_counter <= 0 && screamo_counter > -SCREAMING_TIME) {
 		if (screamo_counter == 0)
 			screamo_taunt_instance = xorshift(&screamo_prng_state) % NUM_SCREAMO_TAUNTS;
 		FbWriteString("\n\n  SCREAM NOW!!!\n");
 		screen_changed = 1;
-	} else if (screamo_counter <= -200 && screamo_counter > -400) {
+	} else if (screamo_counter <= -SCREAMING_TIME && screamo_counter > -RESULTS_TIME) {
 		FbWriteString(screamo_taunt[screamo_taunt_instance]);
 		screen_changed = 1;
 	} else {
 		screamo_state = SCREAMO_EXIT;
-		screamo_counter = 200;
+		screamo_counter = INTRO_TIME;
 		screen_changed = 1;
 	}
 	FbSwapBuffers();
