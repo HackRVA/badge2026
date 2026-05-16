@@ -16,7 +16,7 @@
 | **MixTape** | A Chiptune tape deck simulator |
 | **Moon Patrol** | An re-implementation of the 80's Moon Patrol arcade game |
 | **Puzzle Attack** | A puzzle game |
-| **RVASec Quest** | A fantasy role playing game in which you pursue a quest to attend RVASec (inspired by Ultima III) |
+| **RVASec Quest** | A fantasy role playing game in which you pursue a quest to attend RVASec (inspired by Ultima III) [See Map](/assets/ossaria-map.jpg)|
 | **Screamo** | Test your screaming abilities |
 | **Simon Says** | A reimplementation of the old Simon electronic game |
 | **Slot Machine** | A digital simulation of a casino-style slot machine game. The player pulls the lever and hopes for a lucky combination. |
