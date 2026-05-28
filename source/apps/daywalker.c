@@ -38,6 +38,10 @@
 #define GEM_MAGNET_SPEED 3
 
 #define MAX_BOLTS 10
+#define MAX_PICKUPS 4
+
+#define PICKUP_LIFETIME 250
+#define PICKUP_DROP_CHANCE 15
 
 #define WEAPON_ORBIT_BASE_COUNT 1
 #define WEAPON_ORBIT_PER_LEVEL_COUNT 1
@@ -115,6 +119,8 @@ static void sfx_chain_hit(void)    { sfx_debug_beep(2800, 12); }
 static void sfx_bolt_hit(void)     { sfx_debug_beep(2400, 15); }
 static void sfx_aura_hit(void)     { sfx_debug_beep(800,  12); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
+static void sfx_pickup_heal(void)  { sfx_debug_beep(1000, 90); }
+static void sfx_pickup_zap(void)   { sfx_debug_beep(2000, 220); }
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
 static void sfx_upgrade_pick(void) { sfx_debug_beep(1200, 60); }
 static void sfx_menu_select(void)  { sfx_debug_beep(900,  40); }
@@ -394,6 +400,39 @@ static const unsigned char sprite_skeleton1[] = {
 	0x70, 0x00, 0x00, 0x07, 0x70, 0x00, 0x07, 0x00, 0x00, 0x70,
 };
 
+static const unsigned char sprite_pickup_health[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x80, 0x00, 0x00, 0x08, 0x80,
+	0x00, 0x08, 0x88, 0x88, 0x80, 0x08, 0x88, 0x88, 0x80, 0x00, 0x08,
+	0x80, 0x00, 0x00, 0x08, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+static const unsigned char sprite_pickup_lightning[] = {
+	0x00, 0x0A, 0xA0, 0x00, 0x00, 0xAA, 0x00, 0x00, 0x0A, 0xAA, 0xA0,
+	0x00, 0x00, 0x0A, 0xA0, 0x00, 0x00, 0x0A, 0xA0, 0x00, 0x00, 0xAA,
+	0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+#define PICKUP_NONE 0
+#define PICKUP_HEALTH 1
+#define PICKUP_LIGHTNING 2
+#define NUM_PICKUP_TYPES 2
+
+struct pickup {
+	short x, y;
+	unsigned char type;
+	unsigned char timer;
+};
+
+static struct pickup pickups[MAX_PICKUPS];
+
+static const unsigned char *const pickup_sprites[] = {
+	NULL,
+	sprite_pickup_health,
+	sprite_pickup_lightning,
+};
+
+static unsigned char screen_flash;
+
 static struct {
 	int x, y;
 	short health, max_health;
@@ -517,6 +556,120 @@ struct enemy {
 
 static struct enemy enemies[MAX_ENEMIES];
 
+static void spawn_pickup(int wx, int wy)
+{
+	for (int i = 0; i < MAX_PICKUPS; i++) {
+		if (pickups[i].type != PICKUP_NONE)
+			continue;
+		pickups[i].x = (short) wx;
+		pickups[i].y = (short) wy;
+		pickups[i].type =
+		    (unsigned char) (1 + rng_range(0, NUM_PICKUP_TYPES));
+		pickups[i].timer = PICKUP_LIFETIME;
+		return;
+	}
+}
+
+static void apply_pickup_health(void)
+{
+	player.health += 5;
+	if (player.health > player.max_health)
+		player.health = player.max_health;
+	sfx_pickup_heal();
+}
+
+/* Lightning pickup wipes the field. Bypasses hurt_enemy intentionally so it
+ * doesn't spawn 48 damage numbers or roll for another pickup drop per kill. */
+static void apply_pickup_lightning(void)
+{
+	for (int j = 0; j < MAX_ENEMIES; j++) {
+		if (enemies[j].type == ENEMY_NONE)
+			continue;
+		spawn_gem(TO_INT(enemies[j].x), TO_INT(enemies[j].y),
+		          enemy_definitions[enemies[j].type].gem_value);
+		enemies[j].type = ENEMY_NONE;
+		player.kills++;
+	}
+	screen_flash = 8;
+	sfx_pickup_zap();
+}
+
+static void apply_pickup_effect(unsigned char type)
+{
+	switch (type) {
+	case PICKUP_HEALTH:
+		apply_pickup_health();
+		break;
+	case PICKUP_LIGHTNING:
+		apply_pickup_lightning();
+		break;
+	}
+}
+
+static void update_pickup_timers(void)
+{
+	for (int i = 0; i < MAX_PICKUPS; i++) {
+		if (pickups[i].type == PICKUP_NONE)
+			continue;
+		if (pickups[i].timer > 0)
+			pickups[i].timer--;
+		if (pickups[i].timer == 0)
+			pickups[i].type = PICKUP_NONE;
+	}
+}
+
+static void collect_pickups(void)
+{
+	int px = TO_INT(player.x);
+	int py = TO_INT(player.y);
+
+	for (int i = 0; i < MAX_PICKUPS; i++) {
+		if (pickups[i].type == PICKUP_NONE)
+			continue;
+		if (!overlap_int(pickups[i].x, pickups[i].y, px, py, 10))
+			continue;
+
+		apply_pickup_effect(pickups[i].type);
+		pickups[i].type = PICKUP_NONE;
+	}
+}
+
+static void update_pickups(void)
+{
+	update_pickup_timers();
+	collect_pickups();
+}
+
+static void draw_pickups(void)
+{
+	for (int i = 0; i < MAX_PICKUPS; i++) {
+		if (pickups[i].type == PICKUP_NONE)
+			continue;
+		if (pickups[i].timer < 60 && (elapsed_frames & 1))
+			continue;
+
+		int bob = ((elapsed_frames / 8) & 1) ? -1 : 0;
+		int sx = pickups[i].x - camera_x;
+		int sy = pickups[i].y - camera_y + bob;
+		if (offscreen(sx, sy, 8))
+			continue;
+		draw_sprite(sx, sy, pickup_sprites[pickups[i].type]);
+	}
+}
+
+static void draw_screen_flash(void)
+{
+	if (screen_flash == 0)
+		return;
+
+	FbColor(PC(10));
+	unsigned int density = (unsigned int) screen_flash * 2;
+	for (int y = 0; y < LCD_YSIZE; y += 3)
+		for (int x = 0; x < LCD_XSIZE; x += 3)
+			if ((((unsigned int) (x * 7 + y * 13) + elapsed_frames) & 7u) < density)
+				FbPoint(x, y);
+}
+
 static void hurt_enemy(struct enemy *e, int damage)
 {
 	e->health -= (short) damage;
@@ -526,6 +679,8 @@ static void hurt_enemy(struct enemy *e, int damage)
 		int wx = TO_INT(e->x);
 		int wy = TO_INT(e->y);
 		spawn_gem(wx, wy, enemy_definitions[e->type].gem_value);
+		if (rng_range(0, PICKUP_DROP_CHANCE) == 0)
+			spawn_pickup(wx, wy);
 		e->type = ENEMY_NONE;
 		player.kills++;
 		sfx_enemy_die();
@@ -1602,6 +1757,7 @@ static void clear_world(void)
 	memset(enemies, 0, sizeof(enemies));
 	memset(gems, 0, sizeof(gems));
 	memset(damage_numbers, 0, sizeof(damage_numbers));
+	memset(pickups, 0, sizeof(pickups));
 }
 
 static void init_camera(void)
@@ -1615,6 +1771,7 @@ static void reset_run_state(void)
 	weapons_init_all();
 	weapons[WEAPON_ORBIT] = 1;
 	speed_level = 0;
+	screen_flash = 0;
 	level_up.active = 0;
 	spawn_timer = 30;
 	elapsed_frames = 0;
@@ -1635,6 +1792,7 @@ static void draw_play_frame(bool show_level_up)
 	FbClear();
 	draw_ground();
 	draw_gems();
+	draw_pickups();
 	draw_enemies();
 	draw_player_sprite();
 
@@ -1643,6 +1801,7 @@ static void draw_play_frame(bool show_level_up)
 	weapons_draw_all(px_scr, py_scr);
 
 	draw_damage_numbers();
+	draw_screen_flash();
 	if (show_level_up)
 		draw_level_up();
 	FbSwapBuffers();
@@ -1682,12 +1841,15 @@ static void tick_play(int down_latches)
 	update_enemies();
 	weapons_update_all(player.x, player.y);
 	update_gems();
+	update_pickups();
 	update_damage_numbers();
 	update_spawns();
 	update_camera();
 
 	if (player.damage_flash > 0)
 		player.damage_flash--;
+	if (screen_flash > 0)
+		screen_flash--;
 
 	check_level_up();
 
