@@ -37,12 +37,23 @@
 #define GEM_MAGNET_RADIUS 32
 #define GEM_MAGNET_SPEED 3
 
+#define MAX_BOLTS 10
+
 #define WEAPON_ORBIT_BASE_COUNT 1
 #define WEAPON_ORBIT_PER_LEVEL_COUNT 1
 #define WEAPON_ORBIT_BASE_RADIUS 18
 #define WEAPON_ORBIT_PER_LEVEL_RADIUS 3
 
+#define WEAPON_BOLT_BASE_DAMAGE 2
+#define WEAPON_BOLT_PER_LEVEL_DAMAGE 1
+#define WEAPON_BOLT_BASE_DELAY 30
+#define WEAPON_BOLT_PER_LEVEL_RATE 4
+#define WEAPON_BOLT_MIN_DELAY 8
+
 #define WEAPON_LEVEL_CAP 5
+
+#define RANGED_ACTIVATE_DISTANCE 30
+#define RANGED_ACTIVATE_DISTANCE_SQUARED (RANGED_ACTIVATE_DISTANCE * RANGED_ACTIVATE_DISTANCE)
 
 #define DAMAGE_NUMBER_LIFETIME 30
 #define DAMAGE_NUMBER_RISE_SPEED 1
@@ -89,6 +100,8 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
 static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
 static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
+static void sfx_bolt_fire(void)    { sfx_debug_beep(1800, 18); }
+static void sfx_bolt_hit(void)     { sfx_debug_beep(2400, 15); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
 static void sfx_upgrade_pick(void) { sfx_debug_beep(1200, 60); }
@@ -702,14 +715,28 @@ static void draw_enemies(void)
 	}
 }
 
+struct bolt {
+	int x, y;
+	short vx, vy;
+	signed char damage;
+	signed char life;
+};
+
+static struct bolt bolts[MAX_BOLTS];
+
 #define WEAPON_ORBIT 0
-#define NUM_WEAPONS 1
+#define WEAPON_BOLT 1
+#define NUM_WEAPONS 2
 
 static unsigned char weapons[NUM_WEAPONS];
 
 static void weapon_orbit_init(void);
 static void weapon_orbit_update(int px_fp, int py_fp);
 static void weapon_orbit_draw(int px_scr, int py_scr);
+
+static void weapon_bolt_init(void);
+static void weapon_bolt_update(int px_fp, int py_fp);
+static void weapon_bolt_draw(int px_scr, int py_scr);
 
 typedef void (*weapon_function_void)(void);
 typedef void (*weapon_function_2i)(int, int);
@@ -720,6 +747,7 @@ static const struct weapon_def {
 	weapon_function_2i draw;
 } weapon_definitions[NUM_WEAPONS] = {
 	[WEAPON_ORBIT] = { weapon_orbit_init, weapon_orbit_update, weapon_orbit_draw },
+	[WEAPON_BOLT]  = { weapon_bolt_init,  weapon_bolt_update,  weapon_bolt_draw  },
 };
 
 static unsigned char orbit_angle;
@@ -800,6 +828,143 @@ static void weapon_orbit_draw(int px_scr, int py_scr)
 	}
 }
 
+static signed char bolt_cooldown;
+
+static int bolt_damage(void)
+{
+	return WEAPON_BOLT_BASE_DAMAGE + weapons[WEAPON_BOLT] * WEAPON_BOLT_PER_LEVEL_DAMAGE;
+}
+static int bolt_rate(void)
+{
+	int r = WEAPON_BOLT_BASE_DELAY - weapons[WEAPON_BOLT] * WEAPON_BOLT_PER_LEVEL_RATE;
+	return r < WEAPON_BOLT_MIN_DELAY ? WEAPON_BOLT_MIN_DELAY : r;
+}
+
+static int find_nearest_enemy_skip(int ox, int oy, int max_distance_squared,
+                                   const unsigned char *skip)
+{
+	int best_distance = 0x7FFFFFFF, best_i = -1;
+	for (int i = 0; i < MAX_ENEMIES; i++) {
+		if (enemies[i].type == ENEMY_NONE)
+			continue;
+		if (skip && skip[i])
+			continue;
+		int dx = TO_INT(enemies[i].x - ox);
+		int dy = TO_INT(enemies[i].y - oy);
+		int d = dx * dx + dy * dy;
+		if (d < best_distance && d <= max_distance_squared) {
+			best_distance = d;
+			best_i = i;
+		}
+	}
+	return best_i;
+}
+
+static int find_nearest_enemy(int ox, int oy, int max_distance_squared)
+{
+	return find_nearest_enemy_skip(ox, oy, max_distance_squared, NULL);
+}
+
+static int fire_bolt(void)
+{
+	int best_i = find_nearest_enemy(player.x, player.y, RANGED_ACTIVATE_DISTANCE_SQUARED);
+	if (best_i < 0)
+		return 0;
+
+	int bi = -1;
+	for (int i = 0; i < MAX_BOLTS; i++)
+		if (bolts[i].life <= 0) {
+			bi = i;
+			break;
+		}
+	if (bi < 0)
+		return 0;
+
+	int dx = enemies[best_i].x - player.x;
+	int dy = enemies[best_i].y - player.y;
+	int distance = fp_distance_from_squared((int64_t) dx * dx + (int64_t) dy * dy);
+	int speed = TO_FP(4);
+	bolts[bi].x = player.x;
+	bolts[bi].y = player.y;
+	bolts[bi].vx = (short) ((int64_t) dx * speed / distance);
+	bolts[bi].vy = (short) ((int64_t) dy * speed / distance);
+	bolts[bi].damage = (signed char) bolt_damage();
+	bolts[bi].life = 40;
+	sfx_bolt_fire();
+	return 1;
+}
+
+static void weapon_bolt_init(void)
+{
+	bolt_cooldown = 30;
+	memset(bolts, 0, sizeof(bolts));
+}
+
+static void bolt_fire_if_ready(void)
+{
+	bolt_cooldown--;
+	if (bolt_cooldown > 0)
+		return;
+	bolt_cooldown = (signed char) (fire_bolt() ? bolt_rate() : 3);
+}
+
+static void bolt_advance_and_collide(void)
+{
+	for (int i = 0; i < MAX_BOLTS; i++) {
+		struct bolt *b = &bolts[i];
+		if (b->life <= 0)
+			continue;
+		b->x += b->vx;
+		b->y += b->vy;
+		b->life--;
+		if (b->life <= 0)
+			continue;
+		for (int j = 0; j < MAX_ENEMIES; j++) {
+			if (enemies[j].type == ENEMY_NONE)
+				continue;
+			if (overlap_int(TO_INT(b->x), TO_INT(b->y),
+			                TO_INT(enemies[j].x),
+			                TO_INT(enemies[j].y), 6)) {
+				sfx_bolt_hit();
+				hurt_enemy(&enemies[j], b->damage);
+				b->life = 0;
+				break;
+			}
+		}
+	}
+}
+
+static void weapon_bolt_update(int px_fp, int py_fp)
+{
+	(void) px_fp;
+	(void) py_fp;
+	if (weapons[WEAPON_BOLT] == 0)
+		return;
+
+	bolt_fire_if_ready();
+	bolt_advance_and_collide();
+}
+
+static void weapon_bolt_draw(int px_scr, int py_scr)
+{
+	(void) px_scr;
+	(void) py_scr;
+	FbColor(PC(10));
+	for (int i = 0; i < MAX_BOLTS; i++) {
+		if (bolts[i].life <= 0)
+			continue;
+		int bx = TO_INT(bolts[i].x) - camera_x;
+		int by = TO_INT(bolts[i].y) - camera_y;
+		if (bx >= 0 && bx < LCD_XSIZE && by >= 0 && by < LCD_YSIZE) {
+			FbPoint(bx, by);
+			if (bx + 1 < LCD_XSIZE)
+				FbPoint(bx + 1, by);
+			if (by + 1 < LCD_YSIZE)
+				FbPoint(bx, by + 1);
+		}
+	}
+}
+
 static void weapons_init_all(void)
 {
 	memset(weapons, 0, sizeof(weapons));
@@ -828,6 +993,7 @@ static const struct {
 	const char *short_name;
 } upgrade_definitions[NUM_UPGRADES] = {
 	[WEAPON_ORBIT] = { "ORBIT", "Spinning orbs", "or" },
+	[WEAPON_BOLT] = { "BOLT", "Auto-fire bolts", "bl" },
 	[UPGRADE_SPEED] = { "SPEED", "Move faster", "sp" },
 };
 
