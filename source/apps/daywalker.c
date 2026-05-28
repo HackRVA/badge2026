@@ -1864,6 +1864,100 @@ static void init_game(void)
 	last_frame = rtc_get_ms_since_boot();
 }
 
+static void draw_player_health_bar(void)
+{
+	int health_percent = player.health * 100 / player.max_health;
+	if (health_percent < 0)
+		health_percent = 0;
+	struct ui_progress_bar health_bar = {
+		.x = 1,
+		.y = 1,
+		.width = LCD_XSIZE - 2,
+		.height = 4,
+		.outline_size = 1,
+		.fill_color = PC(8),
+		.empty_color = PC(0),
+		.outline_color = PC(5),
+		.fill = ui_progress_bar_calculate_fill_percentage(health_percent),
+	};
+	ui_progress_bar_draw(health_bar);
+}
+
+static void draw_player_experience_bar(void)
+{
+	int experience_percent = (int) ((uint64_t) player.experience * 100 / player.experience_next);
+	if (experience_percent > 100)
+		experience_percent = 100;
+	struct ui_progress_bar experience_bar = {
+		.x = 1,
+		.y = 6,
+		.width = LCD_XSIZE - 2,
+		.height = 2,
+		.outline_size = 0,
+		.fill_color = PC(12),
+		.empty_color = PC(2),
+		.outline_color = PC(2),
+		.fill = ui_progress_bar_calculate_fill_percentage(experience_percent),
+	};
+	ui_progress_bar_draw(experience_bar);
+}
+
+static void draw_player_level(void)
+{
+	char buf[24];
+	FbColor(PC(10));
+	snprintf(buf, sizeof(buf), "Lv%d", player.level);
+	FbMove(8, 8);
+	write_string(buf);
+}
+
+static void draw_player_kills(void)
+{
+	char buf[24];
+	FbColor(PC(6));
+	snprintf(buf, sizeof(buf), "K:%d", player.kills);
+	FbMove(ui_center_text_x(buf, LCD_XSIZE / 2 - 24, LCD_XSIZE), 8);
+	write_string(buf);
+}
+
+static void draw_player_time(void)
+{
+	char buf[24];
+	int seconds = elapsed_frames / 30;
+	int minutes = seconds / 60;
+	seconds %= 60;
+	FbColor(PC(7));
+	snprintf(buf, sizeof(buf), "%d:%02d", minutes, seconds);
+	FbMove(LCD_XSIZE / 2 - 16, 8);
+	write_string(buf);
+}
+
+static void draw_weapon_upgrade_icons(void)
+{
+	char buf[24];
+	int wy = LCD_YSIZE - 14;
+	for (int w = 0; w < NUM_UPGRADES; w++) {
+		int lv = upgrade_level(w);
+		if (lv > 0) {
+			FbColor(PC(w + 1));
+			snprintf(buf, sizeof(buf), "%s%d",
+			         upgrade_definitions[w].short_name, lv);
+			FbMove(1 + w * 26, wy);
+			write_string(buf);
+		}
+	}
+}
+
+static void draw_hud(void)
+{
+	draw_player_health_bar();
+	draw_player_experience_bar();
+	draw_player_level();
+	draw_player_kills();
+	draw_player_time();
+	draw_weapon_upgrade_icons();
+}
+
 static void draw_play_frame(bool show_level_up)
 {
 	FbClear();
@@ -1879,6 +1973,7 @@ static void draw_play_frame(bool show_level_up)
 
 	draw_damage_numbers();
 	draw_screen_flash();
+	draw_hud();
 	if (show_level_up)
 		draw_level_up();
 	FbSwapBuffers();
