@@ -19,6 +19,7 @@
 #include "menu.h"
 #include "palette.h"
 #include "rtc.h"
+#include "trig.h"
 #include "ui.h"
 #include "xorshift.h"
 
@@ -34,6 +35,13 @@
 #define GEM_COLLECT_RADIUS 16
 #define GEM_MAGNET_RADIUS 32
 #define GEM_MAGNET_SPEED 3
+
+#define WEAPON_ORBIT_BASE_COUNT 1
+#define WEAPON_ORBIT_PER_LEVEL_COUNT 1
+#define WEAPON_ORBIT_BASE_RADIUS 18
+#define WEAPON_ORBIT_PER_LEVEL_RADIUS 3
+
+#define WEAPON_LEVEL_CAP 5
 
 #define DAMAGE_NUMBER_LIFETIME 30
 #define DAMAGE_NUMBER_RISE_SPEED 1
@@ -79,6 +87,7 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 }
 static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
 static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
+static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
 static void sfx_menu_select(void)  { sfx_debug_beep(900,  40); }
@@ -120,6 +129,14 @@ static int offscreen(int sx, int sy, int margin)
 {
 	return sx < -margin || sx >= LCD_XSIZE + margin ||
 	       sy < -margin || sy >= LCD_YSIZE + margin;
+}
+
+/* Circle overlap in fixed-point space; radius is in world pixels. */
+static int overlap_fp(int ax, int ay, int bx, int by, int r_world)
+{
+	int dx = ax - bx, dy = ay - by;
+	int64_t r = TO_FP(r_world);
+	return (int64_t) dx * dx + (int64_t) dy * dy < r * r;
 }
 
 /* Circle overlap in integer pixel space. */
@@ -460,6 +477,7 @@ struct enemy {
 	unsigned char type;
 	unsigned char damage_flash;
 	unsigned char attack_cooldown;
+	unsigned char orbit_cooldown;
 };
 
 static struct enemy enemies[MAX_ENEMIES];
@@ -524,6 +542,7 @@ static int spawn_enemy(int type)
 	e->health = enemy_definitions[type].health;
 	e->damage_flash = 0;
 	e->attack_cooldown = 0;
+	e->orbit_cooldown = 0;
 	e->vx = e->vy = 0;
 
 	int sx, sy;
@@ -608,6 +627,8 @@ static void update_enemies(void)
 			e->damage_flash--;
 		if (e->attack_cooldown > 0)
 			e->attack_cooldown--;
+		if (e->orbit_cooldown > 0)
+			e->orbit_cooldown--;
 
 		enemy_apply_knockback(e);
 		enemy_chase_player(e, px, py);
@@ -669,6 +690,123 @@ static void draw_enemies(void)
 		draw_sprite(sx, sy, enemy_definitions[e->type].sprite[frame]);
 		draw_enemy_health_bar(e, sx, sy);
 	}
+}
+
+#define WEAPON_ORBIT 0
+#define NUM_WEAPONS 1
+
+static unsigned char weapons[NUM_WEAPONS];
+
+static void weapon_orbit_init(void);
+static void weapon_orbit_update(int px_fp, int py_fp);
+static void weapon_orbit_draw(int px_scr, int py_scr);
+
+typedef void (*weapon_function_void)(void);
+typedef void (*weapon_function_2i)(int, int);
+
+static const struct weapon_def {
+	weapon_function_void init;
+	weapon_function_2i update;
+	weapon_function_2i draw;
+} weapon_definitions[NUM_WEAPONS] = {
+	[WEAPON_ORBIT] = { weapon_orbit_init, weapon_orbit_update, weapon_orbit_draw },
+};
+
+static unsigned char orbit_angle;
+
+static int orbit_damage(void)
+{
+	return weapons[WEAPON_ORBIT];
+}
+static int orbit_count(void)
+{
+	return WEAPON_ORBIT_BASE_COUNT + weapons[WEAPON_ORBIT] * WEAPON_ORBIT_PER_LEVEL_COUNT;
+}
+static int orbit_radius(void)
+{
+	return WEAPON_ORBIT_BASE_RADIUS + weapons[WEAPON_ORBIT] * WEAPON_ORBIT_PER_LEVEL_RADIUS;
+}
+
+static void weapon_orbit_init(void)
+{
+	orbit_angle = 0;
+}
+
+static void weapon_orbit_update(int px_fp, int py_fp)
+{
+	if (weapons[WEAPON_ORBIT] == 0)
+		return;
+
+	orbit_angle = (orbit_angle + 2) & 127;
+	int n = orbit_count();
+	int r = orbit_radius();
+	int damage = orbit_damage();
+
+	for (int o = 0; o < n; o++) {
+		int a = (orbit_angle + o * 128 / n) & 127;
+
+		int ox_fp = px_fp + r * cosine(a);
+		int oy_fp = py_fp - r * sine(a);
+
+		for (int i = 0; i < MAX_ENEMIES; i++) {
+			if (enemies[i].type == ENEMY_NONE)
+				continue;
+			if (enemies[i].orbit_cooldown > 0)
+				continue;
+
+			int dx = enemies[i].x - ox_fp;
+			int dy = enemies[i].y - oy_fp;
+			int64_t distance_squared = (int64_t) dx * dx + (int64_t) dy * dy;
+			if (distance_squared < (int64_t) TO_FP(7) * TO_FP(7)) {
+				sfx_orbit_hit();
+				hurt_enemy(&enemies[i], damage);
+				enemies[i].orbit_cooldown = 10;
+				int distance = fp_distance_from_squared(distance_squared);
+				int knockback = TO_FP(3);
+				enemies[i].vx = (short) (dx * knockback / distance);
+				enemies[i].vy = (short) (dy * knockback / distance);
+			}
+		}
+	}
+}
+
+static void weapon_orbit_draw(int px_scr, int py_scr)
+{
+	if (weapons[WEAPON_ORBIT] == 0)
+		return;
+
+	int n = orbit_count();
+	int r = orbit_radius();
+	FbColor(PC(9));
+	for (int o = 0; o < n; o++) {
+		int a = (orbit_angle + o * 128 / n) & 127;
+		int ox = px_scr + r * cosine(a) / 256;
+		int oy = py_scr + r * (-sine(a)) / 256;
+		for (int dy = -1; dy <= 1; dy++)
+			for (int dx = -1; dx <= 1; dx++)
+				if (ox + dx >= 0 && ox + dx < LCD_XSIZE &&
+				    oy + dy >= 0 && oy + dy < LCD_YSIZE)
+					FbPoint(ox + dx, oy + dy);
+	}
+}
+
+static void weapons_init_all(void)
+{
+	memset(weapons, 0, sizeof(weapons));
+	for (int i = 0; i < NUM_WEAPONS; i++)
+		weapon_definitions[i].init();
+}
+
+static void weapons_update_all(int px_fp, int py_fp)
+{
+	for (int i = 0; i < NUM_WEAPONS; i++)
+		weapon_definitions[i].update(px_fp, py_fp);
+}
+
+static void weapons_draw_all(int px_scr, int py_scr)
+{
+	for (int i = 0; i < NUM_WEAPONS; i++)
+		weapon_definitions[i].draw(px_scr, py_scr);
 }
 
 static uint32_t next_experience_threshold(uint32_t current)
@@ -899,6 +1037,8 @@ static void init_camera(void)
 
 static void reset_run_state(void)
 {
+	weapons_init_all();
+	weapons[WEAPON_ORBIT] = 1;
 	speed_level = 0;
 	spawn_timer = 30;
 	elapsed_frames = 0;
@@ -921,6 +1061,11 @@ static void draw_play_frame(void)
 	draw_gems();
 	draw_enemies();
 	draw_player_sprite();
+
+	int px_scr = TO_INT(player.x) - camera_x + 4;
+	int py_scr = TO_INT(player.y) - camera_y + 4;
+	weapons_draw_all(px_scr, py_scr);
+
 	draw_damage_numbers();
 	FbSwapBuffers();
 }
@@ -947,6 +1092,7 @@ static void tick_play(int down_latches)
 	elapsed_frames++;
 	update_player();
 	update_enemies();
+	weapons_update_all(player.x, player.y);
 	update_gems();
 	update_damage_numbers();
 	update_spawns();
