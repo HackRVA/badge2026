@@ -50,6 +50,9 @@
 #define WEAPON_BOLT_PER_LEVEL_RATE 4
 #define WEAPON_BOLT_MIN_DELAY 8
 
+#define WEAPON_AURA_BASE_RADIUS 14
+#define WEAPON_AURA_PER_LEVEL_RADIUS 4
+
 #define WEAPON_LEVEL_CAP 5
 
 #define RANGED_ACTIVATE_DISTANCE 30
@@ -101,7 +104,9 @@ static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
 static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
 static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
 static void sfx_bolt_fire(void)    { sfx_debug_beep(1800, 18); }
+static void sfx_aura_pulse(void)   { sfx_debug_beep(600,  45); }
 static void sfx_bolt_hit(void)     { sfx_debug_beep(2400, 15); }
+static void sfx_aura_hit(void)     { sfx_debug_beep(800,  12); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
 static void sfx_upgrade_pick(void) { sfx_debug_beep(1200, 60); }
@@ -726,7 +731,8 @@ static struct bolt bolts[MAX_BOLTS];
 
 #define WEAPON_ORBIT 0
 #define WEAPON_BOLT 1
-#define NUM_WEAPONS 2
+#define WEAPON_AURA 2
+#define NUM_WEAPONS 3
 
 static unsigned char weapons[NUM_WEAPONS];
 
@@ -738,6 +744,10 @@ static void weapon_bolt_init(void);
 static void weapon_bolt_update(int px_fp, int py_fp);
 static void weapon_bolt_draw(int px_scr, int py_scr);
 
+static void weapon_aura_init(void);
+static void weapon_aura_update(int px_fp, int py_fp);
+static void weapon_aura_draw(int px_scr, int py_scr);
+
 typedef void (*weapon_function_void)(void);
 typedef void (*weapon_function_2i)(int, int);
 
@@ -748,7 +758,35 @@ static const struct weapon_def {
 } weapon_definitions[NUM_WEAPONS] = {
 	[WEAPON_ORBIT] = { weapon_orbit_init, weapon_orbit_update, weapon_orbit_draw },
 	[WEAPON_BOLT]  = { weapon_bolt_init,  weapon_bolt_update,  weapon_bolt_draw  },
+	[WEAPON_AURA]  = { weapon_aura_init,  weapon_aura_update,  weapon_aura_draw  },
 };
+
+/*
+ * DDA circle outline -- efficient integer alg picked up from Casey Muratori.
+ */
+static void FbDDACircle(int cx, int cy, int radius)
+{
+	int r2 = radius + radius;
+	int x = radius, y = 0;
+	int delta_y = -2, delta_x = r2 + r2 - 4, delta = r2 - 1;
+	while (y <= x) {
+		FbPoint(cx - x, cy - y);
+		FbPoint(cx + x, cy - y);
+		FbPoint(cx - x, cy + y);
+		FbPoint(cx + x, cy + y);
+		FbPoint(cx - y, cy - x);
+		FbPoint(cx + y, cy - x);
+		FbPoint(cx - y, cy + x);
+		FbPoint(cx + y, cy + x);
+		delta += delta_y;
+		delta_y -= 4;
+		++y;
+		int mask = (delta >> 31);
+		delta += delta_x & mask;
+		delta_x -= 4 & mask;
+		x += mask;
+	}
+}
 
 static unsigned char orbit_angle;
 
@@ -965,6 +1003,75 @@ static void weapon_bolt_draw(int px_scr, int py_scr)
 	}
 }
 
+#define AURA_GROW_FRAMES 20
+#define AURA_PAUSE_FRAMES 30
+
+static unsigned char aura_frame;
+static unsigned char aura_damaged;
+static signed char current_aura_radius;
+
+static int aura_damage(void)
+{
+	return weapons[WEAPON_AURA];
+}
+static int aura_radius(void)
+{
+	return WEAPON_AURA_BASE_RADIUS + weapons[WEAPON_AURA] * WEAPON_AURA_PER_LEVEL_RADIUS;
+}
+
+static void weapon_aura_init(void)
+{
+	aura_frame = 0;
+	aura_damaged = 0;
+	current_aura_radius = 0;
+}
+
+static void weapon_aura_update(int px_fp, int py_fp)
+{
+	if (weapons[WEAPON_AURA] == 0)
+		return;
+
+	int cycle = AURA_PAUSE_FRAMES + AURA_GROW_FRAMES;
+
+	if (aura_frame < AURA_PAUSE_FRAMES) {
+		current_aura_radius = 0;
+	} else {
+		int gf = aura_frame - AURA_PAUSE_FRAMES;
+		current_aura_radius =
+		    (signed char) (aura_radius() * gf / AURA_GROW_FRAMES);
+	}
+
+	if (aura_frame == cycle - 1 && !aura_damaged) {
+		int r = aura_radius();
+		int damage = aura_damage();
+		sfx_aura_pulse();
+		for (int i = 0; i < MAX_ENEMIES; i++) {
+			if (enemies[i].type == ENEMY_NONE)
+				continue;
+			if (overlap_fp(enemies[i].x, enemies[i].y, px_fp, py_fp, r)) {
+				sfx_aura_hit();
+				hurt_enemy(&enemies[i], damage);
+			}
+		}
+		aura_damaged = 1;
+	}
+
+	aura_frame++;
+	if (aura_frame >= cycle) {
+		aura_frame = 0;
+		aura_damaged = 0;
+	}
+}
+
+static void weapon_aura_draw(int px_scr, int py_scr)
+{
+	if (weapons[WEAPON_AURA] == 0 || current_aura_radius <= 0)
+		return;
+	unsigned short col = ((elapsed_frames / 5) & 1) ? PC(3) : PC(2);
+	FbColor(col);
+	FbDDACircle(px_scr, py_scr, current_aura_radius);
+}
+
 static void weapons_init_all(void)
 {
 	memset(weapons, 0, sizeof(weapons));
@@ -994,6 +1101,7 @@ static const struct {
 } upgrade_definitions[NUM_UPGRADES] = {
 	[WEAPON_ORBIT] = { "ORBIT", "Spinning orbs", "or" },
 	[WEAPON_BOLT] = { "BOLT", "Auto-fire bolts", "bl" },
+	[WEAPON_AURA] = { "AURA", "Damage aura", "au" },
 	[UPGRADE_SPEED] = { "SPEED", "Move faster", "sp" },
 };
 
