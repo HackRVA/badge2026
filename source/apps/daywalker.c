@@ -43,6 +43,12 @@
 #define PICKUP_LIFETIME 250
 #define PICKUP_DROP_CHANCE 15
 
+#define BERSERKER_CHANCE 20
+/* Berserker speed = base * NUMERATOR / DENOMINATOR (so 3/2 = 1.5x). */
+#define BERSERKER_SPEED_NUMERATOR 3
+#define BERSERKER_SPEED_DENOMINATOR 2
+#define BERSERKER_HEALTH_MULTIPLIER 3
+
 #define WEAPON_ORBIT_BASE_COUNT 1
 #define WEAPON_ORBIT_PER_LEVEL_COUNT 1
 #define WEAPON_ORBIT_BASE_RADIUS 18
@@ -112,6 +118,7 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
 static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
 static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
+static void sfx_boss_spawn(void)   { sfx_debug_beep(140, 350); }
 static void sfx_bolt_fire(void)    { sfx_debug_beep(1800, 18); }
 static void sfx_chain_cast(void)   { sfx_debug_beep(2200, 35); }
 static void sfx_aura_pulse(void)   { sfx_debug_beep(600,  45); }
@@ -400,6 +407,28 @@ static const unsigned char sprite_skeleton1[] = {
 	0x70, 0x00, 0x00, 0x07, 0x70, 0x00, 0x07, 0x00, 0x00, 0x70,
 };
 
+static const unsigned char sprite_bruiser0[] = {
+	0x00, 0x44, 0x44, 0x00, 0x04, 0x47, 0x74, 0x40, 0x00, 0x48, 0x84,
+	0x00, 0x44, 0x44, 0x44, 0x44, 0x49, 0x44, 0x44, 0x94, 0x00, 0x44,
+	0x44, 0x00, 0x00, 0x40, 0x04, 0x00, 0x04, 0x40, 0x04, 0x40,
+};
+static const unsigned char sprite_bruiser1[] = {
+	0x00, 0x44, 0x44, 0x00, 0x04, 0x47, 0x74, 0x40, 0x00, 0x48, 0x84,
+	0x00, 0x44, 0x44, 0x44, 0x44, 0x49, 0x44, 0x44, 0x94, 0x00, 0x44,
+	0x44, 0x00, 0x04, 0x04, 0x40, 0x00, 0x00, 0x04, 0x04, 0x40,
+};
+
+static const unsigned char sprite_boss0[] = {
+	0x07, 0x77, 0x77, 0x70, 0x77, 0x77, 0x77, 0x77, 0x77, 0x07, 0x70,
+	0x77, 0x77, 0x87, 0x78, 0x77, 0x77, 0x77, 0x77, 0x77, 0x07, 0x70,
+	0x07, 0x70, 0x00, 0x77, 0x77, 0x00, 0x00, 0x70, 0x07, 0x00,
+};
+static const unsigned char sprite_boss1[] = {
+	0x07, 0x77, 0x77, 0x70, 0x77, 0x77, 0x77, 0x77, 0x77, 0x07, 0x70,
+	0x77, 0x77, 0x87, 0x78, 0x77, 0x77, 0x77, 0x77, 0x77, 0x07, 0x00,
+	0x00, 0x70, 0x00, 0x78, 0x87, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
 static const unsigned char sprite_pickup_health[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x80, 0x00, 0x00, 0x08, 0x80,
 	0x00, 0x08, 0x88, 0x88, 0x80, 0x08, 0x88, 0x88, 0x80, 0x00, 0x08,
@@ -526,7 +555,9 @@ static void spawn_gem(int wx, int wy, int value)
 #define ENEMY_BAT 1
 #define ENEMY_SLIME 2
 #define ENEMY_SKELETON 3
-#define NUM_ENEMY_TYPES 4
+#define ENEMY_BOSS 4
+#define ENEMY_BRUISER 5
+#define NUM_ENEMY_TYPES 6
 
 static const struct enemy_def {
 	const unsigned char *sprite[2];
@@ -542,6 +573,8 @@ static const struct enemy_def {
 	[ENEMY_BAT] = { { sprite_bat0, sprite_bat1 }, 4, FP_ONE + FP_ONE / 2, 2, 2, 1, 1, 8 },
 	[ENEMY_SLIME] = { { sprite_slime0, sprite_slime1 }, 12, FP_ONE / 2, 4, 1, 4, 1, 8 },
 	[ENEMY_SKELETON] = { { sprite_skeleton0, sprite_skeleton1 }, 8, FP_ONE, 6, 2, 6, 1, 8 },
+	[ENEMY_BOSS] = { { sprite_boss0, sprite_boss1 }, 15, FP_ONE / 3, 40, 3, 20, 1, 8 },
+	[ENEMY_BRUISER] = { { sprite_bruiser0, sprite_bruiser1 }, 10, FP_ONE / 3, 20, 2, 10, 1, 9 },
 };
 
 struct enemy {
@@ -552,6 +585,7 @@ struct enemy {
 	unsigned char damage_flash;
 	unsigned char attack_cooldown;
 	unsigned char orbit_cooldown;
+	unsigned char berserker;
 };
 
 static struct enemy enemies[MAX_ENEMIES];
@@ -733,6 +767,9 @@ static int spawn_enemy(int type)
 	e->damage_flash = 0;
 	e->attack_cooldown = 0;
 	e->orbit_cooldown = 0;
+	e->berserker = (rng_range(0, BERSERKER_CHANCE) == 0) ? 1 : 0;
+	if (e->berserker)
+		e->health = enemy_definitions[type].health * BERSERKER_HEALTH_MULTIPLIER;
 	e->vx = e->vy = 0;
 
 	int sx, sy;
@@ -755,7 +792,9 @@ static void update_mob_wave(int minute)
 
 	for (int b = 0; b < burst; b++) {
 		int r = rng_range(0, 10 + minute * 3);
-		if (r < 5)
+		if (minute >= 1 && rng_range(0, 12) == 0)
+			spawn_enemy(ENEMY_BRUISER);
+		else if (r < 5)
 			spawn_enemy(ENEMY_BAT);
 		else if (r < 8)
 			spawn_enemy(ENEMY_SLIME);
@@ -764,8 +803,23 @@ static void update_mob_wave(int minute)
 	}
 }
 
+static unsigned int boss_spawned;
+
+/* Boss every 90 seconds; only advance the counter on a real spawn so a full
+ * enemy array can't permanently skip the boss for that interval. */
+static void update_boss_spawn(void)
+{
+	unsigned int boss_threshold = elapsed_frames / (30 * 90);
+	if (boss_threshold > boss_spawned && spawn_enemy(ENEMY_BOSS)) {
+		boss_spawned = boss_threshold;
+		sfx_boss_spawn();
+	}
+}
+
 static void update_spawns(void)
 {
+	update_boss_spawn();
+
 	spawn_timer--;
 	if (spawn_timer > 0)
 		return;
@@ -786,6 +840,8 @@ static void enemy_chase_player(struct enemy *e, int px, int py)
 	int dy = py - e->y;
 	int distance = fp_distance_from_squared((int64_t) dx * dx + (int64_t) dy * dy);
 	int speed = enemy_definitions[e->type].speed;
+	if (e->berserker)
+		speed = speed * BERSERKER_SPEED_NUMERATOR / BERSERKER_SPEED_DENOMINATOR;
 	if (speed > distance)
 		speed = distance;
 	e->x += (dx * speed) / distance;
@@ -839,6 +895,21 @@ static void draw_enemy_damage_flash(struct enemy *e, int sx, int sy)
 				FbPoint(sx + dx, sy + dy);
 }
 
+static void draw_enemy_berserker_flash(struct enemy *e, int sx, int sy)
+{
+	if (!e->berserker)
+		return;
+	if (!((elapsed_frames & 3) < 2))
+		return;
+
+	FbColor(PC(8));
+	for (int dy = 1; dy < 7; dy += 2)
+		for (int dx = 1; dx < 7; dx += 2)
+			if (sx + dx >= 0 && sx + dx < LCD_XSIZE &&
+			    sy + dy >= 0 && sy + dy < LCD_YSIZE)
+				FbPoint(sx + dx, sy + dy);
+}
+
 static void draw_enemy_health_bar(struct enemy *e, int sx, int sy)
 {
 	if (!enemy_definitions[e->type].show_health_bar)
@@ -847,6 +918,8 @@ static void draw_enemy_health_bar(struct enemy *e, int sx, int sy)
 		return;
 
 	int max_health = enemy_definitions[e->type].health;
+	if (e->berserker)
+		max_health *= BERSERKER_HEALTH_MULTIPLIER;
 	int percent = clamp(e->health * 100 / max_health, 0, 100);
 	struct ui_progress_bar ehp = {
 		.x = sx - 2,
@@ -878,6 +951,7 @@ static void draw_enemies(void)
 		int rate = enemy_definitions[e->type].animation_rate;
 		int frame = (elapsed_frames / rate) & 1;
 		draw_sprite(sx, sy, enemy_definitions[e->type].sprite[frame]);
+		draw_enemy_berserker_flash(e, sx, sy);
 		draw_enemy_health_bar(e, sx, sy);
 	}
 }
@@ -1701,7 +1775,7 @@ static void draw_title(void)
 	FbMove(ui_center_text_x("Collect XP to grow.", 0, LCD_XSIZE), 62);
 	write_string("Collect XP to grow.");
 
-	int num_sprites = 3;
+	int num_sprites = 5;
 	int sprite_width = 8;
 	int spacing = 4;
 	int total_w = num_sprites * sprite_width + (num_sprites - 1) * spacing;
@@ -1710,6 +1784,8 @@ static void draw_title(void)
 	draw_sprite(start_x + 0 * (sprite_width + spacing), 80, sprite_bat0);
 	draw_sprite(start_x + 1 * (sprite_width + spacing), 80, sprite_slime0);
 	draw_sprite(start_x + 2 * (sprite_width + spacing), 80, sprite_skeleton0);
+	draw_sprite(start_x + 3 * (sprite_width + spacing), 80, sprite_bruiser0);
+	draw_sprite(start_x + 4 * (sprite_width + spacing), 80, sprite_boss0);
 
 	struct ui_button start_btn = {
 		.x = 30,
@@ -1772,6 +1848,7 @@ static void reset_run_state(void)
 	weapons[WEAPON_ORBIT] = 1;
 	speed_level = 0;
 	screen_flash = 0;
+	boss_spawned = 0;
 	level_up.active = 0;
 	spawn_timer = 30;
 	elapsed_frames = 0;
