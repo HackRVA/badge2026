@@ -53,7 +53,12 @@
 #define WEAPON_AURA_BASE_RADIUS 14
 #define WEAPON_AURA_PER_LEVEL_RADIUS 4
 
+#define WEAPON_CHAIN_BASE_DELAY 64
+#define WEAPON_CHAIN_PER_LEVEL_RATE 5
+#define WEAPON_CHAIN_MIN_DELAY 15
+
 #define WEAPON_LEVEL_CAP 5
+#define MAX_CHAIN_POINTS (2 + WEAPON_LEVEL_CAP)
 
 #define RANGED_ACTIVATE_DISTANCE 30
 #define RANGED_ACTIVATE_DISTANCE_SQUARED (RANGED_ACTIVATE_DISTANCE * RANGED_ACTIVATE_DISTANCE)
@@ -104,7 +109,9 @@ static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
 static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
 static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
 static void sfx_bolt_fire(void)    { sfx_debug_beep(1800, 18); }
+static void sfx_chain_cast(void)   { sfx_debug_beep(2200, 35); }
 static void sfx_aura_pulse(void)   { sfx_debug_beep(600,  45); }
+static void sfx_chain_hit(void)    { sfx_debug_beep(2800, 12); }
 static void sfx_bolt_hit(void)     { sfx_debug_beep(2400, 15); }
 static void sfx_aura_hit(void)     { sfx_debug_beep(800,  12); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
@@ -732,7 +739,8 @@ static struct bolt bolts[MAX_BOLTS];
 #define WEAPON_ORBIT 0
 #define WEAPON_BOLT 1
 #define WEAPON_AURA 2
-#define NUM_WEAPONS 3
+#define WEAPON_CHAIN 3
+#define NUM_WEAPONS 4
 
 static unsigned char weapons[NUM_WEAPONS];
 
@@ -748,6 +756,10 @@ static void weapon_aura_init(void);
 static void weapon_aura_update(int px_fp, int py_fp);
 static void weapon_aura_draw(int px_scr, int py_scr);
 
+static void weapon_chain_init(void);
+static void weapon_chain_update(int px_fp, int py_fp);
+static void weapon_chain_draw(int px_scr, int py_scr);
+
 typedef void (*weapon_function_void)(void);
 typedef void (*weapon_function_2i)(int, int);
 
@@ -759,6 +771,7 @@ static const struct weapon_def {
 	[WEAPON_ORBIT] = { weapon_orbit_init, weapon_orbit_update, weapon_orbit_draw },
 	[WEAPON_BOLT]  = { weapon_bolt_init,  weapon_bolt_update,  weapon_bolt_draw  },
 	[WEAPON_AURA]  = { weapon_aura_init,  weapon_aura_update,  weapon_aura_draw  },
+	[WEAPON_CHAIN] = { weapon_chain_init, weapon_chain_update, weapon_chain_draw },
 };
 
 /*
@@ -1072,6 +1085,146 @@ static void weapon_aura_draw(int px_scr, int py_scr)
 	FbDDACircle(px_scr, py_scr, current_aura_radius);
 }
 
+static struct {
+	short x[MAX_CHAIN_POINTS], y[MAX_CHAIN_POINTS];
+	unsigned char count;
+	unsigned char flash;
+} chain_visual;
+
+static signed char chain_cooldown;
+
+static int chain_damage(void)
+{
+	return 1 + weapons[WEAPON_CHAIN];
+}
+static int chain_count(void)
+{
+	return 1 + weapons[WEAPON_CHAIN];
+}
+static int chain_rate(void)
+{
+	int d = WEAPON_CHAIN_BASE_DELAY - weapons[WEAPON_CHAIN] * WEAPON_CHAIN_PER_LEVEL_RATE;
+	return d < WEAPON_CHAIN_MIN_DELAY ? WEAPON_CHAIN_MIN_DELAY : d;
+}
+static int chain_range_squared(void)
+{
+	int r = 60 + weapons[WEAPON_CHAIN] * 8;
+	return r * r;
+}
+static int chain_hop_range_squared(void)
+{
+	int r = 40 + weapons[WEAPON_CHAIN] * 6;
+	return r * r;
+}
+
+static void weapon_chain_init(void)
+{
+	chain_cooldown = 40;
+	chain_visual.count = 0;
+	chain_visual.flash = 0;
+}
+
+static void weapon_chain_update(int px_fp, int py_fp)
+{
+	if (chain_visual.flash > 0)
+		chain_visual.flash--;
+
+	if (weapons[WEAPON_CHAIN] == 0)
+		return;
+
+	if (--chain_cooldown > 0)
+		return;
+
+	int first = find_nearest_enemy(px_fp, py_fp, chain_range_squared());
+	if (first < 0) {
+		chain_cooldown = 3;
+		return;
+	}
+	chain_cooldown = (signed char) chain_rate();
+	sfx_chain_cast();
+
+	const int damage = chain_damage();
+	const int jumps = chain_count();
+	const int hop_range_squared = chain_hop_range_squared();
+	const int ppx = TO_INT(px_fp), ppy = TO_INT(py_fp);
+
+	unsigned char hit[MAX_ENEMIES];
+	memset(hit, 0, sizeof(hit));
+
+	chain_visual.count = 0;
+	chain_visual.x[chain_visual.count] = (short) ppx;
+	chain_visual.y[chain_visual.count] = (short) ppy;
+	chain_visual.count++;
+
+	int current = first;
+	for (int j = 0; j < jumps && chain_visual.count < MAX_CHAIN_POINTS; j++) {
+		sfx_chain_hit();
+		hurt_enemy(&enemies[current], damage);
+		hit[current] = 1;
+		chain_visual.x[chain_visual.count] = (short) TO_INT(enemies[current].x);
+		chain_visual.y[chain_visual.count] = (short) TO_INT(enemies[current].y);
+		chain_visual.count++;
+
+		int next = find_nearest_enemy_skip(enemies[current].x, enemies[current].y,
+		                                   hop_range_squared, hit);
+		if (next < 0)
+			break;
+
+		int nx = TO_INT(enemies[next].x);
+		int ny = TO_INT(enemies[next].y);
+		int sx = nx - camera_x, sy = ny - camera_y;
+		if (sx < 0 || sx >= LCD_XSIZE || sy < 0 || sy >= LCD_YSIZE)
+			break;
+		int dxp = nx - ppx, dyp = ny - ppy;
+		if (dxp * dxp + dyp * dyp > 120 * 120)
+			break;
+
+		current = next;
+	}
+
+	chain_visual.flash = 6;
+}
+
+/* DDA line walker with per-step jitter for a jagged electric look. */
+static void draw_jagged_line(int x0, int y0, int x1, int y1)
+{
+	int ddx = x1 - x0, ddy = y1 - y0;
+	int adx = ddx < 0 ? -ddx : ddx;
+	int ady = ddy < 0 ? -ddy : ddy;
+	int steps = adx > ady ? adx : ady;
+	if (steps == 0)
+		steps = 1;
+
+	for (int s = 0; s <= steps; s++) {
+		int lx = x0 + ddx * s / steps;
+		int ly = y0 + ddy * s / steps;
+		if (steps > 2) {
+			int jitter = ((s * 7 + elapsed_frames) % 5) - 2;
+			if (ddy != 0) lx += jitter;
+			if (ddx != 0) ly += jitter;
+		}
+		if (lx >= 0 && lx < LCD_XSIZE && ly >= 0 && ly < LCD_YSIZE)
+			FbPoint(lx, ly);
+	}
+}
+
+static void weapon_chain_draw(int px_scr, int py_scr)
+{
+	(void) px_scr;
+	(void) py_scr;
+
+	if (chain_visual.flash == 0 || chain_visual.count < 2)
+		return;
+
+	FbColor((chain_visual.flash & 1) ? PC(10) : PC(7));
+	for (int i = 0; i < chain_visual.count - 1; i++) {
+		draw_jagged_line(chain_visual.x[i] - camera_x,
+		                 chain_visual.y[i] - camera_y,
+		                 chain_visual.x[i + 1] - camera_x,
+		                 chain_visual.y[i + 1] - camera_y);
+	}
+}
+
 static void weapons_init_all(void)
 {
 	memset(weapons, 0, sizeof(weapons));
@@ -1102,6 +1255,7 @@ static const struct {
 	[WEAPON_ORBIT] = { "ORBIT", "Spinning orbs", "or" },
 	[WEAPON_BOLT] = { "BOLT", "Auto-fire bolts", "bl" },
 	[WEAPON_AURA] = { "AURA", "Damage aura", "au" },
+	[WEAPON_CHAIN] = { "CHAIN", "Chain lightning", "ch" },
 	[UPGRADE_SPEED] = { "SPEED", "Move faster", "sp" },
 };
 
