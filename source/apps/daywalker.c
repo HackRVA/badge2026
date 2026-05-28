@@ -20,17 +20,23 @@
 #include "palette.h"
 #include "rtc.h"
 #include "ui.h"
+#include "xorshift.h"
 
 #include "daywalker.h"
 
 #define WORLD_WIDTH 512
 #define WORLD_HEIGHT 512
 
+#define MAX_ENEMIES 48
 #define MAX_GEMS 48
+#define MAX_DAMAGE_NUMBERS 12
 
 #define GEM_COLLECT_RADIUS 16
 #define GEM_MAGNET_RADIUS 32
 #define GEM_MAGNET_SPEED 3
+
+#define DAMAGE_NUMBER_LIFETIME 30
+#define DAMAGE_NUMBER_RISE_SPEED 1
 
 #define FP 8
 #define FP_ONE (1 << FP)
@@ -71,9 +77,25 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 	audio_out_beep(freq, duration);
 #endif
 }
+static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
+static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
 static void sfx_menu_select(void)  { sfx_debug_beep(900,  40); }
+
+static unsigned int rng_state;
+
+static unsigned int rng(void)
+{
+	return xorshift(&rng_state);
+}
+
+static int rng_range(int lo, int hi)
+{
+	if (lo >= hi)
+		return lo;
+	return lo + (int) (rng() % (unsigned int) (hi - lo));
+}
 
 static inline int clamp(int v, int lo, int hi)
 {
@@ -98,6 +120,13 @@ static int offscreen(int sx, int sy, int margin)
 {
 	return sx < -margin || sx >= LCD_XSIZE + margin ||
 	       sy < -margin || sy >= LCD_YSIZE + margin;
+}
+
+/* Circle overlap in integer pixel space. */
+static int overlap_int(int ax, int ay, int bx, int by, int r)
+{
+	int dx = ax - bx, dy = ay - by;
+	return dx * dx + dy * dy < r * r;
 }
 
 /*
@@ -180,10 +209,145 @@ static const unsigned char *const player_frames[4][2] = {
 	{ sprite_player_left0, sprite_player_left1 },
 };
 
+#define DIGIT_WIDTH 4
+#define DIGIT_HEIGHT 5
+
+static const unsigned char digit_bitmap[10][10] = {
+	{ 0x08, 0x80, 0x80, 0x08, 0x80, 0x08, 0x80, 0x08, 0x08, 0x80 },
+	{ 0x08, 0x00, 0x88, 0x00, 0x08, 0x00, 0x08, 0x00, 0x88, 0x80 },
+	{ 0x08, 0x80, 0x80, 0x08, 0x00, 0x80, 0x08, 0x00, 0x88, 0x88 },
+	{ 0x88, 0x80, 0x00, 0x08, 0x08, 0x80, 0x00, 0x08, 0x88, 0x80 },
+	{ 0x80, 0x80, 0x80, 0x80, 0x88, 0x80, 0x00, 0x80, 0x00, 0x80 },
+	{ 0x88, 0x80, 0x80, 0x00, 0x88, 0x80, 0x00, 0x08, 0x88, 0x80 },
+	{ 0x08, 0x80, 0x80, 0x00, 0x88, 0x80, 0x80, 0x08, 0x08, 0x80 },
+	{ 0x88, 0x88, 0x00, 0x08, 0x00, 0x80, 0x08, 0x00, 0x08, 0x00 },
+	{ 0x08, 0x80, 0x80, 0x08, 0x08, 0x80, 0x80, 0x08, 0x08, 0x80 },
+	{ 0x08, 0x80, 0x80, 0x08, 0x08, 0x88, 0x00, 0x08, 0x08, 0x80 },
+};
+
+static void draw_digit_bitmap(int sx, int sy, int digit)
+{
+	if (digit < 0 || digit > 9)
+		return;
+	const unsigned char *bitmap = digit_bitmap[digit];
+	for (int row = 0; row < DIGIT_HEIGHT; row++) {
+		for (int col = 0; col < DIGIT_WIDTH; col++) {
+			int bi = row * (DIGIT_WIDTH / 2) + col / 2;
+			int nibble = (col & 1) ? (bitmap[bi] & 0x0F) : (bitmap[bi] >> 4);
+			if (nibble == 0)
+				continue;
+			int px = sx + col, py = sy + row;
+			if (px >= 0 && px < LCD_XSIZE && py >= 0 &&
+			    py < LCD_YSIZE)
+				FbPoint(px, py);
+		}
+	}
+}
+
+static void draw_number_bitmap(int sx, int sy, int value)
+{
+	if (value < 0)
+		value = 0;
+	if (value > 99)
+		value = 99;
+	if (value >= 10) {
+		draw_digit_bitmap(sx, sy, value / 10);
+		draw_digit_bitmap(sx + DIGIT_WIDTH, sy, value % 10);
+	} else {
+		draw_digit_bitmap(sx, sy, value);
+	}
+}
+
+struct damage_number {
+	short world_x, world_y;
+	unsigned char value;
+	signed char timer;
+};
+
+static struct damage_number damage_numbers[MAX_DAMAGE_NUMBERS];
+
+static void spawn_damage_number(int wx, int wy, int value)
+{
+	for (int i = 0; i < MAX_DAMAGE_NUMBERS; i++) {
+		if (damage_numbers[i].timer > 0)
+			continue;
+		damage_numbers[i].world_x = (short) wx;
+		damage_numbers[i].world_y = (short) wy;
+		damage_numbers[i].value = (unsigned char) (value > 99 ? 99 : value);
+		damage_numbers[i].timer = DAMAGE_NUMBER_LIFETIME;
+		return;
+	}
+}
+
+static void update_damage_numbers(void)
+{
+	for (int i = 0; i < MAX_DAMAGE_NUMBERS; i++) {
+		if (damage_numbers[i].timer <= 0)
+			continue;
+		damage_numbers[i].world_y -= DAMAGE_NUMBER_RISE_SPEED;
+		damage_numbers[i].timer--;
+	}
+}
+
+static void draw_damage_numbers(void)
+{
+	for (int i = 0; i < MAX_DAMAGE_NUMBERS; i++) {
+		if (damage_numbers[i].timer <= 0)
+			continue;
+		int sx = damage_numbers[i].world_x - camera_x - 2;
+		int sy = damage_numbers[i].world_y - camera_y;
+		if (offscreen(sx, sy, 8))
+			continue;
+		int t = damage_numbers[i].timer;
+		if (t > DAMAGE_NUMBER_LIFETIME * 2 / 3)
+			FbColor(PC(8));
+		else if (t > DAMAGE_NUMBER_LIFETIME / 3)
+			FbColor(PC(9));
+		else
+			FbColor(PC(5));
+		draw_number_bitmap(sx, sy, damage_numbers[i].value);
+	}
+}
+
+static const unsigned char sprite_bat0[] = {
+	0x00, 0x00, 0x00, 0x00, 0xD0, 0x0D, 0xD0, 0x0D, 0xDD, 0xDD, 0xDD,
+	0xDD, 0x0D, 0x7D, 0xD7, 0xD0, 0x0D, 0xDD, 0xDD, 0xD0, 0x00, 0xD0,
+	0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+static const unsigned char sprite_bat1[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x0D, 0xD0,
+	0xD0, 0x0D, 0x7D, 0xD7, 0xD0, 0x0D, 0xDD, 0xDD, 0xD0, 0xD0, 0xDD,
+	0xDD, 0x0D, 0x00, 0xD0, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+static const unsigned char sprite_slime0[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0B, 0xB0,
+	0x00, 0x0B, 0x7B, 0xB7, 0xB0, 0x0B, 0xBB, 0xBB, 0xB0, 0xBB, 0xBB,
+	0xBB, 0xBB, 0x03, 0x33, 0x33, 0x30, 0x00, 0x00, 0x00, 0x00,
+};
+static const unsigned char sprite_slime1[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x0B, 0x7B, 0xB7, 0xB0, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
+	0xBB, 0xBB, 0x03, 0x33, 0x33, 0x30, 0x00, 0x00, 0x00, 0x00,
+};
+
+static const unsigned char sprite_skeleton0[] = {
+	0x00, 0x77, 0x77, 0x00, 0x00, 0x77, 0x77, 0x00, 0x00, 0x07, 0x70,
+	0x00, 0x00, 0x87, 0x78, 0x00, 0x07, 0x07, 0x70, 0x70, 0x00, 0x07,
+	0x70, 0x00, 0x00, 0x07, 0x70, 0x00, 0x00, 0x70, 0x07, 0x00,
+};
+static const unsigned char sprite_skeleton1[] = {
+	0x00, 0x77, 0x77, 0x00, 0x00, 0x77, 0x77, 0x00, 0x00, 0x07, 0x70,
+	0x00, 0x00, 0x87, 0x78, 0x00, 0x00, 0x77, 0x70, 0x70, 0x00, 0x07,
+	0x70, 0x00, 0x00, 0x07, 0x70, 0x00, 0x07, 0x00, 0x00, 0x70,
+};
+
 static struct {
 	int x, y;
+	short health, max_health;
 	uint32_t experience;
 	uint32_t experience_next;
+	unsigned short kills;
 	uint16_t level;
 	unsigned char damage_flash;
 	unsigned char direction;
@@ -252,6 +416,258 @@ static void draw_gems(void)
 			FbPoint(sx + 1, sy);
 		if (sy + 1 < LCD_YSIZE)
 			FbPoint(sx, sy + 1);
+	}
+}
+
+static void spawn_gem(int wx, int wy, int value)
+{
+	for (int i = 0; i < MAX_GEMS; i++) {
+		if (gems[i].value != 0)
+			continue;
+		gems[i].x = (short) wx;
+		gems[i].y = (short) wy;
+		gems[i].value = (unsigned char) (value > 255 ? 255 : value);
+		return;
+	}
+}
+
+#define ENEMY_NONE 0
+#define ENEMY_BAT 1
+#define ENEMY_SLIME 2
+#define ENEMY_SKELETON 3
+#define NUM_ENEMY_TYPES 4
+
+static const struct enemy_def {
+	const unsigned char *sprite[2];
+	unsigned char animation_rate;
+	short speed;
+	short health;
+	unsigned char attack;
+	unsigned char gem_value;
+	unsigned char show_health_bar;
+	unsigned char health_bar_color;
+} enemy_definitions[NUM_ENEMY_TYPES] = {
+	[ENEMY_NONE] = { { NULL, NULL }, 0, 0, 0, 0, 0, 0, 0 },
+	[ENEMY_BAT] = { { sprite_bat0, sprite_bat1 }, 4, FP_ONE + FP_ONE / 2, 2, 2, 1, 1, 8 },
+	[ENEMY_SLIME] = { { sprite_slime0, sprite_slime1 }, 12, FP_ONE / 2, 4, 1, 4, 1, 8 },
+	[ENEMY_SKELETON] = { { sprite_skeleton0, sprite_skeleton1 }, 8, FP_ONE, 6, 2, 6, 1, 8 },
+};
+
+struct enemy {
+	int x, y;
+	short vx, vy;
+	short health;
+	unsigned char type;
+	unsigned char damage_flash;
+	unsigned char attack_cooldown;
+};
+
+static struct enemy enemies[MAX_ENEMIES];
+
+static void hurt_enemy(struct enemy *e, int damage)
+{
+	e->health -= (short) damage;
+	e->damage_flash = 4;
+	spawn_damage_number(TO_INT(e->x), TO_INT(e->y), damage);
+	if (e->health <= 0) {
+		int wx = TO_INT(e->x);
+		int wy = TO_INT(e->y);
+		spawn_gem(wx, wy, enemy_definitions[e->type].gem_value);
+		e->type = ENEMY_NONE;
+		player.kills++;
+		sfx_enemy_die();
+	}
+}
+
+static short spawn_timer;
+
+/* Pick a spawn location offscreen-ish around the player, clamped to world bounds. */
+static void pick_offscreen_spawn(int *out_sx, int *out_sy)
+{
+	int px = TO_INT(player.x), py = TO_INT(player.y);
+	int sx, sy;
+	switch (rng_range(0, 4)) {
+	case 0:
+		sx = px + rng_range(-100, 100);
+		sy = py - 90;
+		break;
+	case 1:
+		sx = px + rng_range(-100, 100);
+		sy = py + 90;
+		break;
+	case 2:
+		sx = px - 100;
+		sy = py + rng_range(-80, 80);
+		break;
+	default:
+		sx = px + 100;
+		sy = py + rng_range(-80, 80);
+		break;
+	}
+	*out_sx = clamp(sx, 4, WORLD_WIDTH - 12);
+	*out_sy = clamp(sy, 4, WORLD_HEIGHT - 12);
+}
+
+static int spawn_enemy(int type)
+{
+	int slot = -1;
+	for (int i = 0; i < MAX_ENEMIES; i++)
+		if (enemies[i].type == ENEMY_NONE) {
+			slot = i;
+			break;
+		}
+	if (slot < 0)
+		return 0;
+
+	struct enemy *e = &enemies[slot];
+	e->type = (unsigned char) type;
+	e->health = enemy_definitions[type].health;
+	e->damage_flash = 0;
+	e->attack_cooldown = 0;
+	e->vx = e->vy = 0;
+
+	int sx, sy;
+	pick_offscreen_spawn(&sx, &sy);
+	e->x = TO_FP(sx);
+	e->y = TO_FP(sy);
+	return 1;
+}
+
+static void update_mob_wave(int minute)
+{
+	int rate = 30 - minute * 4;
+	if (rate < 6)
+		rate = 6;
+	spawn_timer = (short) rate;
+
+	int burst = 1 + minute / 2;
+	if (burst > 4)
+		burst = 4;
+
+	for (int b = 0; b < burst; b++) {
+		int r = rng_range(0, 10 + minute * 3);
+		if (r < 5)
+			spawn_enemy(ENEMY_BAT);
+		else if (r < 8)
+			spawn_enemy(ENEMY_SLIME);
+		else
+			spawn_enemy(ENEMY_SKELETON);
+	}
+}
+
+static void update_spawns(void)
+{
+	spawn_timer--;
+	if (spawn_timer > 0)
+		return;
+	update_mob_wave(elapsed_frames / (30 * 60));
+}
+
+static void enemy_apply_knockback(struct enemy *e)
+{
+	e->x += e->vx;
+	e->y += e->vy;
+	e->vx /= 2;
+	e->vy /= 2;
+}
+
+static void enemy_chase_player(struct enemy *e, int px, int py)
+{
+	int dx = px - e->x;
+	int dy = py - e->y;
+	int distance = fp_distance_from_squared((int64_t) dx * dx + (int64_t) dy * dy);
+	int speed = enemy_definitions[e->type].speed;
+	if (speed > distance)
+		speed = distance;
+	e->x += (dx * speed) / distance;
+	e->y += (dy * speed) / distance;
+}
+
+static void enemy_contact_damage(struct enemy *e, int px, int py)
+{
+	if (overlap_int(TO_INT(e->x), TO_INT(e->y), TO_INT(px), TO_INT(py), 6) &&
+	    e->attack_cooldown == 0) {
+		player.health -= enemy_definitions[e->type].attack;
+		player.damage_flash = 8;
+		e->attack_cooldown = 30;
+		hurt_enemy(e, 1);
+		sfx_player_hurt();
+	}
+}
+
+static void update_enemies(void)
+{
+	int px = player.x, py = player.y;
+
+	for (int i = 0; i < MAX_ENEMIES; i++) {
+		struct enemy *e = &enemies[i];
+		if (e->type == ENEMY_NONE)
+			continue;
+
+		if (e->damage_flash > 0)
+			e->damage_flash--;
+		if (e->attack_cooldown > 0)
+			e->attack_cooldown--;
+
+		enemy_apply_knockback(e);
+		enemy_chase_player(e, px, py);
+		enemy_contact_damage(e, px, py);
+	}
+}
+
+static void draw_enemy_damage_flash(struct enemy *e, int sx, int sy)
+{
+	if (e->damage_flash <= 0)
+		return;
+
+	FbColor(PC(7));
+	for (int dy = 1; dy < 7; dy++)
+		for (int dx = 1; dx < 7; dx++)
+			if (sx + dx >= 0 && sx + dx < LCD_XSIZE &&
+			    sy + dy >= 0 && sy + dy < LCD_YSIZE)
+				FbPoint(sx + dx, sy + dy);
+}
+
+static void draw_enemy_health_bar(struct enemy *e, int sx, int sy)
+{
+	if (!enemy_definitions[e->type].show_health_bar)
+		return;
+	if (e->health <= 0)
+		return;
+
+	int max_health = enemy_definitions[e->type].health;
+	int percent = clamp(e->health * 100 / max_health, 0, 100);
+	struct ui_progress_bar ehp = {
+		.x = sx - 2,
+		.y = sy - 2,
+		.width = 12,
+		.height = 1,
+		.outline_size = 0,
+		.fill_color = PC(enemy_definitions[e->type].health_bar_color),
+		.empty_color = PC(5),
+		.outline_color = PC(5),
+		.fill = ui_progress_bar_calculate_fill_percentage(percent),
+	};
+	ui_progress_bar_draw(ehp);
+}
+
+static void draw_enemies(void)
+{
+	for (int i = 0; i < MAX_ENEMIES; i++) {
+		struct enemy *e = &enemies[i];
+		if (e->type == ENEMY_NONE)
+			continue;
+
+		int sx = TO_INT(e->x) - camera_x;
+		int sy = TO_INT(e->y) - camera_y;
+		if (offscreen(sx, sy, 8))
+			continue;
+
+		draw_enemy_damage_flash(e, sx, sy);
+		int rate = enemy_definitions[e->type].animation_rate;
+		int frame = (elapsed_frames / rate) & 1;
+		draw_sprite(sx, sy, enemy_definitions[e->type].sprite[frame]);
+		draw_enemy_health_bar(e, sx, sy);
 	}
 }
 
@@ -417,6 +833,16 @@ static void draw_title(void)
 	FbMove(ui_center_text_x("Collect XP to grow.", 0, LCD_XSIZE), 62);
 	write_string("Collect XP to grow.");
 
+	int num_sprites = 3;
+	int sprite_width = 8;
+	int spacing = 4;
+	int total_w = num_sprites * sprite_width + (num_sprites - 1) * spacing;
+	int start_x = (LCD_XSIZE - total_w) / 2;
+
+	draw_sprite(start_x + 0 * (sprite_width + spacing), 80, sprite_bat0);
+	draw_sprite(start_x + 1 * (sprite_width + spacing), 80, sprite_slime0);
+	draw_sprite(start_x + 2 * (sprite_width + spacing), 80, sprite_skeleton0);
+
 	struct ui_button start_btn = {
 		.x = 30,
 		.y = 100,
@@ -434,13 +860,23 @@ static void draw_title(void)
 static unsigned long long last_frame;
 #define FRAME_MS 33
 
+static void init_rng(void)
+{
+	rng_state = (unsigned int) rtc_get_ms_since_boot();
+	if (rng_state == 0)
+		rng_state = 1;
+}
+
 static void init_player(void)
 {
 	player.x = TO_FP(WORLD_WIDTH / 2);
 	player.y = TO_FP(WORLD_HEIGHT / 2);
+	player.health = 10;
+	player.max_health = 10;
 	player.experience = 0;
 	player.experience_next = 10;
 	player.level = 1;
+	player.kills = 0;
 	player.damage_flash = 0;
 	player.direction = DIR_DOWN;
 	player.animation_frame = 0;
@@ -450,7 +886,9 @@ static void init_player(void)
 
 static void clear_world(void)
 {
+	memset(enemies, 0, sizeof(enemies));
 	memset(gems, 0, sizeof(gems));
+	memset(damage_numbers, 0, sizeof(damage_numbers));
 }
 
 static void init_camera(void)
@@ -462,11 +900,13 @@ static void init_camera(void)
 static void reset_run_state(void)
 {
 	speed_level = 0;
+	spawn_timer = 30;
 	elapsed_frames = 0;
 }
 
 static void init_game(void)
 {
+	init_rng();
 	init_player();
 	clear_world();
 	reset_run_state();
@@ -479,7 +919,9 @@ static void draw_play_frame(void)
 	FbClear();
 	draw_ground();
 	draw_gems();
+	draw_enemies();
 	draw_player_sprite();
+	draw_damage_numbers();
 	FbSwapBuffers();
 }
 
@@ -504,7 +946,10 @@ static void tick_play(int down_latches)
 
 	elapsed_frames++;
 	update_player();
+	update_enemies();
 	update_gems();
+	update_damage_numbers();
+	update_spawns();
 	update_camera();
 
 	if (player.damage_flash > 0)
