@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "audio.h"
@@ -90,6 +91,7 @@ static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
 static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
 static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
+static void sfx_upgrade_pick(void) { sfx_debug_beep(1200, 60); }
 static void sfx_menu_select(void)  { sfx_debug_beep(900,  40); }
 
 static unsigned int rng_state;
@@ -113,6 +115,14 @@ static inline int clamp(int v, int lo, int hi)
 	if (v > hi)
 		return hi;
 	return v;
+}
+
+static void write_string(const char *string)
+{
+	int prev_transparent_index = FbGetTransparentIndex();
+	FbTransparentIndex(0);
+	FbWriteString(string);
+	FbTransparentIndex(prev_transparent_index);
 }
 
 /* Convert squared FP distance to FP distance, saturated to >= 1 so callers
@@ -809,6 +819,150 @@ static void weapons_draw_all(int px_scr, int py_scr)
 		weapon_definitions[i].draw(px_scr, py_scr);
 }
 
+#define UPGRADE_SPEED NUM_WEAPONS
+#define NUM_UPGRADES (NUM_WEAPONS + 1)
+
+static const struct {
+	const char *name;
+	const char *desc;
+	const char *short_name;
+} upgrade_definitions[NUM_UPGRADES] = {
+	[WEAPON_ORBIT] = { "ORBIT", "Spinning orbs", "or" },
+	[UPGRADE_SPEED] = { "SPEED", "Move faster", "sp" },
+};
+
+static int upgrade_level(int id)
+{
+	return (id < NUM_WEAPONS) ? weapons[id] : speed_level;
+}
+
+static void apply_upgrade(int id)
+{
+	if (id < NUM_WEAPONS) {
+		if (weapons[id] < WEAPON_LEVEL_CAP)
+			weapons[id]++;
+	} else if (id == UPGRADE_SPEED) {
+		if (speed_level < WEAPON_LEVEL_CAP)
+			speed_level++;
+	}
+}
+
+static struct {
+	unsigned char upgrade_a, upgrade_b;
+	unsigned char active;
+} level_up;
+
+static unsigned char choose_level_up_weapon(int exclude[NUM_UPGRADES])
+{
+	int count = 0;
+	for (int i = 0; i < NUM_UPGRADES; ++i)
+		if (!exclude[i]) ++count;
+	if (count == 0) return 0;
+	int pick = rng_range(0, count);
+	for (int i = 0; i < NUM_UPGRADES; ++i) {
+		if (!exclude[i]) {
+			if (pick == 0) return (unsigned char) i;
+			--pick;
+		}
+	}
+	return 0;
+}
+
+static void get_max_level_weapons(int exclude[NUM_UPGRADES], int *available)
+{
+	*available = 0;
+	for (int i = 0; i < NUM_UPGRADES; ++i) {
+		if ((i < NUM_WEAPONS && weapons[i] >= WEAPON_LEVEL_CAP) ||
+		    (i == UPGRADE_SPEED && speed_level >= WEAPON_LEVEL_CAP))
+			exclude[i] = 1;
+		else
+			*available = 1;
+	}
+}
+
+static int count_available_upgrades(int exclude[NUM_UPGRADES])
+{
+	int count = 0;
+	for (int i = 0; i < NUM_UPGRADES; ++i)
+		if (!exclude[i])
+			count++;
+	return count;
+}
+
+static void start_level_up(void)
+{
+	int exclude[NUM_UPGRADES] = {0};
+	int available = 0;
+	get_max_level_weapons(exclude, &available);
+	if (!available) {
+		level_up.active = 0;
+		return;
+	}
+	level_up.active = 1;
+	level_up.upgrade_a = choose_level_up_weapon(exclude);
+	exclude[level_up.upgrade_a] = 1;
+	if (count_available_upgrades(exclude) > 0)
+		level_up.upgrade_b = choose_level_up_weapon(exclude);
+	else
+		level_up.upgrade_b = level_up.upgrade_a;
+}
+
+static void apply_level_up(int choice)
+{
+	int id = (choice == 0) ? level_up.upgrade_a : level_up.upgrade_b;
+	apply_upgrade(id);
+	player.max_health += 2;
+	player.health += 2;
+	if (player.health > player.max_health)
+		player.health = player.max_health;
+	level_up.active = 0;
+	sfx_upgrade_pick();
+}
+
+static void draw_upgrade_choice(char letter, int upgrade_id, int y,
+                                uint16_t accent, uint16_t fill)
+{
+	char buf[24];
+	snprintf(buf, sizeof(buf), "[%c] %s Lv%d",
+	         letter, upgrade_definitions[upgrade_id].name, upgrade_level(upgrade_id) + 1);
+	struct ui_button btn = {
+		.x = 14,
+		.y = y,
+		.width = LCD_XSIZE - 28,
+		.height = 22,
+		.text = buf,
+		.outline_size = 1,
+		.outline_color = accent,
+		.fill_color = fill,
+		.text_color = accent,
+	};
+	ui_button_draw(btn);
+	FbColor(PC(6));
+	FbMove(ui_center_text_x(upgrade_definitions[upgrade_id].desc, btn.x, btn.width),
+	       y + 13);
+	write_string(upgrade_definitions[upgrade_id].desc);
+}
+
+static void draw_level_up(void)
+{
+	struct ui_text_box dialog = {
+		.x = 10,
+		.y = 24,
+		.width = LCD_XSIZE - 20,
+		.height = 80,
+		.outline_size = 1,
+		.outline_color = PC(10),
+		.fill_color = PC(0),
+		.text_color = PC(10),
+		.text = "LEVEL UP!",
+	};
+	ui_text_box_draw(dialog);
+
+	draw_upgrade_choice('A', level_up.upgrade_a, 42, PC(12), PC(2));
+	if (level_up.upgrade_b != level_up.upgrade_a)
+		draw_upgrade_choice('B', level_up.upgrade_b, 72, PC(14), PC(1));
+}
+
 static uint32_t next_experience_threshold(uint32_t current)
 {
 	uint32_t next = current * 3 / 2 + 5;
@@ -822,15 +976,8 @@ static void check_level_up(void)
 	player.experience -= player.experience_next;
 	player.level++;
 	player.experience_next = next_experience_threshold(player.experience_next);
+	start_level_up();
 	sfx_level_up();
-}
-
-static void write_string(const char *string)
-{
-	int prev_transparent_index = FbGetTransparentIndex();
-	FbTransparentIndex(0);
-	FbWriteString(string);
-	FbTransparentIndex(prev_transparent_index);
 }
 
 static int player_speed(void)
@@ -1040,6 +1187,7 @@ static void reset_run_state(void)
 	weapons_init_all();
 	weapons[WEAPON_ORBIT] = 1;
 	speed_level = 0;
+	level_up.active = 0;
 	spawn_timer = 30;
 	elapsed_frames = 0;
 }
@@ -1054,7 +1202,7 @@ static void init_game(void)
 	last_frame = rtc_get_ms_since_boot();
 }
 
-static void draw_play_frame(void)
+static void draw_play_frame(bool show_level_up)
 {
 	FbClear();
 	draw_ground();
@@ -1067,6 +1215,8 @@ static void draw_play_frame(void)
 	weapons_draw_all(px_scr, py_scr);
 
 	draw_damage_numbers();
+	if (show_level_up)
+		draw_level_up();
 	FbSwapBuffers();
 }
 
@@ -1083,6 +1233,16 @@ static void tick_play(int down_latches)
 	if (now - last_frame < FRAME_MS)
 		return;
 	last_frame = now;
+
+	if (level_up.active) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches))
+			apply_level_up(0);
+		else if (level_up.upgrade_b != level_up.upgrade_a &&
+		         BUTTON_PRESSED(BADGE_BUTTON_B, down_latches))
+			apply_level_up(1);
+		draw_play_frame(true);
+		return;
+	}
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 		daywalker_state = DAYWALKER_EXIT;
@@ -1103,7 +1263,7 @@ static void tick_play(int down_latches)
 
 	check_level_up();
 
-	draw_play_frame();
+	draw_play_frame(false);
 }
 
 void daywalker_cb(struct badge_app *app)
