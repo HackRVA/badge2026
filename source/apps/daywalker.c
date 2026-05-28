@@ -117,6 +117,7 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 }
 static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
 static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
+static void sfx_player_death(void) { sfx_debug_beep(100, 500); }
 static void sfx_orbit_hit(void)    { sfx_debug_beep(1300, 12); }
 static void sfx_boss_spawn(void)   { sfx_debug_beep(140, 350); }
 static void sfx_bolt_fire(void)    { sfx_debug_beep(1800, 18); }
@@ -1979,10 +1980,103 @@ static void draw_play_frame(bool show_level_up)
 	FbSwapBuffers();
 }
 
+static void draw_gameover(void)
+{
+	FbClear();
+	char buf[32];
+
+	struct ui_button header = {
+		.x = 20,
+		.y = 4,
+		.width = LCD_XSIZE - 40,
+		.height = 10,
+		.outline_size = 1,
+		.outline_color = PC(8),
+		.fill_color = PC(0),
+		.text_color = PC(8),
+		.text = "YOU DIED",
+	};
+	ui_button_draw(header);
+
+	struct ui_text_box stats_box = {
+		.x = 6,
+		.y = 24,
+		.width = LCD_XSIZE - 12,
+		.height = 78,
+		.outline_size = 1,
+		.outline_color = PC(5),
+		.fill_color = PC(0),
+		.text_color = PC(6),
+		.text = NULL,
+	};
+	ui_text_box_fill(stats_box);
+	ui_text_box_draw_outline(stats_box);
+
+	int seconds = elapsed_frames / 30;
+	int minutes = seconds / 60;
+	seconds %= 60;
+	FbColor(PC(10));
+	snprintf(buf, sizeof(buf), "Time: %d:%02d", minutes, seconds);
+	FbMove(12, 28);
+	write_string(buf);
+
+	FbColor(PC(6));
+	snprintf(buf, sizeof(buf), "Kills: %d", player.kills);
+	FbMove(12, 37);
+	write_string(buf);
+	snprintf(buf, sizeof(buf), "Level: %d", player.level);
+	FbMove(12, 46);
+	write_string(buf);
+
+	int ux = 12, uy = 58;
+	for (int w = 0; w < NUM_UPGRADES; w++) {
+		int lv = upgrade_level(w);
+		if (lv > 0) {
+			FbColor(PC(w + 1));
+			snprintf(buf, sizeof(buf), "%s%d",
+			         upgrade_definitions[w].short_name, lv);
+			FbMove(ux, uy);
+			write_string(buf);
+			ux += 36;
+			if (ux > LCD_XSIZE - 40) {
+				ux = 12;
+				uy += 10;
+			}
+		}
+	}
+
+	struct ui_button retry_btn = {
+		.x = 6,
+		.y = LCD_YSIZE - 22,
+		.width = 58,
+		.height = 16,
+		.text = "A:retry",
+		.outline_size = 1,
+		.outline_color = PC(10),
+		.fill_color = PC(2),
+		.text_color = PC(10),
+	};
+	ui_button_draw(retry_btn);
+
+	struct ui_button exit_btn = {
+		.x = LCD_XSIZE - 64,
+		.y = LCD_YSIZE - 22,
+		.width = 58,
+		.height = 16,
+		.text = "B:exit",
+		.outline_size = 1,
+		.outline_color = PC(5),
+		.fill_color = PC(0),
+		.text_color = PC(5),
+	};
+	ui_button_draw(exit_btn);
+}
+
 static enum {
 	DAYWALKER_INIT = 0,
 	DAYWALKER_TITLE,
 	DAYWALKER_PLAY,
+	DAYWALKER_GAMEOVER,
 	DAYWALKER_EXIT,
 } daywalker_state;
 
@@ -2025,6 +2119,12 @@ static void tick_play(int down_latches)
 
 	check_level_up();
 
+	if (player.health <= 0) {
+		daywalker_state = DAYWALKER_GAMEOVER;
+		sfx_player_death();
+		return;
+	}
+
 	draw_play_frame(false);
 }
 
@@ -2058,6 +2158,21 @@ void daywalker_cb(struct badge_app *app)
 
 	case DAYWALKER_PLAY:
 		tick_play(down_latches);
+		break;
+
+	case DAYWALKER_GAMEOVER:
+		if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+			sfx_menu_select();
+			init_game();
+			daywalker_state = DAYWALKER_PLAY;
+			break;
+		}
+		if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+			daywalker_state = DAYWALKER_EXIT;
+			break;
+		}
+		draw_gameover();
+		FbSwapBuffers();
 		break;
 
 	case DAYWALKER_EXIT:
