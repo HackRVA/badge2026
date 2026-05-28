@@ -15,6 +15,7 @@
 #include "button.h"
 #include "colors.h"
 #include "framebuffer.h"
+#include "fxp_sqrt.h"
 #include "menu.h"
 #include "palette.h"
 #include "rtc.h"
@@ -24,6 +25,12 @@
 
 #define WORLD_WIDTH 512
 #define WORLD_HEIGHT 512
+
+#define MAX_GEMS 48
+
+#define GEM_COLLECT_RADIUS 16
+#define GEM_MAGNET_RADIUS 32
+#define GEM_MAGNET_SPEED 3
 
 #define FP 8
 #define FP_ONE (1 << FP)
@@ -64,6 +71,8 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 	audio_out_beep(freq, duration);
 #endif
 }
+static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
+static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
 static void sfx_menu_select(void)  { sfx_debug_beep(900,  40); }
 
 static inline int clamp(int v, int lo, int hi)
@@ -73,6 +82,22 @@ static inline int clamp(int v, int lo, int hi)
 	if (v > hi)
 		return hi;
 	return v;
+}
+
+/* Convert squared FP distance to FP distance, saturated to >= 1 so callers
+ * can always divide by the result without a separate zero-check. */
+static int fp_distance_from_squared(int64_t distance_squared)
+{
+	int distance = fxp_sqrt((int) (distance_squared >> 8));
+	return distance < 1 ? 1 : distance;
+}
+
+/* True if a sprite at screen pos (sx, sy) is entirely outside the LCD,
+ * given a half-margin in pixels. */
+static int offscreen(int sx, int sy, int margin)
+{
+	return sx < -margin || sx >= LCD_XSIZE + margin ||
+	       sy < -margin || sy >= LCD_YSIZE + margin;
 }
 
 /*
@@ -157,6 +182,9 @@ static const unsigned char *const player_frames[4][2] = {
 
 static struct {
 	int x, y;
+	uint32_t experience;
+	uint32_t experience_next;
+	uint16_t level;
 	unsigned char damage_flash;
 	unsigned char direction;
 	unsigned char animation_frame;
@@ -165,6 +193,83 @@ static struct {
 } player;
 
 static unsigned char speed_level;
+
+struct gem {
+	short x, y;
+	unsigned char value;
+};
+
+static struct gem gems[MAX_GEMS];
+
+static void update_gems(void)
+{
+	int px_fp = player.x;
+	int py_fp = player.y;
+
+	int64_t magnet_radius_squared =
+	    (int64_t) TO_FP(GEM_MAGNET_RADIUS) * TO_FP(GEM_MAGNET_RADIUS);
+	int64_t collect_radius_squared =
+	    (int64_t) TO_FP(GEM_COLLECT_RADIUS) * TO_FP(GEM_COLLECT_RADIUS);
+
+	for (int i = 0; i < MAX_GEMS; i++) {
+		if (gems[i].value == 0)
+			continue;
+
+		int dx = TO_FP((int) gems[i].x) - px_fp;
+		int dy = TO_FP((int) gems[i].y) - py_fp;
+		int64_t distance_squared = (int64_t) dx * dx + (int64_t) dy * dy;
+
+		if (distance_squared < magnet_radius_squared && distance_squared > 0) {
+			int distance = fp_distance_from_squared(distance_squared);
+			gems[i].x -= (short) (dx * GEM_MAGNET_SPEED / distance);
+			gems[i].y -= (short) (dy * GEM_MAGNET_SPEED / distance);
+			dx = TO_FP((int) gems[i].x) - px_fp;
+			dy = TO_FP((int) gems[i].y) - py_fp;
+			distance_squared = (int64_t) dx * dx + (int64_t) dy * dy;
+		}
+
+		if (distance_squared < collect_radius_squared) {
+			player.experience += gems[i].value;
+			gems[i].value = 0;
+			sfx_gem();
+		}
+	}
+}
+
+static void draw_gems(void)
+{
+	int shimmer = (elapsed_frames / 5) & 1;
+	for (int i = 0; i < MAX_GEMS; i++) {
+		if (gems[i].value == 0)
+			continue;
+		int sx = gems[i].x - camera_x;
+		int sy = gems[i].y - camera_y;
+		if (offscreen(sx, sy, 2))
+			continue;
+		FbColor(shimmer ? PC(12) : PC(7));
+		FbPoint(sx, sy);
+		if (sx + 1 < LCD_XSIZE)
+			FbPoint(sx + 1, sy);
+		if (sy + 1 < LCD_YSIZE)
+			FbPoint(sx, sy + 1);
+	}
+}
+
+static uint32_t next_experience_threshold(uint32_t current)
+{
+	uint32_t next = current * 3 / 2 + 5;
+	return next < current ? UINT32_MAX : next;
+}
+
+static void check_level_up(void)
+{
+	if (player.experience < player.experience_next)
+		return;
+	player.experience -= player.experience_next;
+	player.level++;
+	player.experience_next = next_experience_threshold(player.experience_next);
+	sfx_level_up();
+}
 
 static void write_string(const char *string)
 {
@@ -333,11 +438,19 @@ static void init_player(void)
 {
 	player.x = TO_FP(WORLD_WIDTH / 2);
 	player.y = TO_FP(WORLD_HEIGHT / 2);
+	player.experience = 0;
+	player.experience_next = 10;
+	player.level = 1;
 	player.damage_flash = 0;
 	player.direction = DIR_DOWN;
 	player.animation_frame = 0;
 	player.animation_timer = 0;
 	player.moving = 0;
+}
+
+static void clear_world(void)
+{
+	memset(gems, 0, sizeof(gems));
 }
 
 static void init_camera(void)
@@ -355,6 +468,7 @@ static void reset_run_state(void)
 static void init_game(void)
 {
 	init_player();
+	clear_world();
 	reset_run_state();
 	init_camera();
 	last_frame = rtc_get_ms_since_boot();
@@ -364,6 +478,7 @@ static void draw_play_frame(void)
 {
 	FbClear();
 	draw_ground();
+	draw_gems();
 	draw_player_sprite();
 	FbSwapBuffers();
 }
@@ -389,10 +504,13 @@ static void tick_play(int down_latches)
 
 	elapsed_frames++;
 	update_player();
+	update_gems();
 	update_camera();
 
 	if (player.damage_flash > 0)
 		player.damage_flash--;
+
+	check_level_up();
 
 	draw_play_frame();
 }
