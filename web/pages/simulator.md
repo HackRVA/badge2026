@@ -9,18 +9,18 @@ Check out the readme for instructions: [github.com/HackRVA/badge2024](https://gi
 ## Web Simulator
 It's now possible to run the simulator in the web thanks to [web assembly](https://webassembly.org/).
 
-<!-- <style> -->
-<!-- main-container{ -->
-<!--     display:block !important; -->
-<!-- } -->
-<!-- main { -->
-<!--     max-width: none !important; -->
-<!--     width: auto !important; -->
-<!-- } -->
-<!-- </style> -->
+<style>
+    main-container{
+        display:block !important;
+    }
+    main {
+        max-width: none !important;
+        width: auto !important;
+    }
+</style>
 
 
-<!-- <wasm-simulator></wasm-simulator> -->
+<wasm-simulator></wasm-simulator>
 
 <p align="center">
   Check out the <a href="https://badgesim2024.hackrva.org/">2024 badge simulator</a>

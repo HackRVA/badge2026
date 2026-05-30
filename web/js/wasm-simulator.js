@@ -1,24 +1,24 @@
 class WasmSimulator extends HTMLElement {
-  constructor() {
-    super();
-  }
+	constructor() {
+		super();
+	}
 
-  connectedCallback() {
-    this.render();
-  }
+	connectedCallback() {
+		this.render();
+	}
 
-  render_console() {
-    if (this.hasAttribute("console")) {
-      return `<textarea id="output" rows="8"></textarea>`;
-    }
-    return ``;
-  }
+	render_console() {
+		if (this.hasAttribute("console")) {
+			return `<textarea id="output" rows="8"></textarea>`;
+		}
+		return ``;
+	}
 
-  render() {
-    const canvasWidth = this.getAttribute("canvas-width") || "auto";
-    const canvasHeight = this.getAttribute("canvas-height") || "80%";
+	render() {
+		const canvasWidth = this.getAttribute("canvas-width") || "auto";
+		const canvasHeight = this.getAttribute("canvas-height") || "80%";
 
-    this.innerHTML = `
+		this.innerHTML = `
 	<style>
 		.emscripten {
 			padding-right: 0;
@@ -130,159 +130,159 @@ class WasmSimulator extends HTMLElement {
 	${this.render_console()}
     `;
 
-    // this.setupModule();
-    // this.loadEmscriptenScript();
-    this.querySelector("#play-button").addEventListener("click", () =>
-      this.startWasm(),
-    );
+		// this.setupModule();
+		// this.loadEmscriptenScript();
+		this.querySelector("#play-button").addEventListener("click", () =>
+			this.startWasm(),
+		);
 
-    this.setupFullscreenButton();
-    this.setupButtons();
-    // this.setupVolumeControl();
-    window.addEventListener("resize", this.adjustCanvasSize.bind(this));
-  }
+		this.setupFullscreenButton();
+		this.setupButtons();
+		// this.setupVolumeControl();
+		window.addEventListener("resize", this.adjustCanvasSize.bind(this));
+	}
 
-  startWasm() {
-    this.querySelector(".button-container").style.display = "grid";
-    // hide the play button
-    const btn = this.querySelector("#play-button");
-    btn.style.display = "none";
+	startWasm() {
+		this.querySelector(".button-container").style.display = "grid";
+		// hide the play button
+		const btn = this.querySelector("#play-button");
+		btn.style.display = "none";
 
-    // now safe to init audio & run wasm
-    this.setupModule();
-    this.loadEmscriptenScript();
-    setTimeout(() => this.sendKey("r"), 500);
-    setTimeout(() => this.sendKey("r"), 800);
-  }
+		// now safe to init audio & run wasm
+		this.setupModule();
+		this.loadEmscriptenScript();
+		setTimeout(() => this.sendKey("r"), 500);
+		setTimeout(() => this.sendKey("r"), 800);
+	}
 
-  setupModule() {
-    const outputElement = this.querySelector("#output");
-    const canvasElement = this.querySelector("#canvas");
+	setupModule() {
+		const outputElement = this.querySelector("#output");
+		const canvasElement = this.querySelector("#canvas");
 
-    window.Module = {
-      print: (...args) => {
-        const text = args.join(" ");
-        console.log(text);
-        if (outputElement) {
-          outputElement.value += text + "\n";
-          outputElement.scrollTop = outputElement.scrollHeight;
-        }
-      },
-      canvas: canvasElement,
-      totalDependencies: 0,
-      monitorRunDependencies: (left) => {
-        this.totalDependencies = Math.max(this.totalDependencies, left);
-      },
-      setCanvasSize: (width, height) => {
-        canvasElement.width = width;
-        canvasElement.height = height;
-      },
-    };
+		window.Module = {
+			print: (...args) => {
+				const text = args.join(" ");
+				console.log(text);
+				if (outputElement) {
+					outputElement.value += text + "\n";
+					outputElement.scrollTop = outputElement.scrollHeight;
+				}
+			},
+			canvas: canvasElement,
+			totalDependencies: 0,
+			monitorRunDependencies: (left) => {
+				this.totalDependencies = Math.max(this.totalDependencies, left);
+			},
+			setCanvasSize: (width, height) => {
+				canvasElement.width = width;
+				canvasElement.height = height;
+			},
+		};
 
-    canvasElement.addEventListener("webglcontextlost", (e) => {
-      alert("WebGL context lost. You will need to reload the page.");
-      e.preventDefault();
-    });
+		canvasElement.addEventListener("webglcontextlost", (e) => {
+			alert("WebGL context lost. You will need to reload the page.");
+			e.preventDefault();
+		});
 
-    window.onerror = (event) => {
-      console.error(event);
-    };
-  }
+		window.onerror = (event) => {
+			console.error(event);
+		};
+	}
 
-  sendKey(key) {
-    const canvas = this.querySelector("#canvas");
+	sendKey(key) {
+		const canvas = this.querySelector("#canvas");
 
-    let code, keyCode;
-    if (key === "+") {
-      code = "Equal";
-      keyCode = 187;
-    } else if (key === "-") {
-      code = "Minus";
-      keyCode = 189;
-    } else if (key.length === 1 && /^[a-z]$/i.test(key)) {
-      const upper = key.toUpperCase();
-      code = `Key${upper}`;
-      keyCode = upper.charCodeAt(0);
-    } else {
-      code = key;
-      keyCode = key.length === 1 ? key.charCodeAt(0) : 0;
-    }
+		let code, keyCode;
+		if (key === "+") {
+			code = "Equal";
+			keyCode = 187;
+		} else if (key === "-") {
+			code = "Minus";
+			keyCode = 189;
+		} else if (key.length === 1 && /^[a-z]$/i.test(key)) {
+			const upper = key.toUpperCase();
+			code = `Key${upper}`;
+			keyCode = upper.charCodeAt(0);
+		} else {
+			code = key;
+			keyCode = key.length === 1 ? key.charCodeAt(0) : 0;
+		}
 
-    const ev = new KeyboardEvent("keydown", {
-      key,
-      code,
-      keyCode,
-      which: keyCode,
-      bubbles: true,
-      cancelable: true,
-    });
+		const ev = new KeyboardEvent("keydown", {
+			key,
+			code,
+			keyCode,
+			which: keyCode,
+			bubbles: true,
+			cancelable: true,
+		});
 
-    canvas.dispatchEvent(ev);
-  }
+		canvas.dispatchEvent(ev);
+	}
 
-  loadEmscriptenScript() {
-    const scriptSrc = this.getAttribute("script") || "badge2025_c.js";
-    const script = document.createElement("script");
-    script.src = scriptSrc;
-    script.async = true;
-    script.onload = () => console.log(`${scriptSrc} loaded successfully`);
-    script.onerror = () => console.error(`Failed to load ${scriptSrc}`);
-    document.body.appendChild(script);
-  }
+	loadEmscriptenScript() {
+		const scriptSrc = this.getAttribute("script") || "badge2026_c.js";
+		const script = document.createElement("script");
+		script.src = scriptSrc;
+		script.async = true;
+		script.onload = () => console.log(`${scriptSrc} loaded successfully`);
+		script.onerror = () => console.error(`Failed to load ${scriptSrc}`);
+		document.body.appendChild(script);
+	}
 
-  setupFullscreenButton() {
-    const fullscreenButton = this.querySelector("#fullscreen-button");
-    const canvasElement = this.querySelector("#canvas");
-    const containerElement = this.querySelector("#canvas-container");
+	setupFullscreenButton() {
+		const fullscreenButton = this.querySelector("#fullscreen-button");
+		const canvasElement = this.querySelector("#canvas");
+		const containerElement = this.querySelector("#canvas-container");
 
-    fullscreenButton.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        containerElement.requestFullscreen().catch((err) => {
-          alert(
-            `Error attempting to enable fullscreen mode: ${err.message} (${err.name})`,
-          );
-        });
-      } else {
-        document.exitFullscreen();
-      }
-    });
+		fullscreenButton.addEventListener("click", () => {
+			if (!document.fullscreenElement) {
+				containerElement.requestFullscreen().catch((err) => {
+					alert(
+						`Error attempting to enable fullscreen mode: ${err.message} (${err.name})`,
+					);
+				});
+			} else {
+				document.exitFullscreen();
+			}
+		});
 
-    document.addEventListener("fullscreenchange", () => {
-      this.resizeCanvasToFullscreen();
-    });
-  }
+		document.addEventListener("fullscreenchange", () => {
+			this.resizeCanvasToFullscreen();
+		});
+	}
 
-  setupButtons() {
-    const zoomInButton = this.querySelector("#zoom-in-button");
-    const zoomOutButton = this.querySelector("#zoom-out-button");
-    const rotateButton = this.querySelector("#rotate-button");
-    const canvas = this.querySelector("#canvas");
+	setupButtons() {
+		const zoomInButton = this.querySelector("#zoom-in-button");
+		const zoomOutButton = this.querySelector("#zoom-out-button");
+		const rotateButton = this.querySelector("#rotate-button");
+		const canvas = this.querySelector("#canvas");
 
-    zoomInButton.addEventListener("click", () => this.sendKey("+"));
-    zoomOutButton.addEventListener("click", () => this.sendKey("-"));
-    rotateButton.addEventListener("click", () => this.sendKey("r"));
-  }
+		zoomInButton.addEventListener("click", () => this.sendKey("+"));
+		zoomOutButton.addEventListener("click", () => this.sendKey("-"));
+		rotateButton.addEventListener("click", () => this.sendKey("r"));
+	}
 
-  setupVolumeControl() {
-    const volumeSlider = this.querySelector("#volume-slider");
-    window.__wasmVolume = parseFloat(volumeSlider.value);
+	setupVolumeControl() {
+		const volumeSlider = this.querySelector("#volume-slider");
+		window.__wasmVolume = parseFloat(volumeSlider.value);
 
-    volumeSlider.addEventListener("input", () => {
-      window.__wasmVolume = parseFloat(volumeSlider.value);
-    });
-  }
+		volumeSlider.addEventListener("input", () => {
+			window.__wasmVolume = parseFloat(volumeSlider.value);
+		});
+	}
 
-  resizeCanvasToFullscreen() {
-    const canvasElement = this.querySelector("#canvas");
-    const containerElement = this.querySelector("#canvas-container");
+	resizeCanvasToFullscreen() {
+		const canvasElement = this.querySelector("#canvas");
+		const containerElement = this.querySelector("#canvas-container");
 
-    if (document.fullscreenElement) {
-      containerElement.style.width = "auto";
-      containerElement.style.height = "100%";
-      canvasElement.style.width = "auto";
-      canvasElement.style.height = "100%";
-    }
-  }
+		if (document.fullscreenElement) {
+			containerElement.style.width = "auto";
+			containerElement.style.height = "100%";
+			canvasElement.style.width = "auto";
+			canvasElement.style.height = "100%";
+		}
+	}
 }
 
 customElements.define("wasm-simulator", WasmSimulator);
