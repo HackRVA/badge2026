@@ -2,66 +2,60 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="icon" href="/assets/badge-icon.png">
-    <title>{{.Title}} • HackRVA Badge Wiki</title>
-    <meta property="og:title" content="{{.Title}} • HackRVA Badge Wiki">
-    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter&display=swap">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com/" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
-    <link rel="stylesheet" href="/assets/style.css">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<link rel="icon" href="/assets/badge-icon.png">
+	<title>{{.Title}} • HackRVA Badge Wiki</title>
+	<meta property="og:title" content="{{.Title}} • HackRVA Badge Wiki">
+	<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter&display=swap">
+	<link rel="preconnect" href="https://cdnjs.cloudflare.com/" crossorigin>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+	<link rel="stylesheet" href="/assets/style.css">
 
-    <script type="module" src="/js/wasm-simulator.js"></script>
-    <script type="module" src="/js/badge-history.js"></script>
+	<script src="/js/map-locator.js"></script>
+	<script src="/js/hack-calendar.js"></script>
+	<script type="module" src="/js/wasm-simulator.js"></script>
+	<script type="module" src="/js/badge-history.js"></script>
 </head>
 
 <body>
-    <header class="page-header">
-        <a href="/" class="page-header__logo" title="Go home" style="text-decoration: none;">
-            <img src="/assets/badge-icon.png"/>
-        </a>
-        <nav>
-            <a href="/pages/about/">Pages</a>
-        </nav>
-    </header>
-    <main>
-        <style>
-            pre {
-                background: black;
-            }
+	<header class="page-header">
+		<a href="/" class="page-header__logo" title="Go home" style="text-decoration: none;">
+			<img src="/assets/badge-icon.png" />
+		</a>
+		<nav>
+			<a href="/pages/about/">Pages</a>
+		</nav>
+	</header>
+	<main>
+		<style>
+			pre {
+				background: black;
+			}
 
-            code {
-                background-color: black;
-            }
-        </style>
-        <article>
-            {{.Content}}
-        </article>
-        <hr>
-        <p class="backlinks-title larger">Backlinks</p>
-        <ul class="backlinks-container">
-            {{range .Backlinks}}
-            <li class="backlink">
-                <a href="{{.URL}}" class="backlink__link">{{.Title}}</a>
-                <div class="backlink__preview" role="none">
-                    <h1>{{.Preview.Title}}</h1>
-                    <p>{{.Preview.Content}}</p>
-                </div>
-            </li>
-            {{end}}
-        </ul>
-    </main>
-  <script type="module">
-    import { registerElement } from "https://cdn.jsdelivr.net/gh/dfirebaugh/bop@main/src/bop.js";
-    import MapLocator from "/js/map-locator.js";
-    import HackCalendar from "/js/hack-calendar.js";
-
-    registerElement(MapLocator);
-    registerElement(HackCalendar);
-  </script>
+			code {
+				background-color: black;
+			}
+		</style>
+		<article>
+			{{.Content}}
+		</article>
+		<hr>
+		<p class="backlinks-title larger">Backlinks</p>
+		<ul class="backlinks-container">
+			{{range .Backlinks}}
+			<li class="backlink">
+				<a href="{{.URL}}" class="backlink__link">{{.Title}}</a>
+				<div class="backlink__preview" role="none">
+					<h1>{{.Preview.Title}}</h1>
+					<p>{{.Preview.Content}}</p>
+				</div>
+			</li>
+			{{end}}
+		</ul>
+	</main>
 </body>
 
 </html>
