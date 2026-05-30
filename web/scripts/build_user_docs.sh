@@ -5,7 +5,7 @@ mkdir -p .dist/pages/simulator
 # check for wasm and js file in build_wasm dest-dir
 BUILD_DIR="../build_wasm/source"
 DST_DIR=".dist/pages/simulator"
-FILES=("badge2025_c.js" "badge2025_c.wasm" "badge2025_c.data")
+FILES=("badge2026_c.js" "badge2026_c.wasm" "badge2026_c.data")
 
 for file in "${FILES[@]}"; do
 	if [ ! -f "$BUILD_DIR/$file" ]; then

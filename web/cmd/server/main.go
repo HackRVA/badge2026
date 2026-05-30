@@ -105,7 +105,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	// let's explicitly state which files should be handled strictly
 	// this way we can still load in external resources
 	// e.g. an embedded youtube video
-	strictFiles := []string{"/pages/simulator/", "/pages/simulator/sim.html", "/pages/simulator/badge2025_c.js", "/pages/simulator/badge2025_c.wasm", "/pages/simulator/badge2025_c.data", "/simulator.html"}
+	strictFiles := []string{"/pages/simulator/", "/pages/simulator/sim.html", "/pages/simulator/badge2026_c.js", "/pages/simulator/badge2026_c.wasm", "/pages/simulator/badge2026_c.data", "/simulator.html"}
 
 	if slices.Contains(strictFiles, r.URL.Path) {
 		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
