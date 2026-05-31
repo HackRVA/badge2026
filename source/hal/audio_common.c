@@ -498,8 +498,8 @@ struct audio_out_voice_ctx_triangle {
 
 /** Output waveform voice context for sawtooth waveform. */
 struct audio_out_voice_ctx_sawtooth {
-    // TODO -PMW
-    uint8_t dummy;
+    int32_t last;       /**< Last sample. */
+    int32_t sub;        /**< Amount to subtract each sample. */
 };
 
 /** Output waveform voice context for NES LFSR noise. */
@@ -652,6 +652,43 @@ static int32_t prv_audio_out_square_step(struct audio_out_voice_ctx *voice)
     }
     voice->square.samples = samples;
     return sample;
+}
+
+/*--------- Sawtooth Wave |\_|\_ ---------------------------------------------*/
+static int prv_audio_out_sawtooth_setup(struct audio_out_voice_ctx *voice,
+                                        const struct audio_out_spec *spec)
+{
+    voice->sawtooth.last = INT32_MAX;
+    int32_t period = AUDIO_FS / spec->frequency_hz;
+    if (2 >= period) {
+        /* Keep it below Nyquist. */
+        period = 2;
+    }
+    /* Guarantee at least 1 sample near INT32_MIN */
+    voice->sawtooth.sub = (((int64_t) (INT32_MIN + 1)) * 2) / (period - 1);
+#ifdef TARGET_SIMULATOR
+    LOG("playing sawtooth wave "
+        "(voice: %d, freq: %u, dur_ms: %u, sub: %i, "
+        "duration_samples: %u)",
+        (int) (voice - m_audio_out_voices), spec->frequency_hz,
+        spec->duration_ms, voice->sawtooth.sub,
+        voice->duration_samples);
+#endif
+    return 0;
+}
+
+static int32_t prv_audio_out_sawtooth_step(struct audio_out_voice_ctx *voice)
+{
+    int32_t sample = voice->sawtooth.last;
+    if ((INT32_MIN - voice->sawtooth.sub) > voice->sawtooth.last) {
+        sample = INT32_MAX;
+    } else {
+        sample += voice->sawtooth.sub;
+    }
+    voice->sawtooth.last = sample;
+    /* Rescale to 16-bit unity. */
+    sample >>= 16;
+    return (sample * prv_audio_ratio(voice->amplitude_dBFS)) >> 16;
 }
 
 /*--------- NES LFSR noise ---------------------------------------------------*/
@@ -816,13 +853,15 @@ static int prv_audio_out_play(int v, const struct audio_out_spec *spec, bool mus
     switch (voice->type) {
         case AUDIO_OUT_TYPE_NONE:
         case AUDIO_OUT_TYPE_TRIANGE:
-        case AUDIO_OUT_TYPE_SAWTOOTH:
         case AUDIO_OUT_TYPE_SAMPLES:
         default:
             /* Not implemented. */
             break;
         case AUDIO_OUT_TYPE_SQUARE:
             rc = prv_audio_out_square_setup(voice, spec);
+            break;
+        case AUDIO_OUT_TYPE_SAWTOOTH:
+            rc = prv_audio_out_sawtooth_setup(voice, spec);
             break;
         case AUDIO_OUT_TYPE_NES_NOISE:
             rc = prv_audio_out_nes_noise_setup(voice, spec);
@@ -890,13 +929,15 @@ static void prv_audio_process_output(audio_buffer_t *out)
             switch (voice->type) {
                 case AUDIO_OUT_TYPE_NONE:
                 case AUDIO_OUT_TYPE_TRIANGE: // TODO: implement -PMW
-                case AUDIO_OUT_TYPE_SAWTOOTH: // TODO: implement -PMW
                 case AUDIO_OUT_TYPE_SAMPLES: // TODO: implement -PMW
                 default:
                     /* No contribution to this sample. */
                     break;
                 case AUDIO_OUT_TYPE_SQUARE:
                     sample += prv_audio_out_square_step(voice);
+                    break;
+                case AUDIO_OUT_TYPE_SAWTOOTH:
+                    sample += prv_audio_out_sawtooth_step(voice);
                     break;
                 case AUDIO_OUT_TYPE_NES_NOISE:
                     sample += prv_audio_out_nes_noise_step(voice);
@@ -905,12 +946,12 @@ static void prv_audio_process_output(audio_buffer_t *out)
             switch (voice->type) {
                 case AUDIO_OUT_TYPE_NONE:
                 case AUDIO_OUT_TYPE_TRIANGE: // TODO: implement -PMW
-                case AUDIO_OUT_TYPE_SAWTOOTH: // TODO: implement -PMW
                 case AUDIO_OUT_TYPE_SAMPLES: // TODO: implement -PMW
                 default:
                     /* Post step actions for these types. */
                     break;
                 case AUDIO_OUT_TYPE_SQUARE:
+                case AUDIO_OUT_TYPE_SAWTOOTH:
                 case AUDIO_OUT_TYPE_NES_NOISE:
                     if (++(voice->elapsed_samples) >= voice->duration_samples) {
                         prv_audio_out_complete(voice);
