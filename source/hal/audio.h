@@ -109,7 +109,7 @@ enum audio_out_type {
     AUDIO_OUT_TYPE_NONE = 0,
 
     AUDIO_OUT_TYPE_SQUARE,      /**< Square wave. _|¯|_|¯ */
-    AUDIO_OUT_TYPE_TRIANGE,     /**< Triangle wave. /\/\ */
+    AUDIO_OUT_TYPE_TRIANGLE,     /**< Triangle wave. /\/\ */
     AUDIO_OUT_TYPE_SAWTOOTH,    /**< Sawtooth wave. |\_|\_ */
     AUDIO_OUT_TYPE_NES_NOISE,   /**< NES LFSR noise. */
     AUDIO_OUT_TYPE_SAMPLES,     /**< Raw samples. */
