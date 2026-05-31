@@ -204,7 +204,7 @@ static int add_ride_cymbal_note(int voice, int start_time,
 	drumsong_notes[i].spec.callback = NULL;
 	drumsong_notes[i].spec.frequency_hz = freq;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.envelope = -3;
+	drumsong_notes[i].spec.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT;
 	drumsong_notes[i].spec.phase = 0;
 	drumsong_notes[i].spec.amplitude_dBFS = -3;
 	drumsong_notes[i].spec.restart = false;
@@ -233,7 +233,7 @@ static int add_snare_drum_note(int voice, int start_time,
 	drumsong_notes[i].spec.callback = NULL;
 	drumsong_notes[i].spec.frequency_hz = freq;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.envelope = -5;
+	drumsong_notes[i].spec.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT;
 	drumsong_notes[i].spec.phase = 0;
 	drumsong_notes[i].spec.amplitude_dBFS = -3;
 	drumsong_notes[i].spec.restart = false;
@@ -262,7 +262,7 @@ static int add_drum_note(int voice, int start_time,
 	drumsong_notes[i].spec.callback = NULL;
 	drumsong_notes[i].spec.frequency_hz = freq;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.envelope = -1;
+	drumsong_notes[i].spec.envelope = AUDIO_OUT_ENVELOPE_SLOW_FADE_OUT;
 	drumsong_notes[i].spec.phase = 0;
 	drumsong_notes[i].spec.amplitude_dBFS = -3;
 	drumsong_notes[i].spec.restart = false;
@@ -856,6 +856,7 @@ static void drum_machine_run(void)
 
 static void drum_machine_exit(void)
 {
+	audio_out_music_stop();
 	drum_machine_state = DRUM_MACHINE_INIT; /* So that when we start again, we do not immediately exit */
 	pop_app();
 }
