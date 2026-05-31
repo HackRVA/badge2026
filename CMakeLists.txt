@@ -97,6 +97,7 @@ if (${TARGET} STREQUAL "PICO")
         -Wno-format          # pico-examples: int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
         -Wno-unused-function # pico-examples: we have some for the docs that aren't called
         -Wno-maybe-uninitialized # sam: see if this causes extra warnings outside of pico-examples
+        -O2
     )
 endif()
 
