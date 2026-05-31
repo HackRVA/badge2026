@@ -204,7 +204,7 @@ static int add_ride_cymbal_note(int voice, int start_time,
 	drumsong_notes[i].spec.callback = NULL;
 	drumsong_notes[i].spec.frequency_hz = freq;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.decay = -3;
+	drumsong_notes[i].spec.envelope = -3;
 	drumsong_notes[i].spec.phase = 0;
 	drumsong_notes[i].spec.amplitude_dBFS = -3;
 	drumsong_notes[i].spec.restart = false;
@@ -233,7 +233,7 @@ static int add_snare_drum_note(int voice, int start_time,
 	drumsong_notes[i].spec.callback = NULL;
 	drumsong_notes[i].spec.frequency_hz = freq;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.decay = -5;
+	drumsong_notes[i].spec.envelope = -5;
 	drumsong_notes[i].spec.phase = 0;
 	drumsong_notes[i].spec.amplitude_dBFS = -3;
 	drumsong_notes[i].spec.restart = false;
@@ -262,7 +262,7 @@ static int add_drum_note(int voice, int start_time,
 	drumsong_notes[i].spec.callback = NULL;
 	drumsong_notes[i].spec.frequency_hz = freq;
 	drumsong_notes[i].spec.duration_ms = duration_ms;
-	drumsong_notes[i].spec.decay = -1;
+	drumsong_notes[i].spec.envelope = -1;
 	drumsong_notes[i].spec.phase = 0;
 	drumsong_notes[i].spec.amplitude_dBFS = -3;
 	drumsong_notes[i].spec.restart = false;

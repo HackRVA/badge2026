@@ -528,9 +528,10 @@ struct audio_out_voice_ctx {
     const struct audio_out_spec *spec;  /**< Audio output waveform spec. */
     uint32_t duration_samples;          /**< Duration in ms. */
     uint32_t elapsed_samples;           /**< Elapsed beep duration in ms. */
-    int32_t amplitude;                  /**< Amplitude. */
-    int16_t decay;                      /**< Linear decay to add every sample. */
+    int8_t amplitude_start;             /**< Starting amplitude in dBFS. */
+    int8_t amplitude_dBFS;              /**< Current amplitude in dBFS. */
     enum audio_out_type type;           /**< Audio output waveform type. */
+    enum audio_out_envelope envelope;   /**< Audio output waveform envelope. */
     bool music;                         /**< Music is playing on this voice. */
 
     /*----- Type specific fields. -----*/
@@ -640,13 +641,11 @@ static int prv_audio_out_square_setup(struct audio_out_voice_ctx *voice,
 
 static int32_t prv_audio_out_square_step(struct audio_out_voice_ctx *voice)
 {
-    int32_t sample;
+    int32_t sample = prv_audio_ratio(voice->amplitude_dBFS);
     uint32_t samples = voice->square.samples;
     uint32_t period = voice->square.period;
-    if (samples < voice->square.samples_high) {
-        sample = voice->amplitude;
-    } else {
-        sample = -voice->amplitude;
+    if (samples >= voice->square.samples_high) {
+        sample = -sample;
     }
     if (++samples >= period) {
         samples = 0;
@@ -707,9 +706,51 @@ static int32_t prv_audio_out_nes_noise_step(struct audio_out_voice_ctx *voice)
     voice->nes_noise.samples = samples;
     int32_t sample = voice->nes_noise.lfsr;
     sample -= INT16_MAX / 2; /* Remove DC bias. */
-    sample *= voice->amplitude;
+    sample *= prv_audio_ratio(voice->amplitude_dBFS);
     sample >>= 13; /* Correct for amplitude and DC bias removal above. */
     return sample;
+}
+
+/*- Envelopes ----------------------------------------------------------------*/
+#define PRV_ENVELOPE_FADE_RAPID_MS      (5)
+#define PRV_ENVELOPE_FADE_FAST_MS       (10)
+#define PRV_ENVELOPE_FADE_MED_MS        (20)
+#define PRV_ENVELOPE_FADE_SLOW_MS       (50)
+
+static void prv_audio_out_envelope_fade_out(struct audio_out_voice_ctx *voice)
+{
+    uint8_t decayed;
+    if (AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT == voice->envelope) {
+        decayed = voice->elapsed_samples
+            / AUDIO_MS_TO_SAMPLES(PRV_ENVELOPE_FADE_RAPID_MS);
+    } else if (AUDIO_OUT_ENVELOPE_FAST_FADE_OUT == voice->envelope) {
+        decayed = voice->elapsed_samples
+            / AUDIO_MS_TO_SAMPLES(PRV_ENVELOPE_FADE_FAST_MS);
+    } else if (AUDIO_OUT_ENVELOPE_MED_FADE_OUT == voice->envelope) {
+        decayed = voice->elapsed_samples
+            / AUDIO_MS_TO_SAMPLES(PRV_ENVELOPE_FADE_MED_MS);
+    } else if (AUDIO_OUT_ENVELOPE_SLOW_FADE_OUT == voice->envelope) {
+        decayed = voice->elapsed_samples
+            / AUDIO_MS_TO_SAMPLES(PRV_ENVELOPE_FADE_SLOW_MS);
+    }
+    decayed = MIN(decayed, -(INT8_MIN - voice->amplitude_start));
+    voice->amplitude_dBFS = voice->amplitude_start - decayed;
+}
+
+static void prv_audio_out_envelope_step(struct audio_out_voice_ctx *voice)
+{
+    switch (voice->envelope) {
+        case AUDIO_OUT_ENVELOPE_NONE:
+        default:
+            /* Keep the initial amplitude. */
+            return;
+        case AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT:
+        case AUDIO_OUT_ENVELOPE_FAST_FADE_OUT:
+        case AUDIO_OUT_ENVELOPE_MED_FADE_OUT:
+        case AUDIO_OUT_ENVELOPE_SLOW_FADE_OUT:
+            prv_audio_out_envelope_fade_out(voice);
+            return;
+    };
 }
 
 static void prv_audio_out_complete(struct audio_out_voice_ctx *voice)
@@ -746,6 +787,7 @@ static int prv_audio_out_play(int v, const struct audio_out_spec *spec, bool mus
         for (int i = 0; i < (int) ARRAY_SIZE(m_audio_out_voices); i++) {
             if (AUDIO_OUT_TYPE_NONE == m_audio_out_voices[i].type) {
                 v = i;
+                break;
             }
         }
         if (AUDIO_OUT_VOICE_ANY == v) {
@@ -764,9 +806,10 @@ static int prv_audio_out_play(int v, const struct audio_out_spec *spec, bool mus
     voice->spec = spec;
     voice->duration_samples = spec->duration_ms * (AUDIO_FS / 1000U);
     voice->elapsed_samples = 0U;
-    voice->amplitude = prv_audio_ratio(spec->amplitude_dBFS);
-    voice->decay = spec->decay;
+    voice->amplitude_start = spec->amplitude_dBFS;
+    voice->amplitude_dBFS = spec->amplitude_dBFS;
     voice->type = spec->type;
+    voice->envelope = spec->envelope;
     voice->music = music;
 
     int rc = -1;
@@ -872,7 +915,7 @@ static void prv_audio_process_output(audio_buffer_t *out)
                     if (++(voice->elapsed_samples) >= voice->duration_samples) {
                         prv_audio_out_complete(voice);
                     } else {
-                        voice->amplitude += voice->decay;
+                        prv_audio_out_envelope_step(voice);
                     }
                     break;
             }
@@ -1018,7 +1061,6 @@ int audio_out_beep_with_cb(uint16_t freq_hz, uint16_t dur_ms, void (*cb)(void))
     spec.callback = prv_audio_out_beep_cb;
     spec.frequency_hz = freq_hz;
     spec.duration_ms = dur_ms;
-    spec.decay = 0;
     spec.phase = 0;
     spec.restart = false;
     spec.type = AUDIO_OUT_TYPE_SQUARE;

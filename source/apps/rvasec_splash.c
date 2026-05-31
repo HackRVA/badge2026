@@ -11,17 +11,21 @@
 #include "led_pwm.h"
 #include "menu.h"
 #include "music.h"
-#include "rvasec_splash.h"
-#include "hack_logo_2.h"
 #include "utils.h"
 #include "badge.h"
 
-#define SPLASH_SHIFT_DOWN 80
+#include "rvasec_splash.h"
+#include "hack_logo_2.h"
+#include "rvasec_splash_assets/sponsor_logo.h"
+#include "rvasec_splash_assets/rib.h"
+
+#define SPLASH_SHIFT_DOWN (LCD_YSIZE / 2)
 #define SPLASH_LOADBAR_MARGIN_X (4)
 #define SPLASH_LOADBAR_HEIGHT_PX (20)
 #define SPLASH_LOADBAR_FINAL_EMPTY_PX (5)
 
-#define SPLASH_WAIT_HACK_FRAMES (2 * BADGE_FRAME_RATE_FPS)
+#define SPLASH_WAIT_HACK_FRAMES (3 * BADGE_FRAME_RATE_FPS)
+#define SPLASH_WAIT_SPONSOR_FRAMES (3 * BADGE_FRAME_RATE_FPS)
 #define SPLASH_WAIT_POST_LOADBAR_FRAMES (2 * BADGE_FRAME_RATE_FPS)
 #define SPLASH_WORD_THING_FRAMES (3)
 #define SPLASH_WAIT_BLINK_FRAMES (2 * BADGE_FRAME_RATE_FPS)
@@ -54,113 +58,17 @@ static const char *splash_word_things[] = {
     "preparing to install",
 };
 
-static const char splash_words_btn1[] = "Press any button";
-static const char splash_words_btn2[] = "to continue!";
-
-static const struct audio_out_note SPLASH_MUSIC_NOTES[] = {
-    {
-        .v = 0,
-        .ms = 0,
-        .spec = {
-            .callback = NULL,
-            .frequency_hz = NOTE_D4,
-            .duration_ms = 200,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -3,
-            .restart = true,
-            .type = AUDIO_OUT_TYPE_SQUARE,
-            .square.duty_cycle = UINT8_MAX / 3,
-        }
-    },
-    {
-        .v = 0,
-        .ms = 150,
-        .spec = {
-            .callback = NULL,
-            .frequency_hz = NOTE_G4,
-            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -3,
-            .restart = false,
-            .type = AUDIO_OUT_TYPE_SQUARE,
-            .square.duty_cycle = UINT8_MAX / 3,
-        }
-    },
-    {
-        .v = 0,
-        .ms = 300,
-        .spec = {
-            .callback = NULL,
-            .frequency_hz = NOTE_C4,
-            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -4,
-            .restart = false,
-            .type = AUDIO_OUT_TYPE_SQUARE,
-            .square.duty_cycle = UINT8_MAX / 3,
-        }
-    },
-    {
-        .v = 1,
-        .ms = 300,
-        .spec = {
-            .callback = NULL,
-            .frequency_hz = NOTE_E4,
-            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -4,
-            .restart = false,
-            .type = AUDIO_OUT_TYPE_SQUARE,
-            .square.duty_cycle = UINT8_MAX / 3,
-        }
-    },
-    {
-        .v = 2,
-        .ms = 300,
-        .spec = {
-            .callback = NULL,
-            .frequency_hz = NOTE_G4,
-            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -4,
-            .restart = false,
-            .type = AUDIO_OUT_TYPE_SQUARE,
-            .square.duty_cycle = UINT8_MAX / 3,
-        }
-    },
-    {
-        .v = 3,
-        .ms = 300,
-        .spec = {
-            .callback = NULL,
-            .frequency_hz = NOTE_C5,
-            .duration_ms = SPLASH_FINISHED_AUDIO_MS,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -4,
-            .restart = false,
-            .type = AUDIO_OUT_TYPE_SQUARE,
-            .square.duty_cycle = UINT8_MAX / 3,
-        }
-    },
-    {
-        .ms = SPLASH_FINISHED_AUDIO_MS,
-        .spec = {
-            .type = AUDIO_OUT_TYPE_NONE,
-        }
-    },
-};
-
-static const struct audio_out_section SPLASH_MUSIC = {
-    .length = ARRAY_SIZE(SPLASH_MUSIC_NOTES),
-    .notes = SPLASH_MUSIC_NOTES,
-    .next = NULL,
-};
+static unsigned int wait = 0;
+static unsigned char loading_txt_idx = 0;
+static enum splash_state {
+    SPLASH_STATE_NO_INIT,
+    SPLASH_STATE_LOADBAR,
+    SPLASH_STATE_WAIT_FOR_USER,
+    SPLASH_STATE_HACK,
+    SPLASH_STATE_SPONSOR,
+    SPLASH_STATE_RVASEC,
+    SPLASH_STATE_DONE,
+} m_splash_state = SPLASH_STATE_NO_INIT;
 
 #if PREPRODUCTION_FIRMWARE
 static void brand_preproduction_firmware(bool blink)
@@ -184,35 +92,60 @@ static void brand_preproduction_firmware(bool blink)
 }
 #endif
 
+const struct audio_out_section *prv_intro_cb(const struct audio_out_section *prev)
+{
+    (void) prev;
+    if (m_splash_state < SPLASH_STATE_RVASEC) {
+        m_splash_state = SPLASH_STATE_RVASEC;
+        return &RIB_THEME;
+    } else if (m_splash_state == SPLASH_STATE_RVASEC) {
+        m_splash_state = SPLASH_STATE_DONE;
+        return NULL;
+    } else {
+        return NULL;
+    }
+}
+
+void prv_exit(void)
+{
+        FbBackgroundColor(BLACK);
+        led_pwm_disable(BADGE_LED_RGB_RED);
+        led_pwm_disable(BADGE_LED_RGB_GREEN);
+        led_pwm_disable(BADGE_LED_RGB_BLUE);
+        audio_out_stop(0);
+        audio_out_music_stop();
+        m_splash_state = SPLASH_STATE_NO_INIT;
+        pop_app();
+
+};
+
 void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 {
     extern const struct asset2 RVAsec_14;
-    static unsigned int wait = 0;
-    static unsigned char loading_txt_idx = 0;
-    static enum splash_state {
-        SPLASH_STATE_NO_INIT,
-        SPLASH_STATE_HACK,
-        SPLASH_STATE_LOADBAR,
-        SPLASH_STATE_DONE,
-    } m_splash_state = SPLASH_STATE_NO_INIT;
-    struct audio_out_spec spec;
+
+    /* Allow the user to fast-forward at any point. */
+    int down_latches = button_down_latches();
+    if (down_latches & (1U << BADGE_BUTTON_FASTFORWARD)) {
+        prv_exit();
+        return;
+    }
 
     switch (m_splash_state) {
-    case SPLASH_STATE_NO_INIT:
+        case SPLASH_STATE_NO_INIT: {
         loading_txt_idx = 0;
         wait = 0;
         display_rect(0, 0, LCD_XSIZE, LCD_YSIZE);
         display_color(0);
         FbSwapBuffers();
-        led_pwm_enable(BADGE_LED_RGB_RED, 50 * 255/100);
-        led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255/100);
-        led_pwm_enable(BADGE_LED_RGB_BLUE, 50 * 255/100);
-        //if(buzzer)
-        spec = (const struct audio_out_spec) {
+
+        led_pwm_disable(BADGE_LED_RGB_RED);
+        led_pwm_disable(BADGE_LED_RGB_GREEN);
+        led_pwm_disable(BADGE_LED_RGB_BLUE);
+        const struct audio_out_spec spec = {
             .callback = NULL,
             .frequency_hz = NOTE_C3 / 2 ,
             .duration_ms = SPLASH_BOOT_AUDIO_MS,
-            .decay = 0,
+            .envelope = 0,
             .phase = 0,
             .amplitude_dBFS = 3,
             .restart = false,
@@ -223,42 +156,21 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 	if (!silent_startup)
 #endif
         (void) audio_out_play(0, &spec);
-        m_splash_state = SPLASH_STATE_HACK;
-        break;
+        m_splash_state = SPLASH_STATE_LOADBAR;
+    } break;
 
-    case SPLASH_STATE_HACK:
-        FbMove((LCD_XSIZE - hack_logo.x) / 2, 
-               ((LCD_YSIZE - hack_logo.y) / 2));	
-        FbImage2(&hack_logo, 0);
-        FbSwapBuffers();
-        if ((SPLASH_WAIT_HACK_FRAMES < ++wait)) {
-            wait = 0;
-            m_splash_state = SPLASH_STATE_LOADBAR;
-        } else if (button_down_latches() & (1U << BADGE_BUTTON_FASTFORWARD)) {
-            FbBackgroundColor(BLACK);
-            led_pwm_disable(BADGE_LED_RGB_RED);
-            m_splash_state = SPLASH_STATE_NO_INIT;
-            pop_app();
-        }
-
-        break;
-
-    case SPLASH_STATE_LOADBAR:
-	// FbBackgroundColor(0x21c5);
-        FbBackgroundColor(G_Fb.transIndex);
-        FbMove(0, 0);
-        FbImage2(&RVAsec_14, 0);
-
-        FbMove(24 + 16, SPLASH_SHIFT_DOWN - 13);
+    case SPLASH_STATE_LOADBAR: {
+        FbMove(24 + 16, SPLASH_SHIFT_DOWN - 13 - (SPLASH_LOADBAR_HEIGHT_PX / 2));
         FbColor(WHITE);
         FbWriteLine("Loading...");
 
-        FbMove(SPLASH_LOADBAR_MARGIN_X, SPLASH_SHIFT_DOWN);
+        FbMove(SPLASH_LOADBAR_MARGIN_X,
+               SPLASH_SHIFT_DOWN - SPLASH_LOADBAR_HEIGHT_PX / 2);
         FbColor(WHITE);
-        FbRectangle(LCD_XSIZE - 1 - (SPLASH_LOADBAR_MARGIN_X * 2), 
-                    SPLASH_LOADBAR_HEIGHT_PX);
+        char outer_x_sz = LCD_XSIZE - 1 - (SPLASH_LOADBAR_MARGIN_X * 2);
+        FbRectangle(outer_x_sz, SPLASH_LOADBAR_HEIGHT_PX);
 
-        FbMove(SPLASH_LOADBAR_MARGIN_X + 1, SPLASH_SHIFT_DOWN+1);
+        FbMoveRelative(2 - outer_x_sz, 2 - SPLASH_LOADBAR_HEIGHT_PX);
         FbColor(GREEN);
 
         const unsigned int load_bar_frames 
@@ -285,97 +197,88 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
                / 2,
                SPLASH_SHIFT_DOWN + SPLASH_LOADBAR_HEIGHT_PX + 4);
         FbWriteLine(splash_word_things[loading_txt_idx]);
+        FbSwapBuffers();
+
         if((loading_txt_idx < (ARRAY_SIZE(splash_word_things) - 1U))
            && (0 == (wait % SPLASH_WORD_THING_FRAMES))) {
             loading_txt_idx++;
         } else if (load_bar_frames + SPLASH_WAIT_POST_LOADBAR_FRAMES <= wait) {
             wait = 0;
-            m_splash_state = SPLASH_STATE_DONE;
-#if TARGET_SIMULATOR
-            if (!silent_startup) {
-#endif
-            (void) audio_out_stop(0); /* Stop the ongoing noise in voice 0 */
-            (void) audio_out_music_play(&SPLASH_MUSIC, NULL);
-#if TARGET_SIMULATOR
-            }
-#endif
+            m_splash_state = SPLASH_STATE_WAIT_FOR_USER;
+            led_pwm_enable(BADGE_LED_RGB_RED, 2 * 255/100);
+            led_pwm_enable(BADGE_LED_RGB_GREEN, 20 * 255/100);
+            led_pwm_disable(BADGE_LED_RGB_BLUE);
             break;
         }
+        wait++;
 
-	FbBackgroundColor(BLACK);
+    } break;
+
+    case SPLASH_STATE_WAIT_FOR_USER: {
+        FbBackgroundColor(BLACK);
+        FbMove(16, (LCD_YSIZE - 16) / 2);
+        FbColor(WHITE);
+        FbWriteString("Press any button\nto continue...");
+#if PREPRODUCTION_FIRMWARE
+        brand_preproduction_firmware(!((wait / 5) & 0x01) 
+                                     || (wait > SPLASH_WAIT_BLINK_FRAMES));
+        wait++;
+#endif
+        FbSwapBuffers();
+        if (down_latches) {
+            wait = 0;
+            m_splash_state = SPLASH_STATE_HACK;
+            led_pwm_enable(BADGE_LED_RGB_RED, 50 * 255/100);
+            led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255/100);
+            led_pwm_enable(BADGE_LED_RGB_BLUE, 50 * 255/100);
+#if TARGET_SIMULATOR
+            if (!silent_startup)
+#endif
+                (void) audio_out_music_play(&RIB_INTRO, prv_intro_cb);
+        }
+    } break;
+
+    case SPLASH_STATE_HACK: {
+        FbBackgroundColor(BLACK);
+        FbMove((LCD_XSIZE - hack_logo.x) / 2, 
+               ((LCD_YSIZE - hack_logo.y) / 2));	
+        FbImage2(&hack_logo, 0);
+        FbSwapBuffers();
+        if ((SPLASH_WAIT_HACK_FRAMES < ++wait)) {
+            wait = 0;
+            m_splash_state = SPLASH_STATE_SPONSOR;
+        }
+    } break;
+
+    case SPLASH_STATE_SPONSOR: {
+        FbBackgroundColor(BLACK);
+        FbColor(WHITE);
+        FbMove((LCD_XSIZE - sponsor_logo.x) / 2, 
+               ((LCD_YSIZE - sponsor_logo.y) / 2));	
+        FbImage2(&sponsor_logo, 0);
+        FbSwapBuffers();
+#if TARGET_SIMULATOR
+        if (silent_startup && (SPLASH_WAIT_SPONSOR_FRAMES < ++wait)) {
+            wait = 0;
+            m_splash_state = SPLASH_STATE_RVASEC;
+        }
+#endif
+    } break;
+
+    case SPLASH_STATE_RVASEC: {
+        FbBackgroundColor(G_Fb.transIndex);
+        FbMove(0, 0);
+        FbImage2(&RVAsec_14, 0);
         FbSwapBuffers();
 
         led_pwm_enable(BADGE_LED_RGB_RED, 15 * 255 / 100);
         led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255 / 100);
-	led_pwm_enable(BADGE_LED_RGB_BLUE, 10 * 255 / 100);
+        led_pwm_enable(BADGE_LED_RGB_BLUE, 10 * 255 / 100);
+    } break;
 
-        spec = (const struct audio_out_spec) {
-            .callback = NULL,
-            .frequency_hz = 
-                99 <= load_bar_perc ? AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xA 
-                                    : AUDIO_FS / (99 - load_bar_perc),
-            .duration_ms = 50,
-            .decay = 0,
-            .phase = 0,
-            .amplitude_dBFS = -3,
-            .restart = false,
-            .type = AUDIO_OUT_TYPE_NES_NOISE,
-            .nes_noise.lfsr_val = UINT16_MAX,
-            .nes_noise.mode_flag = 99 <= load_bar_perc,
-        };
-#if TARGET_SIMULATOR
-	if (!silent_startup)
-#endif
-        (void) audio_out_play(0, &spec);   
-
-        wait++;
-        break;
-
-    case SPLASH_STATE_DONE:
-        FbMove(0, 0);
-        FbImage2(&RVAsec_14, 0);
-
-        FbColor(WHITE);
-        // FbBackgroundColor(0x21c5);
-    	FbBackgroundColor(G_Fb.transIndex);
-        FbMove((LCD_XSIZE - ((ARRAY_SIZE(splash_words_btn1) - 1) * 8)) / 2, 
-               SPLASH_SHIFT_DOWN);
-        FbWriteLine(splash_words_btn1);
-        FbMove((LCD_XSIZE - ((ARRAY_SIZE(splash_words_btn2) - 1) * 8)) / 2,
-               SPLASH_SHIFT_DOWN + 8);
-        FbWriteLine(splash_words_btn2);
-
-#if PREPRODUCTION_FIRMWARE
-        brand_preproduction_firmware(!((wait / 5) & 0x01) 
-                                     || (wait > SPLASH_WAIT_BLINK_FRAMES));
-#endif
-        FbSwapBuffers();
-
-        int down_latches = button_down_latches();
-        if (0 != down_latches) {
-            FbBackgroundColor(BLACK);
-            led_pwm_disable(BADGE_LED_RGB_RED);
-            m_splash_state = SPLASH_STATE_NO_INIT;
-            pop_app();
-            spec = (const struct audio_out_spec) {
-                .callback = NULL,
-                .frequency_hz = NOTE_C4,
-                .duration_ms = SPLASH_BOOT_AUDIO_MS / 2,
-                .decay = 0,
-                .phase = 0,
-                .amplitude_dBFS = -3,
-                .restart = false,
-                .type = AUDIO_OUT_TYPE_SQUARE,
-                .square.duty_cycle = UINT8_MAX / 3,
-            };
-#if TARGET_SIMULATOR
-            if (!silent_startup)
-#endif
-            (void) audio_out_play(0, &spec);
-        }
-
-        wait++;
-        break;
+    case SPLASH_STATE_DONE: {
+        prv_exit();
+    } break;
 
     default:
         m_splash_state = SPLASH_STATE_NO_INIT;

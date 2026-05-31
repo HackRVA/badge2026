@@ -49,6 +49,9 @@
 #endif /* TARGET_SIMULATOR */
 #define AUDIO_BUFFER_LEN    (AUDIO_BUFFER_FRAMES * AUDIO_BUFFER_CHANS)
 
+/** Convert from milliseconds to samples. */
+#define AUDIO_MS_TO_SAMPLES(ms) ((ms) * (AUDIO_FS / 1000))
+
 /*----- Input ----------------------------------------------------------------*/
 #define AUDIO_INPUT_CALLBACKS_MAX (4) /*!< Maximum number of audio input callbacks simultaneously active. */
 
@@ -105,13 +108,25 @@ extern int log_audio; /* set this to 0 to shut up audio logging */
 enum audio_out_type {
     AUDIO_OUT_TYPE_NONE = 0,
 
-    AUDIO_OUT_TYPE_SQUARE,      /** Square wave. _|¯|_|¯ */
-    AUDIO_OUT_TYPE_TRIANGE,     /** Triangle wave. /\/\ */
-    AUDIO_OUT_TYPE_SAWTOOTH,    /** Sawtooth wave. |\_|\_ */
-    AUDIO_OUT_TYPE_NES_NOISE,   /** NES LFSR noise. */
-    AUDIO_OUT_TYPE_SAMPLES,     /** Raw samples. */
+    AUDIO_OUT_TYPE_SQUARE,      /**< Square wave. _|¯|_|¯ */
+    AUDIO_OUT_TYPE_TRIANGE,     /**< Triangle wave. /\/\ */
+    AUDIO_OUT_TYPE_SAWTOOTH,    /**< Sawtooth wave. |\_|\_ */
+    AUDIO_OUT_TYPE_NES_NOISE,   /**< NES LFSR noise. */
+    AUDIO_OUT_TYPE_SAMPLES,     /**< Raw samples. */
 
     AUDIO_OUT_TYPE_COUNT,
+};
+
+/** Audio output waveform envelope. */
+enum audio_out_envelope {
+    AUDIO_OUT_ENVELOPE_NONE = 0,        /**< Remain at set volume. */
+
+    AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,  /**< Rapid fade out over ~100 ms. */
+    AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,   /**< Fast fade out over ~200 ms. */
+    AUDIO_OUT_ENVELOPE_MED_FADE_OUT,    /**< Medium fade out over ~500 ms. */
+    AUDIO_OUT_ENVELOPE_SLOW_FADE_OUT,   /**< Slow fade out over ~1 second. */
+
+    AUDIO_OUT_ENVELOPE_COUNT,
 };
 
 /** Output spec for square waveform. */
@@ -173,11 +188,11 @@ struct audio_out_spec {
     void (*callback)(int voice, const struct audio_out_spec *spec);
     uint16_t frequency_hz;      /**< Frequency of the "note" in Hz. */
     uint16_t duration_ms;       /**< Duration of the "note" in ms. */
-    int16_t decay;              /**< Linear decay to add to the amplitude every sample. @note This may change -PMW */
     int16_t phase;              /**< Phase adjustment in samples. */
     int8_t amplitude_dBFS;      /**< Starting amplitude of the waveform. */
     bool restart;               /**< If the "note" should be restarted or continued with new parameters. */
     enum audio_out_type type;   /**< Type of output. */
+    enum audio_out_envelope envelope; /**< Waveform envelope. */
 
     /*----- Type specific fields. -----*/
     union {

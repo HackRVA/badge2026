@@ -76,24 +76,24 @@ static int nasteroids;
 
 static void sound_death(void)
 {
-	static const struct audio_out_spec ast_boom_spec = {
+	static const struct audio_out_spec death_spec = {
 		.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xF,
 		.duration_ms = 900,
-		.decay = -1,
+		.envelope = AUDIO_OUT_ENVELOPE_SLOW_FADE_OUT,
 		.amplitude_dBFS = 3,
 		.type = AUDIO_OUT_TYPE_NES_NOISE,
 		.nes_noise.lfsr_val = UINT16_MAX,
 		.nes_noise.mode_flag = 0,
 	};
-	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &ast_boom_spec);
+	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &death_spec);
 }
 
 static void sound_thrust(void)
 {
         static const struct audio_out_spec thrust_spec = {
 		.frequency_hz = AUDIO_FS,
-		.duration_ms = 80,
-		.decay = -3,
+		.duration_ms = 100,
+		.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
 		.amplitude_dBFS = -9,
 		.type = AUDIO_OUT_TYPE_NES_NOISE,
 		.nes_noise.lfsr_val = UINT16_MAX,
@@ -128,12 +128,12 @@ static void sound_pew(void)
 	play_tune(&pew_tune, NULL, NULL);
 }
 
-static void sound_boom(void)
+static void sound_boom(uint16_t freq)
 {
-	static const struct audio_out_spec ast_boom_spec = {
-		.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xC,
+	struct audio_out_spec ast_boom_spec = {
+		.frequency_hz = freq,
 		.duration_ms = 500,
-		.decay = -1,
+		.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
 		.amplitude_dBFS = -3,
 		.type = AUDIO_OUT_TYPE_NES_NOISE,
 		.nes_noise.lfsr_val = UINT16_MAX,
@@ -486,25 +486,28 @@ static void check_bullet_asteroid_collision(struct bullet *b)
 		int dy = (b->p.y >> 8) - (a->p.y >> 8);
 		int dist_squared = (dx * dx) + (dy * dy);
 		if (dist_squared < (12 * a->radius >> 8) * (12 * a->radius >> 8)) {
-			int r = a->radius / 2;
-			if (r >= 256)
+			if (a->radius >= 256) {
 				score += 20;
-			else if (r >= 128)
+				sound_boom(AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xE);
+			} else if (a->radius >= 128) {
 				score += 50;
-			else if (r >= 64)
+				sound_boom(AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xD);
+			} else if (a->radius >= 64) {
 				score += 100;
-			if (r > min_asteroid_radius) {
+				sound_boom(AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xC);
+			}
+			int r_new = a->radius / 2;
+			if (r_new > min_asteroid_radius) {
 				int vx = random_num(1 << 8) - (1 << 7);
 				int vy = random_num(1 << 8) - (1 << 7);
-				add_asteroid(a->p.x, a->p.y, vx, vy, r);
+				add_asteroid(a->p.x, a->p.y, vx, vy, r_new);
 				vx = random_num(1 << 8) - (1 << 7);
 				vy = random_num(1 << 8) - (1 << 7);
-				add_asteroid(a->p.x, a->p.y, vx, vy, r);
+				add_asteroid(a->p.x, a->p.y, vx, vy, r_new);
 			}
 			remove_asteroid(i);
 			add_sparks(b->p.x, b->p.y, 2 << 8, 8);
 			b->life = 0;
-			sound_boom();
 		}
 	}
 }

@@ -73,7 +73,7 @@ static bool check_button(const struct qc_button *b)
             .callback = NULL,
             .frequency_hz = b->freq,
             .duration_ms = 1000 / BADGE_FRAME_RATE_FPS + 2,
-            .decay = 0,
+            .envelope = 0,
             .phase = 0,
             .amplitude_dBFS = -3,
             .restart = false,

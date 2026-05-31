@@ -514,7 +514,7 @@ void playerLose(void){
 		.callback = NULL,
 		.frequency_hz = 93*42,
 		.duration_ms = 3000,
-		.decay = 0,
+		.envelope = 0,
 		.phase = 0,
 		.amplitude_dBFS = -3,
 		.restart = false,

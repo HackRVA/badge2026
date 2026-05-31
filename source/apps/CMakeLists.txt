@@ -45,6 +45,7 @@ add_subdirectory(clue_assets)
 add_subdirectory(new_badge_monsters_assets)
 add_subdirectory(new_badge_monsters)
 add_subdirectory(mixtape-assets)
+add_subdirectory(rvasec_splash_assets)
 target_include_directories(${PRODUCT} PUBLIC .)
 
 badge_png_asset_add(badgemon 4 ${CMAKE_CURRENT_LIST_DIR}/badge_monster_assets/badge_monster_birdo.png)
