@@ -12,6 +12,7 @@
 #include "trig.h"
 /* #include "new_badge_monsters/new_badge_monsters.h" */
 #include "badgemon.h"
+#include <rvasec_splash_assets/sponsor_logo.h>
 #include <string.h>
 
 #define SCREEN_ORIENTATION_LANDSCAPE 1 /* 0 = portrait, 1 = landscape */
@@ -220,19 +221,24 @@ void disp_asset_saver(void)
         uint8_t random;
         random_insecure_bytes(&random, sizeof(int8_t));
 
-        imgnum = random % 4;
+        imgnum = random % 3;
         animation_count++;
     }
 
     switch(imgnum){
 	case 0:
-        case 1:
             FbMove(0,0);
             FbImage2(&RVAsec_14, 0);
             break;
 
+	case 1:
+            FbMove((LCD_XSIZE - sponsor_logo.x) / 2,
+                   (LCD_YSIZE - sponsor_logo.y) / 2);
+            FbColor(WHITE);
+            FbImage1bit2(&sponsor_logo, 0);
+            break;
+
         case 2:
-	case 3:
             /* render_screen_save_monsters(); */
             badgemon_draw_screen_saver_monster();
             break;

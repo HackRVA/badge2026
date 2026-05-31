@@ -255,7 +255,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         FbColor(WHITE);
         FbMove((LCD_XSIZE - sponsor_logo.x) / 2, 
                ((LCD_YSIZE - sponsor_logo.y) / 2));	
-        FbImage2(&sponsor_logo, 0);
+        FbImage1bit2(&sponsor_logo, 0);
         FbSwapBuffers();
 #if TARGET_SIMULATOR
         if (silent_startup && (SPLASH_WAIT_SPONSOR_FRAMES < ++wait)) {
