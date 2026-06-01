@@ -71,6 +71,7 @@ Controls:
 #define ANIM_UNDO_MS 160
 #define ANIM_SELECT_MS 90
 #define ANIM_WIN_MS 900
+#define ANIM_DENY_MS 160
 
 struct key {
 	unsigned short prongs;	/* prong pattern in the pick's own coordinates */
@@ -105,6 +106,7 @@ enum anim_kind_t {
 	ANIM_UNDO,
 	ANIM_SELECT,
 	ANIM_WIN,
+	ANIM_DENY,
 };
 
 static enum anim_kind_t anim_kind;
@@ -435,8 +437,11 @@ static void commit_key(void)
 	struct key *k = &keys[sel_key];
 	unsigned short m;
 
-	if (active_ring < 0 || k->used || !key_fits_active(k))
+	if (active_ring < 0 || k->used || !key_fits_active(k)) {
+		start_anim(ANIM_DENY, ANIM_DENY_MS, (signed char)active_ring,
+			   (signed char)sel_key, 0);
 		return;
+	}
 
 	m = key_mask(k);
 	start_anim(ANIM_INSERT, ANIM_INSERT_MS, (signed char)active_ring,
@@ -586,6 +591,160 @@ static void draw_prong_glints(int rin, int rout, unsigned short mask,
 	}
 }
 
+/* ----------------------------------------------------------------------
+ * A tiny "fake shader": run an operation on every pixel inside a clip rect.
+ * The op receives the pixel's coordinates and current color and returns the
+ * new color.  Because it gets the framebuffer position, an op is free to peek
+ * at neighboring pixels (G_Fb.buffer) to do gather effects like glow/blur.
+ * -------------------------------------------------------------------- */
+typedef unsigned short (*pixel_op_fn)(int x, int y, unsigned short color, void *ctx);
+
+static void fb_shade_rect(int x0, int y0, int w, int h, pixel_op_fn op, void *ctx)
+{
+	int x, y;
+
+	if (x0 < 0) { w += x0; x0 = 0; }
+	if (y0 < 0) { h += y0; y0 = 0; }
+	if (x0 + w > LCD_XSIZE) w = LCD_XSIZE - x0;
+	if (y0 + h > LCD_YSIZE) h = LCD_YSIZE - y0;
+	if (w <= 0 || h <= 0)
+		return;
+
+	for (y = y0; y < y0 + h; y++) {
+		for (x = x0; x < x0 + w; x++) {
+			unsigned short *p = &G_Fb.buffer[y * LCD_XSIZE + x];
+			*p = op(x, y, *p, ctx);
+		}
+	}
+	G_Fb.changed = 1;
+}
+
+/* rough perceptual brightness of an RGB565 pixel (0..186) */
+static int luma565(unsigned short c)
+{
+	return UNPACKR(c) * 2 + UNPACKG(c) + UNPACKB(c) * 2;
+}
+
+/* Only bright pixels cast glow, and glow is only written into dark pixels.
+ * Glow output is dimmer than GLOW_SRC_MIN, so glowed pixels never become
+ * sources themselves -- that keeps this single in-place pass feedback-free. */
+#define GLOW_SRC_MIN 80
+#define GLOW_DST_MAX 18
+
+struct glow_ctx {
+	int radius;
+	int num, den;		/* nearest-neighbor halo intensity = num/den */
+	unsigned short tint;	/* blend the halo toward this color; 0 = source color */
+};
+
+static unsigned short glow_op(int x, int y, unsigned short c, void *vctx)
+{
+	struct glow_ctx *g = vctx;
+	int dx, dy, best = 0, br = 0, bg = 0, bb = 0;
+
+	if (luma565(c) > GLOW_DST_MAX)
+		return c;	/* leave teeth, tracks, text alone */
+
+	for (dy = -g->radius; dy <= g->radius; dy++) {
+		for (dx = -g->radius; dx <= g->radius; dx++) {
+			int nx = x + dx, ny = y + dy, dist, weight;
+			unsigned short n;
+
+			if (nx < 0 || nx >= LCD_XSIZE || ny < 0 || ny >= LCD_YSIZE)
+				continue;
+			n = G_Fb.buffer[ny * LCD_XSIZE + nx];
+			if (luma565(n) <= GLOW_SRC_MIN)
+				continue;
+			dist = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+			weight = g->radius * 2 - dist;	/* closer source => brighter halo */
+			if (weight > best) {
+				best = weight;
+				br = UNPACKR(n);
+				bg = UNPACKG(n);
+				bb = UNPACKB(n);
+			}
+		}
+	}
+	if (best <= 0)
+		return c;
+
+	if (g->tint) {		/* skew the halo toward the fit/no-fit color */
+		br = (br + UNPACKR(g->tint)) / 2;
+		bg = (bg + UNPACKG(g->tint)) / 2;
+		bb = (bb + UNPACKB(g->tint)) / 2;
+	}
+	{
+		int sn = g->num * best;
+		int sd = g->den * (g->radius * 2);
+		return PACKRGB(br * sn / sd, bg * sn / sd, bb * sn / sd);
+	}
+}
+
+/* Bloom the bright lock teeth into the surrounding darkness. */
+static void glow_pass(int x0, int y0, int w, int h, int radius, unsigned short tint)
+{
+	struct glow_ctx g = { radius, 1, 3, tint };	/* a subtle rim, not a fill */
+
+	fb_shade_rect(x0, y0, w, h, glow_op, &g);
+}
+
+/* Additive color flash, faded by amount (0..255), over a rect. */
+struct flash_ctx { int r, g, b, amount; };
+static unsigned short flash_op(int x, int y, unsigned short c, void *vctx)
+{
+	struct flash_ctx *f = vctx;
+	int R = UNPACKR(c) + f->r * f->amount / 255;
+	int G = UNPACKG(c) + f->g * f->amount / 255;
+	int B = UNPACKB(c) + f->b * f->amount / 255;
+
+	(void)x;
+	(void)y;
+	if (R > 31) R = 31;
+	if (G > 63) G = 63;
+	if (B > 31) B = 31;
+	return PACKRGB(R, G, B);
+}
+
+static void flash_pass(int x0, int y0, int w, int h, int r, int g, int b, int amount)
+{
+	struct flash_ctx f = { r, g, b, amount };
+
+	fb_shade_rect(x0, y0, w, h, flash_op, &f);
+}
+
+/* Darken every other row for a CRT/terminal feel -- but only on dim pixels
+ * (the glow and background), so the bright teeth, tracks, and text stay crisp
+ * and readable. */
+static unsigned short scanline_op(int x, int y, unsigned short c, void *vctx)
+{
+	(void)x;
+	(void)vctx;
+	if ((y & 1) && luma565(c) < 60)
+		return PACKRGB(UNPACKR(c) * 3 / 4, UNPACKG(c) * 3 / 4, UNPACKB(c) * 3 / 4);
+	return c;
+}
+
+/* Brighten a thin expanding ring of light -- the unlock shockwave. */
+struct wave_ctx { int cx, cy, rad, band, amount; };
+static unsigned short wave_op(int x, int y, unsigned short c, void *vctx)
+{
+	struct wave_ctx *w = vctx;
+	int dx = x - w->cx, dy = y - w->cy, d2 = dx * dx + dy * dy;
+	int lo = w->rad - w->band, hi = w->rad + w->band;
+	int R, G, B;
+
+	if (lo < 0)
+		lo = 0;
+	if (d2 < lo * lo || d2 > hi * hi)
+		return c;
+	R = UNPACKR(c) + w->amount;
+	G = UNPACKG(c) + w->amount * 2;
+	B = UNPACKB(c) + w->amount;
+	if (R > 31) R = 31;
+	if (G > 63) G = 63;
+	if (B > 31) B = 31;
+	return PACKRGB(R, G, B);
+}
 
 /* does the selected pick fit the active ring at its current rotation? */
 static int selected_pick_fits(void)
@@ -690,6 +849,27 @@ static void draw_candidate_preview(void)
 			fill_wedge(rin, rout, s * ANGLE_PER_SLOT, TOOTH_HALF - 1, c);
 }
 
+/* bloom the teeth into the surrounding dark, over the lock's bounding box.  the
+ * halo is tinted green/red by whether the held pick fits, then a red flash on a
+ * rejected insert or a green snap on a good one. */
+static void apply_glow_and_feedback(int sel_fits)
+{
+	int outer = RING_INNER0 + num_rings * RING_STEP;
+	int bx = LOCK_CX - outer - 2, by = LOCK_CY - outer - 2;
+	int bw = 2 * (outer + 2), bh = 2 * (outer + 2);
+	unsigned short tint = sel_fits ? COL_CAND_FIT
+		: (candidate_held() ? COL_CAND_NO : 0);
+
+	glow_pass(bx, by, bw, bh, 2, tint);
+
+	if (anim_kind == ANIM_DENY)
+		flash_pass(bx, by, bw, bh, 28, 0, 0,
+			   255 - anim_progress255());
+	else if (anim_kind == ANIM_INSERT)
+		flash_pass(bx, by, bw, bh, 0, 24, 8,
+			   (255 - anim_progress255()) / 2);
+}
+
 static void draw_lock(void)
 {
 	int r;
@@ -701,6 +881,7 @@ static void draw_lock(void)
 		draw_ring(r, sel_fits);
 	draw_action_feedback(anim_p);
 	draw_candidate_preview();
+	apply_glow_and_feedback(sel_fits);
 }
 
 /* a small lock-shaped icon for one pick in the tray.  fits_layer picks turn
@@ -815,6 +996,7 @@ static void draw_play(void)
 	draw_lock();
 	draw_tray();
 	draw_hud();
+	fb_shade_rect(0, 0, LCD_XSIZE, LCD_YSIZE, scanline_op, NULL);
 	FbSwapBuffers();
 	screen_changed = anim_active();
 }
@@ -856,6 +1038,18 @@ static void draw_splash(void)
 	screen_changed = 0;
 }
 
+/* soft expanding glow band, with a crisp ring riding its leading edge */
+static void draw_win_shockwave(int p)
+{
+	int outer = RING_INNER0 + num_rings * RING_STEP + 2 + p / 42;
+	struct wave_ctx w = { LOCK_CX, LOCK_CY, outer, 4, (255 - p) / 16 };
+
+	fb_shade_rect(LOCK_CX - outer - 5, LOCK_CY - outer - 5,
+		      2 * (outer + 5), 2 * (outer + 5), wave_op, &w);
+	FbColor(p < 170 ? WHITE : x11_spring_green);
+	FbDDACircle(LOCK_CX, LOCK_CY, outer);
+}
+
 static void draw_win_banners(void)
 {
 	FbPlaceFilledRectangle(0, 0, LCD_XSIZE, 11, BLACK);
@@ -881,14 +1075,10 @@ static void draw_win(void)
 	draw_lock();		/* every ring is solved now, so the lock shows all green */
 	p = anim_progress255();
 
-	if (anim_kind == ANIM_WIN) {
-		int outer = RING_INNER0 + num_rings * RING_STEP + 2 + p / 42;
+	if (anim_kind == ANIM_WIN)
+		draw_win_shockwave(p);
 
-		FbColor(p < 170 ? WHITE : x11_spring_green);
-		FbDDACircle(LOCK_CX, LOCK_CY, outer);
-		FbDDACircle(LOCK_CX, LOCK_CY, outer + 2);
-	}
-
+	fb_shade_rect(0, 0, LCD_XSIZE, LCD_YSIZE, scanline_op, NULL);
 	draw_win_banners();
 	FbSwapBuffers();
 	screen_changed = anim_active();
