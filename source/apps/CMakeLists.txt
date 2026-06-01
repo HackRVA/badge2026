@@ -41,6 +41,7 @@ target_sources(${PRODUCT} PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/screamo.c
 	${CMAKE_CURRENT_LIST_DIR}/daywalker.c
 	${CMAKE_CURRENT_LIST_DIR}/skygolf.c
+	${CMAKE_CURRENT_LIST_DIR}/batping.c
         )
 add_subdirectory(simonSays_assets)
 add_subdirectory(clue_assets)
