@@ -20,6 +20,7 @@ Controls:
 #include "framebuffer.h"
 #include "rtc.h"
 #include "xorshift.h"
+#include "audio.h"
 #include "ui.h"
 #include "particle.h"
 
@@ -76,6 +77,24 @@ static int rnd(int n)
 		return 0;
 	return (int)(xorshift(&rng_state) % (unsigned int)n);
 }
+
+/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
+ * real sounds can be dropped into these later (same pattern as daywalker). */
+#define DEBUG_BEEP_ENABLED 0
+static void sfx_debug_beep(uint16_t freq, uint16_t duration)
+{
+#if DEBUG_BEEP_ENABLED
+	audio_out_beep(freq, duration);
+#else
+	(void)freq;
+	(void)duration;
+#endif
+}
+
+static void sfx_pulse(void) { sfx_debug_beep(1400, 18); }
+static void sfx_point(void) { sfx_debug_beep(1700, 30); }
+static void sfx_moth(void)  { sfx_debug_beep(2100, 45); }
+static void sfx_die(void)   { sfx_debug_beep(150, 320); }
 
 static void rect(int x, int y, int w, int h, unsigned short c)
 {
@@ -171,6 +190,7 @@ static void emit_pulse(void)
 {
 	add_ring();
 	reveal_around(BAT_X, bat_y / 100, 18);
+	sfx_pulse();
 }
 
 static void maybe_add_moth(int x, int top, int bot)
@@ -262,6 +282,7 @@ static void die(void)
 	if (dead)
 		return;
 	dead = true;
+	sfx_die();
 	if (score > best)
 		best = score;
 	shake_timer = 14;
@@ -329,6 +350,7 @@ static void scroll_walls(int spd)
 			walls[w++] = walls[i];
 		} else {
 			score++;
+			sfx_point();
 		}
 	}
 	wall_count = w;
@@ -371,6 +393,7 @@ static void update_moths(void)
 		if (dx * dx + dy * dy < 80) {
 			m->collected = true;
 			score += 5;
+			sfx_moth();
 			burst(m->x, m->y, 6, x11_gold);
 		}
 	}
