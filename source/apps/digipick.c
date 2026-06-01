@@ -76,6 +76,8 @@ struct key {
 	unsigned short prongs;	/* prong pattern in the pick's own coordinates */
 	unsigned char rotation;	/* current rotation, 0..N_SLOTS-1 */
 	unsigned char used;
+	signed char target_ring;	/* ring this pick was built to solve, -1 for decoys */
+	unsigned char solve_rot;	/* rotation at which it fills its target gaps */
 };
 
 struct undo_entry {
@@ -278,7 +280,7 @@ static void shuffle_keys(void)
 	}
 }
 
-static void add_key_from_mask(unsigned short abs_mask)
+static void add_key_from_mask(unsigned short abs_mask, int ring)
 {
 	int rot0;
 
@@ -290,7 +292,37 @@ static void add_key_from_mask(unsigned short abs_mask)
 	keys[num_keys].prongs = rotl(abs_mask, N_SLOTS - rot0);
 	keys[num_keys].rotation = (unsigned char)random_num(N_SLOTS);
 	keys[num_keys].used = 0;
+	keys[num_keys].target_ring = (signed char)ring;
+	keys[num_keys].solve_rot = (unsigned char)rot0;
 	num_keys++;
+}
+
+/* Replay the intended solution: place every pick on its target ring at its
+ * solve rotation.  If that fills each ring exactly (no overlaps, no leftover
+ * gaps), the level is solvable.  This is the guarantee the player relies on. */
+static int level_is_solvable(void)
+{
+	unsigned short work[MAX_RINGS];
+	int r, i;
+
+	for (r = 0; r < num_rings; r++)
+		work[r] = rings[r];
+
+	for (r = 0; r < num_rings; r++) {
+		for (i = 0; i < num_keys; i++) {
+			unsigned short m;
+
+			if (keys[i].target_ring != r)
+				continue;
+			m = rotl(keys[i].prongs, keys[i].solve_rot);
+			if (m & work[r])
+				return 0;	/* intended picks overlap -> bad */
+			work[r] |= m;
+		}
+		if (work[r] != FULL_MASK)
+			return 0;		/* a gap can never be filled -> bad */
+	}
+	return 1;
 }
 
 /* Collect the gap positions of a ring into positions[] and shuffle them.
@@ -311,12 +343,11 @@ static int collect_gap_positions(unsigned short gaps, int positions[N_SLOTS])
 	return np;
 }
 
-/* partition the gaps into picks of 2-3 prongs */
+/* partition the gaps into picks of 2-3 prongs, all targeting ring r */
 static void build_ring_keys(int r, const int positions[N_SLOTS], int np)
 {
 	int i = 0;
 
-	(void)r;
 	while (i < np) {
 		int chunk = 2 + random_num(2);
 		unsigned short abs_mask = 0;
@@ -327,7 +358,7 @@ static void build_ring_keys(int r, const int positions[N_SLOTS], int np)
 		for (j = 0; j < chunk; j++)
 			abs_mask |= (unsigned short)(1u << positions[i + j]);
 		i += chunk;
-		add_key_from_mask(abs_mask);
+		add_key_from_mask(abs_mask, r);
 	}
 }
 
@@ -363,6 +394,8 @@ static void build_decoys(void)
 		keys[num_keys].prongs = m;
 		keys[num_keys].rotation = (unsigned char)random_num(N_SLOTS);
 		keys[num_keys].used = 0;
+		keys[num_keys].target_ring = -1;
+		keys[num_keys].solve_rot = 0;
 		num_keys++;
 	}
 }
@@ -385,7 +418,14 @@ static void build_level(void)
 
 static void generate_level(void)
 {
-	build_level();
+	int tries = 0;
+
+	/* Build until we get a provably solvable lock.  By construction the
+	 * first attempt should always pass; the loop just guarantees it. */
+	do {
+		build_level();
+	} while (!level_is_solvable() && ++tries < 50);
+
 	sel_key = 0;
 	update_active_ring();
 }
