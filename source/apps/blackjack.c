@@ -84,6 +84,17 @@ static void line(int x0, int y0, int x1, int y1, unsigned short c)
 	FbLine(x0, y0, x1, y1);
 }
 
+static void fill_disc(int cx, int cy, int r, unsigned short c)
+{
+	int dx, dy, r2 = r * r;
+
+	FbColor(c);
+	for (dy = -r; dy <= r; dy++)
+		for (dx = -r; dx <= r; dx++)
+			if (dx * dx + dy * dy <= r2)
+				FbPoint(cx + dx, cy + dy);
+}
+
 static void text_at(int x, int y, const char *s, unsigned short c)
 {
 	FbColor(c);
@@ -447,14 +458,16 @@ static void draw_hand(unsigned char *hand, int n, int x, int y, bool hide_first,
 	}
 }
 
+/* A round poker chip: white rim, colored body, four rim notches and a pip. */
 static void draw_chip(int x, int y, unsigned short c)
 {
-	rect(x - 6, y - 5, 12, 10, BLACK);
-	rect(x - 5, y - 5, 10, 10, WHITE);
-	rect(x - 4, y - 4, 8, 8, c);
-	line(x - 4, y, x + 4, y, WHITE);
-	line(x, y - 4, x, y + 4, WHITE);
-	point(x, y, WHITE);
+	fill_disc(x, y, 6, WHITE);	/* rim */
+	fill_disc(x, y, 4, c);		/* colored body */
+	point(x, y - 5, c);		/* edge spots */
+	point(x, y + 5, c);
+	point(x - 5, y, c);
+	point(x + 5, y, c);
+	point(x, y, WHITE);		/* center pip */
 }
 
 static void draw_badge_box(int x, int y, int w, const char *label, unsigned short c)
