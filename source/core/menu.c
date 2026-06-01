@@ -59,6 +59,7 @@
 #include "badgemon.h"
 #include "mixtape.h"
 #include "daywalker.h"
+#include "skygolf.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -96,6 +97,7 @@ static const struct menu_t games_m[] = {
 	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
 	{"SCREAMO", VERT_ITEM, FUNCTION, { .func = screamo_cb }, NULL, },
 	{"Daywalker", VERT_ITEM, FUNCTION, { .func = daywalker_cb}, NULL },
+	{"skygolf", VERT_ITEM, FUNCTION, { .func = skygolf_cb}, NULL },
 #ifdef BUILD_IMAGE_TEST_PROGRAM
 	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
 #endif
