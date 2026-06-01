@@ -4,10 +4,14 @@
 #include "button.h"
 #include "colors.h"
 #include "framebuffer.h"
-#include "menu.h"
+#include "badge.h"
 #include "palette.h"
 #include "ui.h"
 #include "xorshift.h"
+#include "rtc.h"
+#include "key_value_storage.h"
+
+#define BEST_SCORE_KEY "2048_BEST"
 
 static enum twenty_forty_state_t {
 	TWENTY_FORTY_EIGHT_INIT = 0,
@@ -16,6 +20,7 @@ static enum twenty_forty_state_t {
 	TWENTY_FORTY_EIGHT_MENU,
 	TWENTY_FORTY_EIGHT_POLL_INPUT,
 	TWENTY_FORTY_EIGHT_DRAW_SCREEN,
+	TWENTY_FORTY_EIGHT_WIN,
 	TWENTY_FORTY_EIGHT_GAME_OVER,
 	TWENTY_FORTY_EIGHT_EXIT,
 } twenty_forty_eight_state = TWENTY_FORTY_EIGHT_INIT;
@@ -62,6 +67,11 @@ static struct palette default_palette = {
 static uint64_t board = 0;
 static uint64_t prev_board = 0;
 static unsigned int random_num_state = 0;
+static unsigned long score = 0;
+static unsigned long best_score = 0;
+static unsigned long saved_best = 0;	/* last value written to flash */
+static bool won_game = false;
+static bool keep_playing_after_win = false;
 
 static int current_menu_item = 0;
 static bool current_menu_item_selected = false;
@@ -81,8 +91,10 @@ static int tile_scale[GRID_SIZE][GRID_SIZE] = {
 };
 
 static bool moved_tiles[GRID_SIZE][GRID_SIZE] = {false};
-static int animation_step = 0;
-static const int animation_duration = 5;
+
+/* per-tile pixel offset from its final cell, decayed to 0 to animate the slide */
+static int slide_off_x[GRID_SIZE][GRID_SIZE] = {{0}};
+static int slide_off_y[GRID_SIZE][GRID_SIZE] = {{0}};
 
 static int get_tile(int row, int col)
 {
@@ -110,13 +122,11 @@ static int find_empty_positions(int empty_positions[GRID_SIZE * GRID_SIZE])
 
 static int random_num(int n)
 {
-	int x;
+	unsigned int x;
 
 	assert(n != 0);
 	x = xorshift(&random_num_state);
-	if (x < 0)
-		x = -x;
-	return x % n;
+	return (int)(x % (unsigned int)n);
 }
 
 static void spawn_tile(void)
@@ -135,6 +145,9 @@ static void reset_moved_tiles(void)
 	for (int row = 0; row < GRID_SIZE; row++) {
 		for (int col = 0; col < GRID_SIZE; col++) {
 			moved_tiles[row][col] = false;
+			tile_scale[row][col] = 100;
+			slide_off_x[row][col] = 0;
+			slide_off_y[row][col] = 0;
 		}
 	}
 }
@@ -142,92 +155,125 @@ static void reset_moved_tiles(void)
 static void reset_game(void)
 {
 	board = 0;
+	score = 0;
+	won_game = false;
+	keep_playing_after_win = false;
 	first_launch = false;
 	spawn_tile();
 	spawn_tile();
 	reset_moved_tiles();
 }
 
-static bool merged_tiles[GRID_SIZE][GRID_SIZE] = {false};
-
-static void slide_and_merge(int *tiles)
+/* Slide/merge one line (index 0 == leading edge).  Also reports, for each
+ * final line position, which source position the tile there came from, so the
+ * caller can animate the slide.  src_pos[i] == -1 for an empty final cell. */
+static void slide_and_merge(int *tiles, int *src_pos)
 {
-	int newTiles[GRID_SIZE] = {0}, index = 0;
-	bool merged[GRID_SIZE] = {false};
+	int comp[GRID_SIZE], origin[GRID_SIZE], n = 0;
+	int fn = 0, i;
 
-	for (int i = 0; i < GRID_SIZE; i++) {
-		if (tiles[i] != 0)
-			newTiles[index++] = tiles[i];
-	}
-
-	for (int i = 0; i < GRID_SIZE - 1; i++) {
-		if (newTiles[i] != 0 && newTiles[i] == newTiles[i + 1] &&
-			!merged[i] && !merged[i + 1]) {
-			newTiles[i]++;
-			newTiles[i + 1] = 0;
-			merged[i] = true;
+	for (i = 0; i < GRID_SIZE; i++) {
+		if (tiles[i] != 0) {
+			comp[n] = tiles[i];
+			origin[n] = i;
+			n++;
 		}
 	}
 
-	index = 0;
-	for (int i = 0; i < GRID_SIZE; i++) {
-		if (newTiles[i] != 0) {
-			tiles[index] = newTiles[i];
-
-			merged_tiles[index][i] = merged[i];
-			index++;
-		}
+	for (i = 0; i < GRID_SIZE; i++) {
+		tiles[i] = 0;
+		src_pos[i] = -1;
 	}
 
-	while (index < GRID_SIZE)
-		tiles[index++] = 0;
+	i = 0;
+	while (i < n) {
+		if (i + 1 < n && comp[i] == comp[i + 1]) {
+			tiles[fn] = comp[i] + 1;
+			src_pos[fn] = origin[i + 1];	/* the tile that slides farther */
+			score += 1UL << tiles[fn];
+			if (score > best_score)
+				best_score = score;
+			if (tiles[fn] >= 11)
+				won_game = true;
+			fn++;
+			i += 2;
+		} else {
+			tiles[fn] = comp[i];
+			src_pos[fn] = origin[i];
+			fn++;
+			i += 1;
+		}
+	}
+}
+
+static int tile_pitch(void)
+{
+	return tile_size + tile_spacing;
 }
 
 static void move_left(void)
 {
 	for (int row = 0; row < GRID_SIZE; row++) {
-		int tiles[GRID_SIZE];
+		int tiles[GRID_SIZE], src[GRID_SIZE];
 		for (int col = 0; col < GRID_SIZE; col++)
 			tiles[col] = get_tile(row, col);
-		slide_and_merge(tiles);
-		for (int col = 0; col < GRID_SIZE; col++)
+		slide_and_merge(tiles, src);
+		for (int col = 0; col < GRID_SIZE; col++) {
 			set_tile(row, col, tiles[col]);
+			if (tiles[col] && src[col] != col)
+				slide_off_x[row][col] = (src[col] - col) * tile_pitch();
+		}
 	}
 }
 
 static void move_right(void)
 {
 	for (int row = 0; row < GRID_SIZE; row++) {
-		int tiles[GRID_SIZE];
+		int tiles[GRID_SIZE], src[GRID_SIZE];
 		for (int col = 0; col < GRID_SIZE; col++)
 			tiles[GRID_SIZE - 1 - col] = get_tile(row, col);
-		slide_and_merge(tiles);
-		for (int col = 0; col < GRID_SIZE; col++)
-			set_tile(row, col, tiles[GRID_SIZE - 1 - col]);
+		slide_and_merge(tiles, src);
+		for (int line = 0; line < GRID_SIZE; line++) {
+			int col = GRID_SIZE - 1 - line;
+			set_tile(row, col, tiles[line]);
+			if (tiles[line] && src[line] != line) {
+				int src_col = GRID_SIZE - 1 - src[line];
+				slide_off_x[row][col] = (src_col - col) * tile_pitch();
+			}
+		}
 	}
 }
 
 static void move_up(void)
 {
 	for (int col = 0; col < GRID_SIZE; col++) {
-		int tiles[GRID_SIZE];
+		int tiles[GRID_SIZE], src[GRID_SIZE];
 		for (int row = 0; row < GRID_SIZE; row++)
 			tiles[row] = get_tile(row, col);
-		slide_and_merge(tiles);
-		for (int row = 0; row < GRID_SIZE; row++)
+		slide_and_merge(tiles, src);
+		for (int row = 0; row < GRID_SIZE; row++) {
 			set_tile(row, col, tiles[row]);
+			if (tiles[row] && src[row] != row)
+				slide_off_y[row][col] = (src[row] - row) * tile_pitch();
+		}
 	}
 }
 
 static void move_down(void)
 {
 	for (int col = 0; col < GRID_SIZE; col++) {
-		int tiles[GRID_SIZE];
+		int tiles[GRID_SIZE], src[GRID_SIZE];
 		for (int row = 0; row < GRID_SIZE; row++)
 			tiles[GRID_SIZE - 1 - row] = get_tile(row, col);
-		slide_and_merge(tiles);
-		for (int row = 0; row < GRID_SIZE; row++)
-			set_tile(row, col, tiles[GRID_SIZE - 1 - row]);
+		slide_and_merge(tiles, src);
+		for (int line = 0; line < GRID_SIZE; line++) {
+			int row = GRID_SIZE - 1 - line;
+			set_tile(row, col, tiles[line]);
+			if (tiles[line] && src[line] != line) {
+				int src_row = GRID_SIZE - 1 - src[line];
+				slide_off_y[row][col] = (src_row - row) * tile_pitch();
+			}
+		}
 	}
 }
 
@@ -271,6 +317,7 @@ static void handle_menu_options(void)
 		break;
 	case 1:
 		reset_game();
+		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_RUN;
 		break;
 	case 2:
 		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_SHOW_HELP;
@@ -283,28 +330,42 @@ static void handle_menu_options(void)
 	}
 }
 
+/* Persist the best score to flash, but only when it actually changed -- flash
+ * wears out if written every frame, so this is called at game-end boundaries. */
+static void persist_best_score(void)
+{
+	if (best_score != saved_best) {
+		flash_kv_store_int(BEST_SCORE_KEY, (int)best_score);
+		saved_best = best_score;
+	}
+}
+
 static void twenty_forty_eight_init(void)
 {
+	int stored;
+
 	FbInit();
 	FbClear();
 	current_menu_item = 0;
+	random_num_state = (unsigned int)rtc_get_ms_since_boot();
+	if (random_num_state == 0)
+		random_num_state = 0x20482048;
+
+	if (flash_kv_get_int(BEST_SCORE_KEY, &stored) && stored > 0) {
+		best_score = (unsigned long)stored;
+		saved_best = best_score;
+	}
 
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 	screen_changed = 1;
 	first_launch = true;
 
-	tile_size =
-		(((LCD_XSIZE - (GRID_SIZE + 1) * tile_spacing) / GRID_SIZE) /
-			2) +
-		8;
+	tile_size = 24;
 	grid_x = (LCD_XSIZE -
 			 (tile_size * GRID_SIZE +
 				 tile_spacing * (GRID_SIZE - 1))) /
 		2;
-	grid_y = (LCD_YSIZE -
-			 (tile_size * GRID_SIZE +
-				 tile_spacing * (GRID_SIZE - 1))) /
-		2;
+	grid_y = 22;
 }
 
 static void move_tiles(void (*move_func)(void))
@@ -323,9 +384,13 @@ static void move_tiles(void (*move_func)(void))
 							      4)) &
 						TILE_MASK)) {
 					moved_tiles[row][col] = true;
+					tile_scale[row][col] = 82;
 				}
 			}
 		}
+		screen_changed = 1;
+	} else {
+		screen_changed = 1;
 	}
 }
 
@@ -369,6 +434,28 @@ static void check_buttons(void)
 			screen_changed = 1;
 		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
 			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_EXIT;
+			screen_changed = 1;
+		}
+		return;
+	}
+	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_WIN) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+			keep_playing_after_win = true;
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_RUN;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
+			screen_changed = 1;
+		}
+		return;
+	}
+	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_GAME_OVER) {
+		if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
+			reset_game();
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_RUN;
+			screen_changed = 1;
+		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, down_latches)) {
+			twenty_forty_eight_state = TWENTY_FORTY_EIGHT_MENU;
 			screen_changed = 1;
 		}
 		return;
@@ -433,44 +520,31 @@ static void draw_menu(void)
 	}
 }
 
-static void reset_tile_size(int row, int col)
-{
-	tile_scale[row][col] = 100;
-	moved_tiles[row][col] = false;
-}
-
-static void grow_tile(int row, int col)
-{
-	if (!moved_tiles[row][col]) {
-		return;
-	}
-
-	if (animation_step < animation_duration / 2) {
-		return;
-	}
-	tile_scale[row][col] += 20 / (animation_duration / 2);
-}
-
 static void update_tile_animation(void)
 {
 	bool animation_triggered = false;
-	if (animation_step < animation_duration) {
-		for (int row = 0; row < GRID_SIZE; row++) {
-			for (int col = 0; col < GRID_SIZE; col++) {
-				grow_tile(row, col);
+
+	for (int row = 0; row < GRID_SIZE; row++) {
+		for (int col = 0; col < GRID_SIZE; col++) {
+			/* ease the tile from its source cell to its final one */
+			if (slide_off_x[row][col] != 0) {
+				slide_off_x[row][col] /= 3;
 				animation_triggered = true;
 			}
-		}
-		animation_step++;
-	} else {
-		for (int row = 0; row < GRID_SIZE; row++) {
-			for (int col = 0; col < GRID_SIZE; col++) {
-				if (tile_scale[row][col] == 100) continue;
-				reset_tile_size(row, col);
+			if (slide_off_y[row][col] != 0) {
+				slide_off_y[row][col] /= 3;
 				animation_triggered = true;
 			}
+			/* pop newly placed / merged tiles up to full size */
+			if (moved_tiles[row][col] && tile_scale[row][col] < 100) {
+				tile_scale[row][col] += 6;
+				if (tile_scale[row][col] > 100)
+					tile_scale[row][col] = 100;
+				animation_triggered = true;
+			}
+			if (tile_scale[row][col] == 100)
+				moved_tiles[row][col] = false;
 		}
-		animation_step = 0;
 	}
 
 	if (animation_triggered)
@@ -481,23 +555,54 @@ static void twenty_forty_eight_update(void)
 {
 	update_tile_animation();
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_DRAW_SCREEN;
-	if (is_game_over()) {
+	if (won_game && !keep_playing_after_win) {
+		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_WIN;
+		persist_best_score();
+	} else if (is_game_over()) {
 		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_GAME_OVER;
+		persist_best_score();
 	}
 }
 
+static void draw_game_board(void);
+
 static void draw_game_over_screen(void)
 {
-	char *game_over = "Game Over, man!";
+	char line[24];
+	char *game_over = "Game Over";
+
+	draw_game_board();
+	FbPlaceFilledRectangle(18, 38, 124, 52, palette_color_from_index(default_palette, 0));
+	FbColor(palette_color_from_index(default_palette, 8));
 	FbMove(ui_center_text_x(game_over, 0, LCD_XSIZE),
-		ui_center_text_y(0, LCD_YSIZE));
+		44);
 	FbWriteString(game_over);
-	FbMove(ui_center_text_x(game_over, 0, LCD_XSIZE),
-		ui_center_text_y(16, LCD_YSIZE));
-	FbWriteString("press B");
-	FbMove(ui_center_text_x(game_over, 0, LCD_XSIZE),
-		ui_center_text_y(24, LCD_YSIZE));
-	FbWriteString("to go back");
+	snprintf(line, sizeof(line), "score %lu", score);
+	FbColor(WHITE);
+	FbMove(ui_center_text_x(line, 0, LCD_XSIZE), 58);
+	FbWriteString(line);
+	FbMove(ui_center_text_x("A new  B menu", 0, LCD_XSIZE), 74);
+	FbWriteString("A new  B menu");
+}
+
+static void draw_win_screen(void)
+{
+	char line[24];
+	char *title = "2048!";
+
+	draw_game_board();
+	FbPlaceFilledRectangle(18, 36, 124, 56, palette_color_from_index(default_palette, 0));
+	FbColor(palette_color_from_index(default_palette, 10));
+	FbMove(ui_center_text_x(title, 0, LCD_XSIZE), 42);
+	FbWriteString(title);
+	snprintf(line, sizeof(line), "score %lu", score);
+	FbColor(WHITE);
+	FbMove(ui_center_text_x(line, 0, LCD_XSIZE), 58);
+	FbWriteString(line);
+	FbMove(ui_center_text_x("A keep going", 0, LCD_XSIZE), 72);
+	FbWriteString("A keep going");
+	FbMove(ui_center_text_x("B menu", 0, LCD_XSIZE), 82);
+	FbWriteString("B menu");
 }
 
 static void draw_help_screen(void)
@@ -521,8 +626,67 @@ static void draw_help_screen(void)
 	}
 }
 
+/* Classic 2048 palette: cream for small tiles warming to orange/gold as the
+ * values climb, so a glance at the color tells you roughly how far along you
+ * are.  Indexed by tile exponent (0 = empty). */
+static unsigned short tile_fill_color(int tile_value)
+{
+	static const unsigned short tile_rgb[16] = {
+		PACKRGB888(205, 193, 180),	/* empty   */
+		PACKRGB888(238, 228, 218),	/* 2       */
+		PACKRGB888(237, 224, 200),	/* 4       */
+		PACKRGB888(242, 177, 121),	/* 8       */
+		PACKRGB888(245, 149,  99),	/* 16      */
+		PACKRGB888(246, 124,  95),	/* 32      */
+		PACKRGB888(246,  94,  59),	/* 64      */
+		PACKRGB888(237, 207, 114),	/* 128     */
+		PACKRGB888(237, 204,  97),	/* 256     */
+		PACKRGB888(237, 200,  80),	/* 512     */
+		PACKRGB888(237, 197,  63),	/* 1024    */
+		PACKRGB888(237, 194,  46),	/* 2048    */
+		PACKRGB888(60,   58,  50),	/* 4096+   */
+		PACKRGB888(60,   58,  50),
+		PACKRGB888(60,   58,  50),
+		PACKRGB888(60,   58,  50),
+	};
+
+	if (tile_value < 0)
+		tile_value = 0;
+	if (tile_value > 15)
+		tile_value = 15;
+	return tile_rgb[tile_value];
+}
+
+/* Dark text on the pale low tiles, white once they turn orange. */
+static unsigned short tile_text_color(int tile_value)
+{
+	if (tile_value >= 1 && tile_value <= 2)
+		return PACKRGB888(119, 110, 101);
+	return WHITE;
+}
+
+static void draw_status_bar(void)
+{
+	char line[32];
+
+	FbColor(WHITE);
+	FbMove(2, 2);
+	snprintf(line, sizeof(line), "2048  score:%lu", score);
+	FbWriteString(line);
+	FbColor(palette_color_from_index(default_palette, 6));
+	FbMove(2, 12);
+	snprintf(line, sizeof(line), "best:%lu", best_score);
+	FbWriteString(line);
+}
+
 static void draw_game_board(void)
 {
+	draw_status_bar();
+	FbPlaceFilledRectangle(grid_x - tile_spacing, grid_y - tile_spacing,
+		tile_size * GRID_SIZE + tile_spacing * (GRID_SIZE + 1),
+		tile_size * GRID_SIZE + tile_spacing * (GRID_SIZE + 1),
+		PACKRGB888(187, 173, 160));
+
 	for (int row = 0; row < GRID_SIZE; row++) {
 		for (int col = 0; col < GRID_SIZE; col++) {
 			int tile_value = get_tile(row, col);
@@ -533,30 +697,24 @@ static void draw_game_board(void)
 				(tile_size * tile_scale[row][col]) / 100;
 
 			struct ui_button tile = {
-				.x = x + (tile_size - scaled_size) / 2,
-				.y = y + (tile_size - scaled_size) / 2,
+				.x = x + (tile_size - scaled_size) / 2 +
+					slide_off_x[row][col],
+				.y = y + (tile_size - scaled_size) / 2 +
+					slide_off_y[row][col],
 				.width = scaled_size,
 				.height = scaled_size,
-				.outline_size = 2,
+				.outline_size = 1,
 				.outline_color = palette_color_from_index(
-					default_palette, 7),
-				.fill_color = tile_value == 6
-					? palette_color_from_index(
-						  default_palette, 0)
-					: palette_color_from_index(
-						  default_palette,
-						  tile_value + 1),
-				.text_color = tile_value == 0
-					? palette_color_from_index(
-						  default_palette, 1)
-					: WHITE,
+					default_palette, 0),
+				.fill_color = tile_fill_color(tile_value),
+				.text_color = tile_text_color(tile_value),
 			};
 
 			ui_button_fill(tile, tile.fill_color);
 			ui_button_draw_outline(tile, tile.outline_color);
 
 			if (tile_value > 0) {
-				char text[5];
+				char text[8];
 				snprintf(text, sizeof(text), "%d",
 					1 << tile_value);
 				tile.text = text;
@@ -568,6 +726,8 @@ static void draw_game_board(void)
 
 static void draw_screen(void)
 {
+	if (!screen_changed) return;
+
 	FbClear();
 	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_SHOW_HELP) {
 		draw_help_screen();
@@ -579,11 +739,12 @@ static void draw_screen(void)
 		twenty_forty_eight_state = TWENTY_FORTY_EIGHT_RUN;
 		draw_game_board();
 	}
+	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_WIN) {
+		draw_win_screen();
+	}
 	if (twenty_forty_eight_state == TWENTY_FORTY_EIGHT_GAME_OVER) {
 		draw_game_over_screen();
 	}
-
-	if (!screen_changed) return;
 
 	FbSwapBuffers();
 	screen_changed = 0;
@@ -591,6 +752,7 @@ static void draw_screen(void)
 
 static void twenty_forty_eight_exit(void)
 {
+	persist_best_score();
 	twenty_forty_eight_state = TWENTY_FORTY_EIGHT_INIT;
 	current_menu_item = 0;
 	pop_app();
@@ -616,6 +778,9 @@ void twenty_forty_eight_cb(struct badge_app *app)
 	case TWENTY_FORTY_EIGHT_DRAW_SCREEN:
 		draw_screen();
 		break;
+	case TWENTY_FORTY_EIGHT_WIN:
+		draw_screen();
+		break;
 	case TWENTY_FORTY_EIGHT_MENU:
 		draw_screen();
 		break;
@@ -630,3 +795,4 @@ void twenty_forty_eight_cb(struct badge_app *app)
 	}
 	check_buttons();
 }
+
