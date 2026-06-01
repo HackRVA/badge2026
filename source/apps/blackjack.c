@@ -5,12 +5,33 @@
 #include "button.h"
 #include "colors.h"
 #include "framebuffer.h"
+#include "palette.h"
 #include "rtc.h"
 #include "ui.h"
 #include "xorshift.h"
 
 #define DECK_N 52
 #define HAND_MAX 12
+
+/* Tuned card-table palette; PC(i) fetches a color by index (as in daywalker). */
+static const struct palette bj_palette = {
+	.colors = {
+		PACKRGB888(0, 0, 0),       /* 0 transparent / shadow */
+		PACKRGB888(245, 245, 240), /* 1 card face white */
+		PACKRGB888(200, 40, 50),   /* 2 red suit */
+		PACKRGB888(22, 22, 30),    /* 3 black suit / ink */
+		PACKRGB888(18, 105, 58),   /* 4 felt green (deep) */
+		PACKRGB888(32, 140, 80),   /* 5 felt green (light) */
+		PACKRGB888(235, 205, 95),  /* 6 gold */
+		PACKRGB888(150, 120, 45),  /* 7 dark gold */
+		PACKRGB888(45, 95, 175),   /* 8 card-back blue */
+		PACKRGB888(95, 155, 225),  /* 9 card-back light */
+		PACKRGB888(120, 122, 135), /* 10 card border grey */
+		PACKRGB888(10, 50, 30),    /* 11 felt shadow */
+	},
+};
+
+#define PC(i) palette_color_from_index(bj_palette, (i))
 
 enum bj_state {
 	BJ_INIT,
@@ -303,6 +324,55 @@ static void double_down(void)
 		dealer_play();
 }
 
+static const unsigned char sprite_heart[] = {
+	0x02, 0x20, 0x22, 0x00, 0x22, 0x22, 0x22, 0x20,
+	0x22, 0x22, 0x22, 0x20, 0x22, 0x22, 0x22, 0x20,
+	0x02, 0x22, 0x22, 0x00, 0x00, 0x22, 0x20, 0x00,
+	0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+static const unsigned char sprite_spade[] = {
+	0x00, 0x03, 0x00, 0x00, 0x00, 0x33, 0x30, 0x00,
+	0x03, 0x33, 0x33, 0x00, 0x33, 0x33, 0x33, 0x30,
+	0x33, 0x33, 0x33, 0x30, 0x03, 0x33, 0x33, 0x00,
+	0x00, 0x03, 0x00, 0x00, 0x00, 0x33, 0x30, 0x00,
+};
+static const unsigned char sprite_diamond[] = {
+	0x00, 0x02, 0x00, 0x00, 0x00, 0x22, 0x20, 0x00,
+	0x02, 0x22, 0x22, 0x00, 0x22, 0x22, 0x22, 0x20,
+	0x02, 0x22, 0x22, 0x00, 0x00, 0x22, 0x20, 0x00,
+	0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+static const unsigned char sprite_club[] = {
+	0x00, 0x33, 0x30, 0x00, 0x00, 0x33, 0x30, 0x00,
+	0x03, 0x33, 0x33, 0x00, 0x33, 0x33, 0x33, 0x30,
+	0x33, 0x33, 0x33, 0x30, 0x00, 0x03, 0x00, 0x00,
+	0x00, 0x33, 0x30, 0x00, 0x03, 0x33, 0x33, 0x00,
+};
+static const unsigned char *const suit_sprites[4] = {
+	sprite_heart, sprite_spade, sprite_diamond, sprite_club
+};
+
+static void draw_sprite(int sx, int sy, const unsigned char *data)
+{
+	for (int row = 0; row < 8; row++) {
+		int dy = sy + row;
+
+		if (dy < 0 || dy >= LCD_YSIZE)
+			continue;
+		for (int b = 0; b < 4; b++) {
+			unsigned char byte = data[row * 4 + b];
+			unsigned char hi = (byte >> 4) & 0x0F;
+			unsigned char lo = byte & 0x0F;
+			int dx = sx + b * 2;
+
+			if (hi && dx >= 0 && dx < LCD_XSIZE)
+				point(dx, dy, PC(hi));
+			if (lo && dx + 1 >= 0 && dx + 1 < LCD_XSIZE)
+				point(dx + 1, dy, PC(lo));
+		}
+	}
+}
+
 /* the rank glyph only ("A", "2".."10", "J", "Q", "K") */
 static void rank_label(unsigned char c, char *buf, int n)
 {
@@ -320,31 +390,40 @@ static void rank_label(unsigned char c, char *buf, int n)
 		snprintf(buf, n, "%d", r);
 }
 
-/* simple plus-shaped suit blob in the suit color */
-static void draw_pip(int x, int y, unsigned short ink)
+static void draw_card_back(int x, int y)
 {
-	rect(x, y + 1, 8, 6, ink);
-	rect(x + 1, y, 6, 8, ink);
+	int xx, yy;
+
+	rect(x + 3, y + 3, 16, 24, PC(8));
+	for (yy = y + 4; yy < y + 27; yy += 2)
+		for (xx = x + 4 + ((yy & 1) ? 1 : 0); xx < x + 19; xx += 2)
+			point(xx, yy, PC(9));
 }
 
 static void draw_card_box(int x, int y, unsigned char c, bool hidden)
 {
 	char buf[4];
 	int suit = suit_of(c);
-	unsigned short ink = (suit == 0 || suit == 2) ? RED : BLACK;
+	unsigned short ink = (suit == 0 || suit == 2) ? PC(2) : PC(3);
 
-	rect(x, y, 22, 30, x11_gray40);		/* border */
-	rect(x + 1, y + 1, 20, 28, WHITE);	/* white face */
+	rect(x + 2, y + 2, 22, 30, PC(0));	/* drop shadow */
+	rect(x, y, 22, 30, PC(10));		/* border */
+	rect(x + 1, y + 1, 20, 28, PC(1));	/* white face */
+	point(x + 1, y + 1, PC(10));		/* rounded corners */
+	point(x + 20, y + 1, PC(10));
+	point(x + 1, y + 28, PC(10));
+	point(x + 20, y + 28, PC(10));
 	if (hidden) {
-		rect(x + 3, y + 3, 16, 24, BLUE);
+		draw_card_back(x, y);
 		return;
 	}
 	rank_label(c, buf, sizeof(buf));
-	/* glyph background must match the card so it doesn't leave a dark box. */
-	FbBackgroundColor(WHITE);
+	/* draw the rank on the white face: glyph background must match the card,
+	 * not the default black, so it doesn't leave a dark box. */
+	FbBackgroundColor(PC(1));
 	text_at(x + 3, y + 2, buf, ink);
 	FbBackgroundColor(BLACK);
-	draw_pip(x + 7, y + 16, ink);
+	draw_sprite(x + 7, y + 16, suit_sprites[suit]);
 }
 
 static void draw_hand(unsigned char *hand, int n, int x, int y, bool hide_first, int owner)
@@ -392,14 +471,18 @@ static void draw_felt(void)
 {
 	int x, y;
 
-	rect(0, 0, LCD_XSIZE, LCD_YSIZE, BLACK);
-	rect(4, 16, 152, 94, x11_DarkGreen);	/* felt */
+	rect(0, 0, LCD_XSIZE, LCD_YSIZE, PC(0));
+	rect(0, 12, LCD_XSIZE, 102, PC(11));	/* dark green rail */
+	rect(4, 16, 152, 94, PC(5));		/* light green border */
+	rect(8, 20, 144, 86, PC(4));		/* deep green felt */
 	for (y = 24; y < 104; y += 8)
 		for (x = 12 + ((y / 8) & 1) * 4; x < 150; x += 12)
-			point(x, y, GREEN);
-	rect(0, 0, LCD_XSIZE, 12, BLACK);
-	rect(0, 114, LCD_XSIZE, 14, BLACK);
-	line(0, 63, LCD_XSIZE - 1, 63, x11_gold);
+			point(x, y, PC(11));
+	rect(0, 0, LCD_XSIZE, 12, PC(0));
+	rect(0, 114, LCD_XSIZE, 14, PC(0));
+	line(0, 63, LCD_XSIZE - 1, 63, PC(6));
+	line(4, 16, 155, 16, PC(6));
+	line(4, 110, 155, 110, PC(7));
 }
 
 static void draw_status_bar(void)
