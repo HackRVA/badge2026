@@ -17,7 +17,6 @@
 #include "colors.h"
 #include "framebuffer.h"
 #include "fxp_sqrt.h"
-#include "menu.h"
 #include "palette.h"
 #include "rtc.h"
 #include "trig.h"
@@ -114,6 +113,9 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 {
 #if DEBUG_BEEP_ENABLED
 	audio_out_beep(freq, duration);
+#else
+	(void)freq;
+	(void)duration;
 #endif
 }
 
@@ -1094,33 +1096,6 @@ static const struct weapon_def {
 	[WEAPON_AURA]  = { weapon_aura_init,  weapon_aura_update,  weapon_aura_draw  },
 	[WEAPON_CHAIN] = { weapon_chain_init, weapon_chain_update, weapon_chain_draw },
 };
-
-/*
- * DDA circle outline -- efficient integer alg picked up from Casey Muratori.
- */
-static void FbDDACircle(int cx, int cy, int radius)
-{
-	int r2 = radius + radius;
-	int x = radius, y = 0;
-	int delta_y = -2, delta_x = r2 + r2 - 4, delta = r2 - 1;
-	while (y <= x) {
-		FbPoint(cx - x, cy - y);
-		FbPoint(cx + x, cy - y);
-		FbPoint(cx - x, cy + y);
-		FbPoint(cx + x, cy + y);
-		FbPoint(cx - y, cy - x);
-		FbPoint(cx + y, cy - x);
-		FbPoint(cx - y, cy + x);
-		FbPoint(cx + y, cy + x);
-		delta += delta_y;
-		delta_y -= 4;
-		++y;
-		int mask = (delta >> 31);
-		delta += delta_x & mask;
-		delta_x -= 4 & mask;
-		x += mask;
-	}
-}
 
 static unsigned char orbit_angle;
 

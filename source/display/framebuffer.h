@@ -91,6 +91,8 @@ void FbRotWriteLine(const char *string); /* write text rotated 90 degrees clockw
 void FbRotWriteString(const char *string);
 void FbRectangle(unsigned char width, unsigned char height);
 void FbCircle(int x, int y, int r);
+/* FbDDACircle looks a bit different from FbCircle */
+void FbDDACircle(int cx, int cy, int radius);
 
 void FbPlaceFilledRectangle(int x_pos, int y_pos, int width, int height, unsigned short color);
 
