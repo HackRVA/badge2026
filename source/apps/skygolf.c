@@ -30,6 +30,7 @@
 #include "ui.h"
 #include "xorshift.h"
 #include "particle.h"
+#include "audio.h"
 
 static const struct palette pal = {
 	.colors = {
@@ -120,6 +121,30 @@ struct ball {
 
 static enum skygolf_state skygolf_state = SKYGOLF_INIT;
 static unsigned long long last_frame;
+
+/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
+ * real sounds can be dropped into these later (same pattern as daywalker). */
+#define DEBUG_BEEP_ENABLED 0
+static void sfx_debug_beep(uint16_t freq, uint16_t duration)
+{
+#if DEBUG_BEEP_ENABLED
+	audio_out_beep(freq, duration);
+#else
+	(void)freq;
+	(void)duration;
+#endif
+}
+
+static void sfx_charge(void)      { sfx_debug_beep(700, 30); }
+static void sfx_swing(void)       { sfx_debug_beep(1400, 40); }
+static void sfx_bounce(void)      { sfx_debug_beep(1000, 18); }
+static void sfx_sand(void)        { sfx_debug_beep(300, 40); }
+static void sfx_water(void)       { sfx_debug_beep(220, 90); }
+static void sfx_hole(void)        { sfx_debug_beep(2000, 220); }
+static void sfx_fail(void)        { sfx_debug_beep(160, 300); }
+static void sfx_next_hole(void)   { sfx_debug_beep(1500, 120); }
+static void sfx_menu_move(void)   { sfx_debug_beep(1200, 15); }
+static void sfx_menu_select(void) { sfx_debug_beep(1700, 40); }
 
 #define NUM_MENU_ITEMS 2
 #define MENU_ITEM_SPACING 30
@@ -779,6 +804,7 @@ static void update_shot_state(int down_latches)
 	if (BUTTON_PRESSED(BADGE_BUTTON_A, down_latches)) {
 		ball.state = BALL_POWER;
 		ball.power = FP_ONE / 10;
+		sfx_charge();
 	}
 }
 
@@ -793,6 +819,7 @@ static void update_power_state(int up_latches)
 		ball.vy = (spd * -sine(ball.angle)) / 256;
 		ball.state = BALL_FLY;
 		ball_count--;
+		sfx_swing();
 	}
 }
 
@@ -808,6 +835,7 @@ static void ball_step_horizontal(void)
 	    (ball.vx > 0 && bx > LCD_XSIZE - 6)) {
 		ball.vx = FP_MUL(ball.vx, -TO_FP(8) / 10);
 		ball.vy = FP_MUL(ball.vy, TO_FP(8) / 10);
+		sfx_bounce();
 		return;
 	}
 	ball.x = next_x;
@@ -818,6 +846,7 @@ static void ball_step_horizontal(void)
  */
 static bool handle_water(void)
 {
+	sfx_water();
 	spawn_particles(TO_INT(ball.x) + 2, TO_INT(ball.y) + 4,
 		10, 100, PC(12)); /* big splash */
 	if (ball_count <= 0) {
@@ -835,6 +864,7 @@ static void handle_sand(int *vr_num)
 	*vr_num = 5;
 	spawn_particles(TO_INT(ball.x) + 2, TO_INT(ball.y) + 4,
 		4, 60, PC(10)); /* yellow sand */
+	sfx_sand();
 }
 
 /* Decide whether the ball has settled after a bounce; if so, transition into
@@ -886,6 +916,7 @@ static bool ball_step_vertical(void)
 	else if (ball.vy > 0 && coll_v == GROUND_SAND)
 		handle_sand(&vr_num);
 	else
+		sfx_bounce();
 
 	ball.vy = FP_MUL(ball.vy, -TO_FP(vr_num) / 10);
 	ball.vx = FP_MUL(ball.vx, TO_FP(vr_num) / 10);
@@ -939,6 +970,7 @@ static void go_to_next_hole(void)
 	hole_starting_ticks = 90; /* show "HOLE N" for 3 seconds */
 	hole_count++;
 	ball_count += 5;
+	sfx_next_hole();
 	init_ball_shot_state();
 }
 
@@ -960,12 +992,14 @@ static void init_in_game(int difficulty)
 
 static void init_give_up(void)
 {
+	sfx_fail();
 	skygolf_state = SKYGOLF_GIVE_UP;
 	transition_ticks = 0;
 }
 
 static void init_hole_out(void)
 {
+	sfx_hole();
 	if (hole_count >= holes_per_difficulty[course_difficulty]) {
 		skygolf_state = SKYGOLF_HOLE_OUT;
 		transition_ticks = 0;
@@ -980,6 +1014,7 @@ static void previous_menu_item(void)
 	current_menu_item--;
 	if (current_menu_item < 0)
 		current_menu_item = NUM_MENU_ITEMS - 1;
+	sfx_menu_move();
 }
 
 static void next_menu_item(void)
@@ -987,10 +1022,12 @@ static void next_menu_item(void)
 	current_menu_item++;
 	if (current_menu_item >= NUM_MENU_ITEMS)
 		current_menu_item = 0;
+	sfx_menu_move();
 }
 
 static void handle_menu_options(void)
 {
+	sfx_menu_select();
 	switch (current_menu_item) {
 	case 0: /* play - go to title/difficulty select */
 		skygolf_state = SKYGOLF_TITLE;
