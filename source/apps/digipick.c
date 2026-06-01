@@ -28,6 +28,7 @@ Controls:
 #include "trig.h"
 #include "xorshift.h"
 #include "rtc.h"
+#include "audio.h"
 
 #define N_SLOTS 16
 #define FULL_MASK ((1u << N_SLOTS) - 1)
@@ -126,6 +127,28 @@ enum digipick_state_t {
 };
 
 static enum digipick_state_t digipick_state = DIGIPICK_INIT;
+
+/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
+ * real sounds can be dropped into these later (same pattern as daywalker). */
+#define DEBUG_BEEP_ENABLED 0
+static void sfx_debug_beep(uint16_t freq, uint16_t duration)
+{
+#if DEBUG_BEEP_ENABLED
+	audio_out_beep(freq, duration);
+#else
+	(void)freq;
+	(void)duration;
+#endif
+}
+
+static void sfx_rotate(void)      { sfx_debug_beep(1600, 12); }
+static void sfx_select(void)      { sfx_debug_beep(1200, 18); }
+static void sfx_insert(void)      { sfx_debug_beep(900, 40); }
+static void sfx_deny(void)        { sfx_debug_beep(160, 100); }
+static void sfx_ring_solved(void) { sfx_debug_beep(1500, 120); }
+static void sfx_unlock(void)      { sfx_debug_beep(2000, 240); }
+static void sfx_undo(void)        { sfx_debug_beep(300, 80); }
+static void sfx_hint(void)        { sfx_debug_beep(1100, 50); }
 
 /* rotate a N_SLOTS-bit mask left by r */
 static unsigned short rotl(unsigned short x, int r)
@@ -436,13 +459,16 @@ static void commit_key(void)
 {
 	struct key *k = &keys[sel_key];
 	unsigned short m;
+	int prev_active;
 
 	if (active_ring < 0 || k->used || !key_fits_active(k)) {
+		sfx_deny();
 		start_anim(ANIM_DENY, ANIM_DENY_MS, (signed char)active_ring,
 			   (signed char)sel_key, 0);
 		return;
 	}
 
+	prev_active = active_ring;
 	m = key_mask(k);
 	start_anim(ANIM_INSERT, ANIM_INSERT_MS, (signed char)active_ring,
 		   (signed char)sel_key, m);
@@ -455,6 +481,12 @@ static void commit_key(void)
 	undo_count++;
 
 	update_active_ring();
+	if (active_ring < 0)
+		sfx_unlock();			/* last ring filled -> lock opens */
+	else if (active_ring != prev_active)
+		sfx_ring_solved();		/* finished a ring, moved inward */
+	else
+		sfx_insert();
 	if (keys[sel_key].used)
 		select_step(1);
 }
@@ -465,6 +497,7 @@ static void undo_key(void)
 
 	if (undo_count == 0)
 		return;
+	sfx_undo();
 	u = &undo_stack[--undo_count];
 	rings[u->ring_index] &= (unsigned short)~u->placed_mask;
 	keys[u->key_index].used = 0;
@@ -472,6 +505,27 @@ static void undo_key(void)
 	start_anim(ANIM_UNDO, ANIM_UNDO_MS, (signed char)u->ring_index,
 		   (signed char)u->key_index, u->placed_mask);
 	update_active_ring();
+}
+
+/* Auto Slot: make one guaranteed-safe move on the active ring.  The generator
+ * knows the intended solution, so we drop in an unused pick that belongs to
+ * this ring at its solve rotation -- never strands the puzzle. */
+static void auto_slot(void)
+{
+	int i;
+
+	if (active_ring < 0)
+		return;
+	for (i = 0; i < num_keys; i++) {
+		if (keys[i].used || keys[i].target_ring != active_ring)
+			continue;
+		keys[i].rotation = keys[i].solve_rot;
+		sel_key = i;
+		sfx_hint();
+		if (key_fits_active(&keys[i]))	/* should always hold on a clean ring */
+			commit_key();
+		return;
+	}
 }
 
 static int wrap_angle(int a)
@@ -983,7 +1037,7 @@ static void draw_hud(void)
 
 	FbColor(x11_gray40);
 	FbMove(2, 111);
-	FbWriteLine("L/R turn");
+	FbWriteLine("L/R turn  FF hint");
 	FbMove(2, 120);
 	FbWriteLine("A set REW undo B out");
 }
@@ -1032,7 +1086,8 @@ static void draw_splash(void)
 		      "digital locks.\n\n"
 		      "L/R turn pick\n"
 		      "U/D change pick\n"
-		      "A insert  REW undo\n\n"
+		      "A insert  REW undo\n"
+		      "FF safe hint\n\n"
 		      "A to start  B quit");
 	FbSwapBuffers();
 	screen_changed = 0;
@@ -1129,20 +1184,24 @@ static void digipick_play(void)
 		start_anim(ANIM_ROTATE, ANIM_ROTATE_MS, (signed char)active_ring,
 			   (signed char)sel_key, key_mask(&keys[sel_key]));
 		keys[sel_key].rotation = (unsigned char)((keys[sel_key].rotation + 1) % N_SLOTS);
+		sfx_rotate();
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down_latches)) {
 		/* RIGHT turns the pick clockwise */
 		start_anim(ANIM_ROTATE, ANIM_ROTATE_MS, (signed char)active_ring,
 			   (signed char)sel_key, key_mask(&keys[sel_key]));
 		keys[sel_key].rotation = (unsigned char)((keys[sel_key].rotation + N_SLOTS - 1) % N_SLOTS);
+		sfx_rotate();
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_UP, down_latches)) {
 		select_step(-1);
+		sfx_select();
 		start_anim(ANIM_SELECT, ANIM_SELECT_MS, (signed char)active_ring,
 			   (signed char)sel_key, key_mask(&keys[sel_key]));
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_DOWN, down_latches)) {
 		select_step(1);
+		sfx_select();
 		start_anim(ANIM_SELECT, ANIM_SELECT_MS, (signed char)active_ring,
 			   (signed char)sel_key, key_mask(&keys[sel_key]));
 		screen_changed = 1;
@@ -1151,6 +1210,9 @@ static void digipick_play(void)
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_REWIND, down_latches)) {
 		undo_key();
+		screen_changed = 1;
+	} else if (BUTTON_PRESSED(BADGE_BUTTON_FASTFORWARD, down_latches)) {
+		auto_slot();
 		screen_changed = 1;
 	}
 
