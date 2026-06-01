@@ -61,6 +61,7 @@
 #include "daywalker.h"
 #include "skygolf.h"
 #include "batping.h"
+#include "blackjack.h"
 
 /* BUILD_IMAGE_TEST_PROGRAM is defined (or not) in top level CMakelists.txt */
 #ifdef BUILD_IMAGE_TEST_PROGRAM
@@ -100,6 +101,7 @@ static const struct menu_t games_m[] = {
 	{"Daywalker", VERT_ITEM, FUNCTION, { .func = daywalker_cb}, NULL },
 	{"skygolf", VERT_ITEM, FUNCTION, { .func = skygolf_cb}, NULL },
 	{"batping", VERT_ITEM, FUNCTION, { .func = batping_cb}, NULL },
+	{"blackjack", VERT_ITEM, FUNCTION, { .func = blackjack_cb}, NULL },
 #ifdef BUILD_IMAGE_TEST_PROGRAM
 	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
 #endif
