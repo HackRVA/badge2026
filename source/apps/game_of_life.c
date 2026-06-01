@@ -6,11 +6,10 @@ An implementation of Conway's Game of Life
  (c) 2021 Paul Chang
 **********************************************/
 
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "colors.h"
-#include "menu.h"
+#include "badge.h"
 #include "button.h"
 #include "framebuffer.h"
 #include "rtc.h"
@@ -21,25 +20,16 @@ static unsigned int gen_count = 0;
 static unsigned int max_gen = 100;
 static volatile int last_time;
 
-#define ROW_SIZE 12
-#define COL_SIZE 12
-#define GRID_SIZE (ROW_SIZE * COL_SIZE)
-
-#define GRID_X_PADDING 2
-#define GRID_Y_PADDING 2
-#define CELL_SIZE 10
-#define CELL_PADDING 3
+/* One cell per pixel, filling the whole screen */
+#define GRID_W LCD_XSIZE
+#define GRID_H LCD_YSIZE
+#define GRID_SIZE (GRID_W * GRID_H)
 
 #define ALIVE 1
 #define DEAD 0
 
 #define TRUE 1
 #define FALSE 0
-
-#define STARTX(x) (GRID_X_PADDING + CELL_PADDING + ((x)*CELL_SIZE))
-#define ENDX(x) (GRID_X_PADDING + CELL_SIZE + ((x)*CELL_SIZE))
-#define STARTY(y) (GRID_Y_PADDING + CELL_PADDING + ((y)*CELL_SIZE))
-#define ENDY(y) (GRID_Y_PADDING + CELL_SIZE + ((y)*CELL_SIZE))
 
 static struct Grid
 {
@@ -73,21 +63,16 @@ static int is_in_range(int current_index)
 	return current_index >= 0 && current_index < GRID_SIZE;
 }
 
-static int is_valid_pos(int pos)
+static int find_index(int x, int y)
 {
-	return pos >= 0 && pos < ROW_SIZE;
+	return y * GRID_W + x;
 }
 
-static int find_index(int neighbor_x_pos, int neighbor_y_pos)
+static int is_cell_alive(struct Grid *grid, int x, int y)
 {
-	return COL_SIZE * neighbor_x_pos + neighbor_y_pos;
-}
-
-static int is_cell_alive(struct Grid *grid, int neighbor_x_pos, int neighbor_y_pos)
-{
-	if (is_valid_pos(neighbor_x_pos) && is_valid_pos(neighbor_y_pos))
+	if (x >= 0 && x < GRID_W && y >= 0 && y < GRID_H)
 	{
-		int index = find_index(neighbor_x_pos, neighbor_y_pos);
+		int index = find_index(x, y);
 
 		if (is_in_range(index))
 		{
@@ -133,12 +118,12 @@ static void update_current_generation_grid(void)
 
 static int get_cell_x_pos(int cell_index)
 {
-	return cell_index / ROW_SIZE;
+	return cell_index % GRID_W;
 }
 
 static int get_cell_y_pos(int cell_index)
 {
-	return cell_index % COL_SIZE;
+	return cell_index / GRID_W;
 }
 
 static void figure_out_alive_cells(void)
@@ -171,16 +156,17 @@ static void figure_out_alive_cells(void)
 	update_current_generation_grid();
 }
 
+#define GEN_INTERVAL_MS 150
+
 static int get_time(void)
 {
-	return (int) rtc_get_time_of_day().tv_sec;
+	return (int) rtc_get_ms_since_boot();
 }
 
 static void move_to_next_gen_every_second(void)
 {
 	volatile int current_time = get_time();
-	// TODO: figure out why doing a mod 60 is important here. Probably worth asking Stephen.
-	if ((current_time % 60) != (last_time % 60))
+	if ((current_time - last_time) >= GEN_INTERVAL_MS)
 	{
 		if (game_of_life_cmd == CMD_RESUME)
 		{
@@ -198,6 +184,9 @@ static void init_cells(void)
 {
 	int i;
 
+	gen_count = 0;
+	game_of_life_cmd = CMD_RESUME;
+
     int timestamp = (int)rtc_get_ms_since_boot();
 	for (i = 0; i < GRID_SIZE; i++)
 	{
@@ -205,15 +194,8 @@ static void init_cells(void)
 	}
 
 	next_generation_grid = grid;
-}
 
-static void render_box(int grid_x, int grid_y, int color)
-{
-	FbColor(color);
-	FbHorizontalLine(STARTX(grid_x), STARTY(grid_y), ENDX(grid_x), STARTY(grid_y));
-	FbHorizontalLine(STARTX(grid_x), ENDY(grid_y), ENDX(grid_x), ENDY(grid_y));
-	FbVerticalLine(STARTX(grid_x), STARTY(grid_y), STARTX(grid_x), ENDY(grid_y));
-	FbVerticalLine(ENDX(grid_x), STARTY(grid_y), ENDX(grid_x), ENDY(grid_y));
+	last_time = get_time();
 }
 
 static void render_next_gen_text(unsigned int gen_count)
@@ -232,14 +214,17 @@ static void render_next_gen_text(unsigned int gen_count)
 
 static void render_cell(int grid_x, int grid_y, int alive)
 {
-	int cell_color_state = alive ? BLUE : WHITE;
-	render_box(grid_x, grid_y, cell_color_state);
+	if (!alive)
+		return;
+
+	FbPoint(grid_x, grid_y);
 }
 
 static void render_cells(void)
 {
 	int i;
 
+	FbColor(BLUE);
 	for (i = 0; i < GRID_SIZE; i++)
 	{
 		render_cell(get_cell_x_pos(i), get_cell_y_pos(i), grid.cells[i].alive);
