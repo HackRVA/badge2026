@@ -29,7 +29,8 @@
 /* #include "new_badge_monsters/new_badge_monsters.h" */
 #include "battlezone.h"
 #include "game_of_life.h"
-#include "hacking_simulator.h"
+#include "digipick.h"
+/* #include "hacking_simulator.h" */
 #include "lunarlander.h"
 // #include "pong.h"
 #include "qc.h"
@@ -89,8 +90,9 @@ static const struct menu_t games_m[] = {
 	{"Simon Says",      VERT_ITEM, FUNCTION, { .func = simonSays_cb }, NULL, },
 	{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
 	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
-	{"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, NULL, },
+	/* {"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, NULL, }, */
 	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, NULL, },
+	{"digipick", VERT_ITEM, FUNCTION, { .func = digipick_cb }, NULL, },
 	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
 	{"SCREAMO", VERT_ITEM, FUNCTION, { .func = screamo_cb }, NULL, },
 	{"Daywalker", VERT_ITEM, FUNCTION, { .func = daywalker_cb}, NULL },

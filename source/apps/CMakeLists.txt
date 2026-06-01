@@ -6,6 +6,7 @@ target_sources(${PRODUCT} PUBLIC
         # ${CMAKE_CURRENT_LIST_DIR}/cube.c
         # ${CMAKE_CURRENT_LIST_DIR}/etch-a-sketch.c
         ${CMAKE_CURRENT_LIST_DIR}/game_of_life.c
+        ${CMAKE_CURRENT_LIST_DIR}/digipick.c
         # ${CMAKE_CURRENT_LIST_DIR}/ghost-detector.c
         ${CMAKE_CURRENT_LIST_DIR}/hacking_simulator.c
         ${CMAKE_CURRENT_LIST_DIR}/lunarlander.c
