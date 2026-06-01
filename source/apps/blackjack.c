@@ -516,14 +516,22 @@ static void draw_chip(int x, int y, unsigned short c)
 	point(x, y, WHITE);		/* center pip */
 }
 
+/* A ui-library text box with its label centered (the ui text-box renderer is
+ * left-aligned, so we draw the centered label ourselves). */
 static void draw_badge_box(int x, int y, int w, const char *label, unsigned short c)
 {
-	rect(x + 1, y + 1, w, 12, BLACK);
-	rect(x, y, w, 12, x11_gray40);
-	FbColor(c);
-	FbMove(x, y);
-	FbRectangle(w, 12);
-	text_at(x + 3, y + 2, label, c);
+	struct ui_text_box box = {
+		.x = x, .y = y, .width = w, .height = 12,
+		.outline_size = 1,
+		.outline_color = c,
+		.fill_color = BLACK,
+		.text_color = c,
+		.text = "",
+	};
+
+	ui_text_box_fill(box);
+	ui_text_box_draw_outline(box);
+	centered_line(x, w, y + 2, label, c);
 }
 
 static void draw_felt(void)
@@ -561,39 +569,48 @@ static void draw_dealer_area(bool hide)
 {
 	char buf[32];
 
-	draw_badge_box(9, 18, 44, "DEALER", x11_gold);
+	draw_badge_box(9, 18, 56, "DEALER", x11_gold);
 	draw_hand(dealer, dealer_n, 12, 32, hide, 0);
 	if (hide) {
-		draw_badge_box(128, 32, 21, "?", CYAN);
+		draw_badge_box(126, 32, 26, "?", CYAN);
 		return;
 	}
 	snprintf(buf, sizeof(buf), "%d", hand_value(dealer, dealer_n, 0));
-	draw_badge_box(128, 32, 21, buf, CYAN);
+	draw_badge_box(126, 32, 26, buf, CYAN);
 }
 
 static void draw_player_area(void)
 {
 	char buf[32];
 
-	draw_badge_box(9, 68, 44, "PLAYER", x11_gold);
+	draw_badge_box(9, 68, 56, "PLAYER", x11_gold);
 	draw_hand(player, player_n, 12, 82, false, 1);
 	snprintf(buf, sizeof(buf), "%d", hand_value(player, player_n, 0));
-	draw_badge_box(128, 82, 21, buf, CYAN);
+	draw_badge_box(126, 82, 26, buf, CYAN);
 }
 
 /* Boxed result banner that grows during the settle animation. */
 static void draw_settle_banner(void)
 {
-	int w = 70 + (20 - anim_timer);
-	int x = (LCD_XSIZE - w) / 2;
-	struct ui_text_box box = {
-		.x = x, .y = 54, .width = w, .height = 16,
-		.outline_size = 1,
-		.outline_color = x11_gold,
-		.fill_color = BLACK,
-		.text_color = x11_gold,
-		.text = "",
-	};
+	int len = 0;
+	int w, x;
+	struct ui_text_box box;
+
+	while (message[len])
+		len++;
+	/* fixed width sized to the message -- a per-frame-changing width makes the
+	 * box and its centered text jitter by a pixel as the parity flips. */
+	w = len * 8 + 14;
+	x = (LCD_XSIZE - w) / 2;
+	box.x = x;
+	box.y = 54;
+	box.width = w;
+	box.height = 16;
+	box.outline_size = 1;
+	box.outline_color = x11_gold;
+	box.fill_color = BLACK;
+	box.text_color = x11_gold;
+	box.text = "";
 
 	ui_text_box_fill(box);
 	ui_text_box_draw_outline(box);
@@ -720,14 +737,14 @@ static void draw_bet(void)
 	draw_felt();
 	centered_line(0, LCD_XSIZE, 18, "BLACKJACK", x11_gold);
 	snprintf(buf, sizeof(buf), "Bankroll: $%d", bankroll);
-	draw_badge_box(33, 42, 94, buf, WHITE);
+	draw_badge_box(20, 42, 120, buf, WHITE);
 	snprintf(buf, sizeof(buf), "Bet: $%d", bet);
-	draw_badge_box(48, 60, 64, buf, CYAN);
+	draw_badge_box(40, 60, 80, buf, CYAN);
 	draw_chip(52, 88, x11_gold);
 	draw_chip(80, 88, RED);
 	draw_chip(108, 88, CYAN);
-	centered_line(0, LCD_XSIZE, 100, "H17  3:2 BJ  no split", x11_gray40);
-	centered_line(0, LCD_XSIZE, 116, "L/R bet A deal B quit", x11_gold);
+	centered_line(0, LCD_XSIZE, 100, "H17   BJ pays 3:2", x11_gray40);
+	centered_line(0, LCD_XSIZE, 116, "LR:Bet A:Deal B:Quit", x11_gold);
 	FbSwapBuffers();
 	screen_changed = 0;
 }
@@ -738,9 +755,9 @@ static void draw_play(void)
 		return;
 	draw_table();
 	if (state == BJ_PLAYER)
-		text_at(6, 116, "UP hit  DN stand  RT dbl", x11_gray40);
+		centered_line(0, LCD_XSIZE, 116, "UP:Hit DN:Stay RT:x2", x11_gray40);
 	else if (state == BJ_RESULT)
-		text_at(18, 116, "A next round   B quit", x11_gray40);
+		centered_line(0, LCD_XSIZE, 116, "LR:Bet A:Next B:Quit", x11_gray40);
 	FbSwapBuffers();
 	screen_changed = 0;
 }
