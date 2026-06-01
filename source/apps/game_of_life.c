@@ -202,7 +202,7 @@ static void render_next_gen_text(unsigned int gen_count)
 {
 	char next_gen_text[13];
 	char gen_num_text[4];
-	FbColor(WHITE);
+	FbColor(GREEN);
 	FbMove(LCD_XSIZE / 4, LCD_YSIZE - 7);
 
 	strcpy(next_gen_text, "NEXT GEN ");
@@ -224,7 +224,7 @@ static void render_cells(void)
 {
 	int i;
 
-	FbColor(BLUE);
+	FbColor(WHITE);
 	for (i = 0; i < GRID_SIZE; i++)
 	{
 		render_cell(get_cell_x_pos(i), get_cell_y_pos(i), grid.cells[i].alive);
@@ -246,7 +246,7 @@ static void render_end_game_screen(void)
 
 	if (!already_rendered) {
 		FbClear();
-		FbColor(WHITE);
+		FbColor(GREEN);
 		FbMove(20, 40);
 		FbWriteString("Thank you\nfor playing!\n\n\nPress B button\nto exit");
 		FbSwapBuffers();
@@ -314,7 +314,7 @@ static void check_buttons(void)
 
 static void render_splash_screen(void)
 {
-	FbColor(WHITE);
+	FbColor(GREEN);
 	FbMove(10, 30);
 	FbWriteString("Game of Life\n\nPress A\nTo Start\n\nPress B\nto exit");
 	FbSwapBuffers();
