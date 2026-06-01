@@ -13,6 +13,7 @@
 
 #define DECK_N 52
 #define HAND_MAX 12
+#define CLEAR_FRAMES 16
 
 /* Tuned card-table palette; PC(i) fetches a color by index (as in daywalker). */
 static const struct palette bj_palette = {
@@ -40,6 +41,7 @@ enum bj_state {
 	BJ_PLAYER,
 	BJ_DEALER,
 	BJ_RESULT,
+	BJ_CLEAR,
 	BJ_BROKE,
 	BJ_EXIT
 };
@@ -57,7 +59,8 @@ enum anim_kind {
 	ANIM_NONE,
 	ANIM_DEAL,
 	ANIM_SETTLE,
-	ANIM_DOUBLE
+	ANIM_DOUBLE,
+	ANIM_CLEAR
 };
 
 static int rnd(int n)
@@ -467,15 +470,28 @@ static void draw_card_box(int x, int y, unsigned char c, bool hidden)
 	draw_sprite(x + 7, y + 16, suit_sprites[suit]);
 }
 
+/* During the clear animation every card slides up and toward the dealer's
+ * corner so the hand looks swept off the table before the next deal. */
+static void clear_offset(int *dx, int *dy)
+{
+	int p = CLEAR_FRAMES - anim_timer;	/* 0 -> CLEAR_FRAMES */
+
+	*dx = -(p * 28) / CLEAR_FRAMES;
+	*dy = -(p * 150) / CLEAR_FRAMES;
+}
+
 static void draw_hand(unsigned char *hand, int n, int x, int y, bool hide_first, int owner)
 {
 	int i, step = 24;
+	int cdx = 0, cdy = 0;
 
 	if (n > 6)
 		step = 18;
+	if (anim_kind == ANIM_CLEAR && anim_timer > 0)
+		clear_offset(&cdx, &cdy);
 	for (i = 0; i < n; i++) {
-		int yy = y;
-		int xx = x + i * step;
+		int yy = y + cdy;
+		int xx = x + i * step + cdx;
 
 		if (anim_kind == ANIM_DEAL && anim_timer > 0 &&
 		    anim_hand == owner && anim_index == i) {
@@ -532,8 +548,9 @@ static void draw_status_bar(void)
 {
 	char buf[32];
 
-	snprintf(buf, sizeof(buf), "$%d  BET:%d", bankroll,
-		 state == BJ_BET ? bet : round_bet);
+	int active = state == BJ_PLAYER || state == BJ_DEALER || state == BJ_CLEAR;
+
+	snprintf(buf, sizeof(buf), "$%d  BET:%d", bankroll, active ? round_bet : bet);
 	if (anim_kind == ANIM_DOUBLE && anim_timer > 0)
 		rect(0, 0, 92, 12, x11_goldenrod4);
 	text_at(2, 2, buf, WHITE);
@@ -603,26 +620,27 @@ static void draw_table(void)
 		draw_settle_banner();
 }
 
+/* Adjust the next-hand bet in $10 steps, clamped to [10, bankroll]. */
+static void change_bet(int delta)
+{
+	bet += delta;
+	if (bet > bankroll)
+		bet = bankroll;
+	bet = (bet / 10) * 10;
+	if (bet < 10)
+		bet = 10;
+	sfx_bet();
+	screen_changed = 1;
+}
+
 static void handle_bet_input(int down)
 {
-	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down)) {
-		bet -= 10;
-		if (bet < 10)
-			bet = 10;
-		sfx_bet();
-		screen_changed = 1;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down)) {
-		bet += 10;
-		if (bet > bankroll)
-			bet = bankroll;
-		bet = (bet / 10) * 10;
-		if (bet < 10)
-			bet = 10;
-		sfx_bet();
-		screen_changed = 1;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down)) {
+	if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down))
+		change_bet(-10);
+	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down))
+		change_bet(10);
+	else if (BUTTON_PRESSED(BADGE_BUTTON_A, down))
 		start_round();
-	}
 }
 
 static void update_bet(void)
@@ -654,19 +672,42 @@ static void update_player(void)
 		double_down();
 }
 
+/* Sweep the finished hands off the table; the next deal comes from the same
+ * shoe (no reshuffle here), so play continues without the bet screen. */
+static void start_clear(void)
+{
+	message_timer = 0;
+	start_anim(ANIM_CLEAR, 0, 0, CLEAR_FRAMES);
+	state = BJ_CLEAR;
+}
+
 static void update_result(void)
 {
 	int down = button_down_latches();
 
 	tick_anim();
 	tick_message();
+	if (BUTTON_PRESSED(BADGE_BUTTON_B, down) || BUTTON_PRESSED(BADGE_BUTTON_REWIND, down))
+		state = BJ_EXIT;
+	else if (BUTTON_PRESSED(BADGE_BUTTON_LEFT, down))
+		change_bet(-10);
+	else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down))
+		change_bet(10);
+	else if (BUTTON_PRESSED(BADGE_BUTTON_A, down) || BUTTON_PRESSED(BADGE_BUTTON_DOWN, down))
+		start_clear();
+}
+
+static void update_clear(void)
+{
+	int down = button_down_latches();
+
+	tick_anim();
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, down) || BUTTON_PRESSED(BADGE_BUTTON_REWIND, down)) {
 		state = BJ_EXIT;
-	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down) || BUTTON_PRESSED(BADGE_BUTTON_DOWN, down)) {
-		state = BJ_BET;
-		set_msg("Place your bet");
-		screen_changed = 1;
+		return;
 	}
+	if (anim_kind == ANIM_NONE)	/* sweep done -> deal the next hand */
+		start_round();
 }
 
 static void draw_bet(void)
@@ -798,6 +839,10 @@ void blackjack_cb(struct badge_app *app)
 		break;
 	case BJ_RESULT:
 		update_result();
+		draw_play();
+		break;
+	case BJ_CLEAR:
+		update_clear();
 		draw_play();
 		break;
 	case BJ_BROKE:
