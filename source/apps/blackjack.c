@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "audio.h"
 #include "badge.h"
 #include "button.h"
 #include "colors.h"
@@ -65,6 +66,26 @@ static int rnd(int n)
 		return 0;
 	return (int)(xorshift(&rng_state) % (unsigned int)n);
 }
+
+/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
+ * real sounds can be dropped into these later (same pattern as daywalker). */
+#define DEBUG_BEEP_ENABLED 0
+static void sfx_debug_beep(uint16_t freq, uint16_t duration)
+{
+#if DEBUG_BEEP_ENABLED
+	audio_out_beep(freq, duration);
+#else
+	(void)freq;
+	(void)duration;
+#endif
+}
+
+static void sfx_deal(void)      { sfx_debug_beep(1200, 18); }
+static void sfx_bet(void)       { sfx_debug_beep(1700, 14); }
+static void sfx_win(void)       { sfx_debug_beep(1900, 160); }
+static void sfx_lose(void)      { sfx_debug_beep(160, 220); }
+static void sfx_push(void)      { sfx_debug_beep(800, 90); }
+static void sfx_blackjack(void) { sfx_debug_beep(2200, 220); }
 
 static void rect(int x, int y, int w, int h, unsigned short c)
 {
@@ -208,8 +229,10 @@ static unsigned char draw_card(void)
 
 static void deal_card(unsigned char *hand, int *n)
 {
-	if (*n < HAND_MAX)
+	if (*n < HAND_MAX) {
 		hand[(*n)++] = draw_card();
+		sfx_deal();
+	}
 }
 
 /* Apply the round outcome to the bankroll and set the result message. */
@@ -221,23 +244,30 @@ static void settle_payout(void)
 	if (pv > 21) {
 		bankroll -= round_bet;
 		set_msg("Bust. Dealer wins.");
+		sfx_lose();
 	} else if (dv > 21) {
 		bankroll += round_bet;
 		set_msg("Dealer busts!");
+		sfx_win();
 	} else if (blackjack(player, player_n) && !blackjack(dealer, dealer_n)) {
 		bankroll += round_bet * 3 / 2;
 		set_msg("Blackjack pays!");
+		sfx_blackjack();
 	} else if (blackjack(dealer, dealer_n) && !blackjack(player, player_n)) {
 		bankroll -= round_bet;
 		set_msg("Dealer blackjack.");
+		sfx_lose();
 	} else if (pv > dv) {
 		bankroll += round_bet;
 		set_msg("You win!");
+		sfx_win();
 	} else if (pv < dv) {
 		bankroll -= round_bet;
 		set_msg("Dealer wins.");
+		sfx_lose();
 	} else {
 		set_msg("Push.");
+		sfx_push();
 	}
 }
 
@@ -579,6 +609,7 @@ static void handle_bet_input(int down)
 		bet -= 10;
 		if (bet < 10)
 			bet = 10;
+		sfx_bet();
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_RIGHT, down)) {
 		bet += 10;
@@ -587,6 +618,7 @@ static void handle_bet_input(int down)
 		bet = (bet / 10) * 10;
 		if (bet < 10)
 			bet = 10;
+		sfx_bet();
 		screen_changed = 1;
 	} else if (BUTTON_PRESSED(BADGE_BUTTON_A, down)) {
 		start_round();
