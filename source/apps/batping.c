@@ -23,7 +23,9 @@ Controls:
 #include "audio.h"
 #include "ui.h"
 #include "particle.h"
+#include "key_value_storage.h"
 
+#define BATPING_BEST_KEY "BATPING_BEST"
 #define BATPING_POOL_SIG 0x6A791234
 
 #define BAT_X 36
@@ -65,6 +67,7 @@ static struct particle_pool *particlepool = NULL;
 static unsigned char reveal_map[REVEAL_W * REVEAL_H];
 static int wall_count, moth_count, ring_count;
 static int bat_y, bat_vel, score, best, tick, scroll_accum;
+static int saved_best;		/* last best value written to flash */
 static int world_scroll;	/* total pixels the world has scrolled, for parallax */
 static int shake, shake_timer, flash_timer;
 static bool dead, waiting_to_start;
@@ -277,6 +280,16 @@ static void game_init(void)
 	screen_changed = 1;
 }
 
+/* Persist the best score to flash, but only when it actually changed -- flash
+ * wears out if written every frame, so this is called at game-end boundaries. */
+static void persist_best_score(void)
+{
+	if (best != saved_best) {
+		flash_kv_store_int(BATPING_BEST_KEY, best);
+		saved_best = best;
+	}
+}
+
 static void die(void)
 {
 	if (dead)
@@ -285,6 +298,7 @@ static void die(void)
 	sfx_die();
 	if (score > best)
 		best = score;
+	persist_best_score();
 	shake_timer = 14;
 	flash_timer = 6;
 	reveal_around(BAT_X, bat_y / 100, 100);
@@ -735,12 +749,18 @@ static void draw_play(void)
 
 static void batping_init(void)
 {
+	int stored;
+
 	FbInit();
 	FbClear();
 	rng_state = (unsigned int)rtc_get_ms_since_boot();
 	if (rng_state == 0)
 		rng_state = 0xec001234;
 	best = 0;
+	if (flash_kv_get_int(BATPING_BEST_KEY, &stored) && stored > 0) {
+		best = stored;
+		saved_best = best;
+	}
 	game_init();
 	batping_state = BATPING_PLAY;
 }
