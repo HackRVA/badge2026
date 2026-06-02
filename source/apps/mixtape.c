@@ -12,6 +12,7 @@
 #include "colors.h"
 #include "rtc.h"
 #include "audio.h"
+#include "utils.h"
 
 #include "mixtape-assets/flippy.h"
 #include "mixtape-assets/dr_bad_guy.h"
@@ -78,19 +79,19 @@ static const uint8_t pause_icon[8] = {
 
 struct track {
 	const char *name;
-	const struct audio_out_section tune;
+	const struct audio_out_section *tune;
 };
 
 static struct track playlist[] = {
-	{ "flippy", FLIPPY },
-	{ "stroodle-doodle", STROODLE_DOODLE },
-	{ "nerd-buster", NERD_BUSTER },
-	{ "hooper-hero", HOOPER_HERO },
-	{ "dr-bad-guy", DR_BAD_GUY },
-	{ "coders-digest", CODERS_DIGEST },
-	{ "button-masher", BUTTON_MASHER },
+	{ "flippy", &FLIPPY },
+	{ "stroodle-doodle", &STROODLE_DOODLE },
+	{ "nerd-buster", &NERD_BUSTER },
+	{ "hooper-hero", &HOOPER_HERO },
+	{ "dr-bad-guy", &DR_BAD_GUY },
+	{ "coders-digest", &CODERS_DIGEST },
+	{ "button-masher", &BUTTON_MASHER },
 	/* new_song seems to be broken and needs a better name anyways */
-	/* { "new_song", NEW_SONG }, */
+	/* { "new_song", &NEW_SONG }, */
 };
 
 #define NUM_TRACKS (ARRAY_SIZE(playlist))
@@ -112,7 +113,7 @@ static uint32_t section_duration_ms(const struct audio_out_section *s)
 }
 
 static void start_track(void) {
-	const struct audio_out_section *s = &playlist[current_track].tune;
+	const struct audio_out_section *s = playlist[current_track].tune;
 
 	track_duration_ms = section_duration_ms(s);
 	track_start_time = rtc_get_ms_since_boot();
