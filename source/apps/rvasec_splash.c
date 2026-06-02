@@ -16,6 +16,9 @@
 
 #include "rvasec_splash.h"
 #include "hack_logo_2.h"
+#include "rvasec_splash_assets/rvasec15_glass_asset.h"
+#include "rvasec_splash_assets/rvasec15_logo_asset.h"
+#include "rvasec_splash_assets/rvasec15_raven_asset.h"
 #include "rvasec_splash_assets/sponsor_logo.h"
 #include "rvasec_splash_assets/rib.h"
 
@@ -93,7 +96,7 @@ static void brand_preproduction_firmware(bool blink)
 }
 #endif
 
-const struct audio_out_section *prv_intro_cb(const struct audio_out_section *prev)
+static const struct audio_out_section *prv_intro_cb(const struct audio_out_section *prev)
 {
     (void) prev;
     if (m_splash_state < SPLASH_STATE_RVASEC) {
@@ -107,7 +110,7 @@ const struct audio_out_section *prv_intro_cb(const struct audio_out_section *pre
     }
 }
 
-void prv_exit(void)
+static void prv_exit(void)
 {
         FbBackgroundColor(BLACK);
         led_pwm_disable(BADGE_LED_RGB_RED);
@@ -120,10 +123,30 @@ void prv_exit(void)
 
 };
 
+static unsigned prv_get_colormap_length(const struct asset2 *a)
+{
+    switch (a->type) {
+        case PICTURE1BIT: return 1U << 1;
+        case PICTURE2BIT: return 1U << 1;
+        case PICTURE4BIT: return 1U << 4;
+        case PICTURE8BIT: return 1U << 8;
+        default: return 0;
+    };
+}
+
+static unsigned prv_find_trans_idx(const struct asset2 *a, uint16_t color)
+{
+    unsigned len = prv_get_colormap_length(a);
+    for (unsigned i = 0; i < len; i++) {
+        if (a->colormap[i] == color) {
+            return i;
+        }
+    }
+    return 0;
+};
+
 void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 {
-    extern const struct asset2 RVAsec_14;
-
     /* Allow the user to fast-forward at any point. */
     int down_latches = button_down_latches();
     if (down_latches & (1U << BADGE_BUTTON_FASTFORWARD)) {
@@ -267,9 +290,12 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
     } break;
 
     case SPLASH_STATE_RVASEC: {
-        FbBackgroundColor(G_Fb.transIndex);
-        FbMove(0, 0);
-        FbImage2(&RVAsec_14, 0);
+        FbBackgroundColor(BLACK);
+        FbTransparentIndex(prv_find_trans_idx(&rvasec15_logo, MAGENTA));
+        FbMove((LCD_XSIZE - rvasec15_logo.x) / 2, 
+               ((LCD_YSIZE - rvasec15_logo.y) / 2));	
+        FbImage2(&rvasec15_logo, 0);
+        FbTransparentIndex(0);
         FbSwapBuffers();
 
         led_pwm_enable(BADGE_LED_RGB_RED, 15 * 255 / 100);
