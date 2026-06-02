@@ -151,8 +151,6 @@ class WasmSimulator extends HTMLElement {
 		// now safe to init audio & run wasm
 		this.setupModule();
 		this.loadEmscriptenScript();
-		setTimeout(() => this.sendKey("r"), 500);
-		setTimeout(() => this.sendKey("r"), 800);
 	}
 
 	setupModule() {
