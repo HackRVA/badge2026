@@ -462,6 +462,8 @@ static struct cloud {
 	int w;    /* pixel width */
 	int h;    /* pixel height */
 	int speed; /* .8 fixed point speed */
+	int phase;
+	int variant;
 } clouds[NUM_CLOUDS];
 
 static int clouds_inited;
@@ -473,9 +475,11 @@ static void init_clouds(void)
 	for (int i = 0; i < NUM_CLOUDS; i++) {
 		clouds[i].x = TO_FP((int)(rng() % LCD_XSIZE));
 		clouds[i].y = 5 + (int)(rng() % 35);
-		clouds[i].w = 18 + (int)(rng() % 20);
-		clouds[i].h = 6 + (int)(rng() % 5);
-		clouds[i].speed = 10 + (int)(rng() % 30); /* slow drift */
+		clouds[i].w = 20 + (int)(rng() % 22);
+		clouds[i].h = 7 + (int)(rng() % 6);
+		clouds[i].speed = 6 + (int)(rng() % 24); /* slow drift */
+		clouds[i].phase = (int)(rng() % 32);
+		clouds[i].variant = (int)(rng() % 3);
 	}
 }
 
@@ -516,58 +520,89 @@ static void draw_sun(int x, int y)
 	FbFilledRectangle(4, 3);
 }
 
-static void draw_sky(void)
+static void draw_cloud_rect(int x, int y, int w, int h)
 {
-	draw_sun(137, 15);
+	if (x < 0) {
+		w += x;
+		x = 0;
+	}
+	if (y < 0) {
+		h += y;
+		y = 0;
+	}
+	if (x + w > LCD_XSIZE)
+		w = LCD_XSIZE - x;
+	if (y + h > LCD_YSIZE)
+		h = LCD_YSIZE - y;
+	if (w <= 0 || h <= 0)
+		return;
 
-	/* draw and move clouds */
+	FbMove(x, y);
+	FbFilledRectangle(w, h);
+}
+
+static void draw_cloud(int x, int y, int w, int h, int variant)
+{
+	if (x >= LCD_XSIZE || x + w < 0 || y >= LCD_YSIZE || y + h < 0)
+		return;
+
+	FbColor(COLOR_CLOUD);
+	draw_cloud_rect(x + 2, y + h / 2, w - 4, h / 2);
+
+	switch (variant) {
+	case 1:
+		draw_cloud_rect(x, y + h / 2 + 1, w, h / 3);
+		draw_cloud_rect(x + 5, y + h / 3, w / 3, h / 2);
+		draw_cloud_rect(x + w / 2, y, w / 3, h * 2 / 3);
+		draw_cloud_rect(x + w - w / 4 - 3, y + h / 3, w / 4, h / 2);
+		break;
+	case 2:
+		draw_cloud_rect(x + 1, y + h / 3, w - 2, h / 2);
+		draw_cloud_rect(x + w / 5, y + 1, w / 3, h * 2 / 3);
+		draw_cloud_rect(x + w / 2, y - 1, w / 3, h * 3 / 4);
+		break;
+	default:
+		draw_cloud_rect(x + 4, y + h / 4, w / 3, h / 2);
+		draw_cloud_rect(x + w / 3, y, w / 3, h * 3 / 4);
+		draw_cloud_rect(x + w * 2 / 3 - 2, y + h / 3, w / 4, h / 2);
+		break;
+	}
+
+	FbColor(COLOR_WHITE);
+	draw_cloud_rect(x + w / 4, y + h / 4, w / 3, 1);
+
+	FbColor(COLOR_CLOUD_SH);
+	draw_cloud_rect(x + 3, y + h, w - 6, 1);
+}
+
+static void draw_clouds(void)
+{
 	for (int i = 0; i < NUM_CLOUDS; i++) {
 		struct cloud *c = &clouds[i];
 		int px = TO_INT(c->x);
+		int bob = ((px + c->phase) / 8) & 3;
+		if (bob > 1)
+			bob = 3 - bob;
 
-		/* cloud body: rounded-ish blob */
-		FbColor(COLOR_CLOUD);
-		if (px >= -c->w && px < LCD_XSIZE) {
-			/* main body */
-			int cx = px;
-			int cw = c->w;
-			int cy = c->y;
-			int ch = c->h;
-			/* clip */
-			if (cx < 0) { cw += cx; cx = 0; }
-			if (cx + cw > LCD_XSIZE) cw = LCD_XSIZE - cx;
-			if (cw > 0) {
-				FbMove(cx, cy);
-				FbFilledRectangle(cw, ch);
-			}
-			/* top bump */
-			int bx = px + c->w / 4;
-			int bw = c->w / 2;
-			if (bx < 0) { bw += bx; bx = 0; }
-			if (bx + bw > LCD_XSIZE) bw = LCD_XSIZE - bx;
-			if (bw > 0 && cy - ch / 2 >= 0) {
-				FbMove(bx, cy - ch / 2);
-				FbFilledRectangle(bw, ch / 2);
-			}
-			/* shadow on bottom edge */
-			FbColor(COLOR_CLOUD_SH);
-			int sx = px + 2;
-			int sw = c->w - 4;
-			if (sx < 0) { sw += sx; sx = 0; }
-			if (sx + sw > LCD_XSIZE) sw = LCD_XSIZE - sx;
-			if (sw > 0 && cy + ch < LCD_YSIZE) {
-				FbMove(sx, cy + ch);
-				FbFilledRectangle(sw, 2);
-			}
-		}
+		draw_cloud(px, c->y + bob, c->w, c->h, c->variant);
 
-		/* move cloud */
 		c->x += c->speed;
 		if (TO_INT(c->x) > LCD_XSIZE + 10) {
 			c->x = -TO_FP(c->w + 5);
 			c->y = 5 + (int)(rng() % 35);
+			c->w = 20 + (int)(rng() % 22);
+			c->h = 7 + (int)(rng() % 6);
+			c->speed = 6 + (int)(rng() % 24);
+			c->phase = (int)(rng() % 32);
+			c->variant = (int)(rng() % 3);
 		}
 	}
+}
+
+static void draw_sky(void)
+{
+	draw_sun(137, 15);
+	draw_clouds();
 }
 
 static void draw_ground_rect(int x, int y, int w, enum ground_type type)
