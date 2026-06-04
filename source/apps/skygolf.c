@@ -48,7 +48,7 @@
 
 #define FP 8
 #define FP_ONE (1 << FP)
-#define TO_FP(x) ((x) << FP)
+#define TO_FP(x) ((x) * FP_ONE)
 #define TO_INT(x) ((x) >> FP)
 #define FP_MUL(a, b) (((a) * (b)) >> FP)
 
