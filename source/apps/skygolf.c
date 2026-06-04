@@ -672,11 +672,6 @@ static void draw_ball(void)
 	if (bx < 0 || bx >= LCD_XSIZE - 4 || by < 0 || by >= LCD_YSIZE - 4)
 		return;
 
-	/* draw a 4x4 ball with outline */
-	FbColor(COLOR_BLACK);
-	FbMove(bx, by);
-	FbFilledRectangle(4, 4);
-
 	if (ball.state == BALL_SHOT && ball.base_power < FP_ONE)
 		FbColor(COLOR_SAND);
 	else
