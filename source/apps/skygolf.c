@@ -612,45 +612,55 @@ static void draw_flag(int x, int y)
 	}
 }
 
+static void draw_red_base(struct platform *plat)
+{
+	FbColor(COLOR_RED);
+	int rx = plat->x;
+	int rw = plat->num_grounds * 6;
+	if (rx < 0) {
+		rw += rx;
+		rx = 0;
+	}
+	if (rx + rw > LCD_XSIZE) rw = LCD_XSIZE - rx;
+	if (rw > 0) {
+		FbMove(rx, plat->y - 2);
+		FbFilledRectangle(rw, 2);
+	}
+}
+
+static void draw_ground_segments(struct platform *plat)
+{
+	int x = plat->x;
+	enum ground_type prev_type = plat->grounds[0].type;
+	int seg_start = plat->x;
+
+	for (int g = 0; g < plat->num_grounds; g++) {
+		struct ground *gr = &plat->grounds[g];
+
+		if (gr->type != prev_type) {
+			draw_ground_rect(seg_start, plat->y - 5,
+					 x - seg_start, prev_type);
+			seg_start = x;
+			prev_type = gr->type;
+		}
+
+		if (gr->type == GROUND_TREE)
+			draw_tree(x, plat->y - 5, gr->tree_height);
+		else if (gr->type == GROUND_FLAG)
+			draw_flag(x, plat->y - 5);
+
+		x += 6;
+	}
+	draw_ground_rect(seg_start, plat->y - 5, x - seg_start, prev_type);
+}
+
 static void draw_hole(void)
 {
 	for (int p = 0; p < num_platforms; p++) {
 		struct platform *plat = &platforms[p];
 
-		/* draw red base (clipped) */
-		FbColor(COLOR_RED);
-		int rx = plat->x;
-		int rw = plat->num_grounds * 6;
-		if (rx < 0) { rw += rx; rx = 0; }
-		if (rx + rw > LCD_XSIZE) rw = LCD_XSIZE - rx;
-		if (rw > 0) {
-			FbMove(rx, plat->y);
-			FbFilledRectangle(rw, 2);
-		}
-
-		/* draw ground segments and objects */
-		int x = plat->x;
-		enum ground_type prev_type = plat->grounds[0].type;
-		int seg_start = plat->x;
-
-		for (int g = 0; g < plat->num_grounds; g++) {
-			struct ground *gr = &plat->grounds[g];
-
-			if (gr->type != prev_type) {
-				draw_ground_rect(seg_start, plat->y - 5,
-						 x - seg_start, prev_type);
-				seg_start = x;
-				prev_type = gr->type;
-			}
-
-			if (gr->type == GROUND_TREE)
-				draw_tree(x, plat->y - 5, gr->tree_height);
-			else if (gr->type == GROUND_FLAG)
-				draw_flag(x, plat->y - 5);
-
-			x += 6;
-		}
-		draw_ground_rect(seg_start, plat->y - 5, x - seg_start, prev_type);
+		draw_red_base(plat);
+		draw_ground_segments(plat);
 	}
 }
 
