@@ -154,10 +154,23 @@ static int pending_down_latches;
 static int pending_up_latches;
 
 static unsigned int rng_state;
+static unsigned int cloud_rng_state;
 
 static unsigned int rng(void)
 {
 	return xorshift(&rng_state);
+}
+
+static unsigned int cloud_rng(void)
+{
+	return xorshift(&cloud_rng_state);
+}
+
+static void seed_cloud_rng(void)
+{
+	cloud_rng_state = (unsigned int)rtc_get_ms_since_boot();
+	if (cloud_rng_state == 0)
+		cloud_rng_state = 1;
 }
 
 static struct particle_pool *sparkpool = NULL;
@@ -467,20 +480,20 @@ static int clouds_inited;
 static void reset_cloud(struct cloud *c, int x)
 {
 	c->x = TO_FP(x);
-	c->y = 5 + (int)(rng() % 35);
-	c->w = 20 + (int)(rng() % 22);
-	c->h = 7 + (int)(rng() % 6);
-	c->speed = 6 + (int)(rng() % 24); /* slow drift */
-	c->phase = (int)(rng() % 32);
-	c->variant = (int)(rng() % 3);
+	c->y = 5 + (int)(cloud_rng() % 35);
+	c->w = 20 + (int)(cloud_rng() % 22);
+	c->h = 7 + (int)(cloud_rng() % 6);
+	c->speed = 6 + (int)(cloud_rng() % 24); /* slow drift */
+	c->phase = (int)(cloud_rng() % 32);
+	c->variant = (int)(cloud_rng() % 3);
 }
 
 static void init_clouds(void)
 {
 	clouds_inited = 1;
-	rng_state = 0xDEADBEEF;
+	seed_cloud_rng();
 	for (int i = 0; i < NUM_CLOUDS; i++)
-		reset_cloud(&clouds[i], (int)(rng() % LCD_XSIZE));
+		reset_cloud(&clouds[i], (int)(cloud_rng() % LCD_XSIZE));
 }
 
 static void draw_sun(int x, int y)
