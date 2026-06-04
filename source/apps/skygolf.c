@@ -1148,8 +1148,10 @@ static void draw_ingame(void)
 
 void skygolf_cb(struct badge_app *app)
 {
-	if (app->wake_up)	/* acknowledge another app ran; we redraw every frame */
+	if (app->wake_up) {	/* acknowledge another app ran; we redraw every frame */
 		app->wake_up = 0;
+		FbBackgroundColor(COLOR_SKY_BLUE);
+	}
 	int dl = button_down_latches();
 	int ul = button_up_latches();
 
