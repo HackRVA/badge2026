@@ -149,7 +149,6 @@ static int ball_count;
 static int hole_count;
 static int course_difficulty; /* 0=easy, 1=medium, 2=hard */
 static int hole_starting_ticks;
-static int course_ticks;
 static int transition_ticks;
 static int pending_down_latches;
 static int pending_up_latches;
@@ -798,26 +797,10 @@ static void draw_hud_ball_count(void)
 	FbWriteString(buf);
 }
 
-static void draw_hud_time(void)
-{
-	char buf[32];
-
-	int t = (course_ticks * 100) / 30; /* centiseconds at 30fps */
-	if (t >= 10 * 60 * 100)
-		t = 10 * 60 * 100 - 1;
-	int mins = t / 6000;
-	int secs = (t % 6000) / 100;
-	int cents = t % 100;
-	snprintf(buf, sizeof(buf), "%d'%02d\"%02d", mins, secs, cents);
-	FbMove(110, 1);
-	FbWriteString(buf);
-}
-
 static void draw_hud(void)
 {
 	FbColor(COLOR_WHITE);
 	draw_hud_ball_count();
-	draw_hud_time();
 }
 
 static void go_to_next_hole(void);
@@ -1022,7 +1005,6 @@ static void init_in_game(int difficulty)
 	course_difficulty = difficulty;
 	ball_count = 0;
 	hole_count = 0;
-	course_ticks = 0;
 	pending_down_latches = 0;
 	pending_up_latches = 0;
 	rng_state = (unsigned int)rtc_get_ms_since_boot();
@@ -1199,7 +1181,6 @@ static void draw_ingame(void)
 
 	draw_hole_intro();
 
-	course_ticks++;
 	draw_hud();
 	FbSwapBuffers();
 }
