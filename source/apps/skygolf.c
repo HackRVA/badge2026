@@ -464,19 +464,23 @@ static struct cloud {
 
 static int clouds_inited;
 
+static void reset_cloud(struct cloud *c, int x)
+{
+	c->x = TO_FP(x);
+	c->y = 5 + (int)(rng() % 35);
+	c->w = 20 + (int)(rng() % 22);
+	c->h = 7 + (int)(rng() % 6);
+	c->speed = 6 + (int)(rng() % 24); /* slow drift */
+	c->phase = (int)(rng() % 32);
+	c->variant = (int)(rng() % 3);
+}
+
 static void init_clouds(void)
 {
 	clouds_inited = 1;
 	rng_state = 0xDEADBEEF;
-	for (int i = 0; i < NUM_CLOUDS; i++) {
-		clouds[i].x = TO_FP((int)(rng() % LCD_XSIZE));
-		clouds[i].y = 5 + (int)(rng() % 35);
-		clouds[i].w = 20 + (int)(rng() % 22);
-		clouds[i].h = 7 + (int)(rng() % 6);
-		clouds[i].speed = 6 + (int)(rng() % 24); /* slow drift */
-		clouds[i].phase = (int)(rng() % 32);
-		clouds[i].variant = (int)(rng() % 3);
-	}
+	for (int i = 0; i < NUM_CLOUDS; i++)
+		reset_cloud(&clouds[i], (int)(rng() % LCD_XSIZE));
 }
 
 static void draw_sun(int x, int y)
@@ -583,15 +587,8 @@ static void draw_clouds(void)
 		draw_cloud(px, c->y + bob, c->w, c->h, c->variant);
 
 		c->x += c->speed;
-		if (TO_INT(c->x) > LCD_XSIZE + 10) {
-			c->x = -TO_FP(c->w + 5);
-			c->y = 5 + (int)(rng() % 35);
-			c->w = 20 + (int)(rng() % 22);
-			c->h = 7 + (int)(rng() % 6);
-			c->speed = 6 + (int)(rng() % 24);
-			c->phase = (int)(rng() % 32);
-			c->variant = (int)(rng() % 3);
-		}
+		if (TO_INT(c->x) > LCD_XSIZE + 10)
+			reset_cloud(c, -c->w - 5);
 	}
 }
 
