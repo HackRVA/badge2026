@@ -37,6 +37,7 @@
 #define COLOR_LIGHT_GREY PACKRGB888(195, 195, 198)
 #define COLOR_WHITE      PACKRGB888(255, 255, 255)
 #define COLOR_RED        PACKRGB888(237, 27, 81)
+#define COLOR_ORANGE     PACKRGB888(255, 150, 45)
 #define COLOR_YELLOW     PACKRGB888(250, 200, 50)
 #define COLOR_SAND       PACKRGB888(230, 210, 130)
 #define COLOR_WATER      PACKRGB888(50, 120, 200)
@@ -478,24 +479,46 @@ static void init_clouds(void)
 	}
 }
 
+static void draw_sun(int x, int y)
+{
+	FbColor(COLOR_YELLOW);
+	FbClippedLine(x, y - 12, x, y - 8);
+	FbClippedLine(x, y + 8, x, y + 12);
+	FbClippedLine(x - 13, y, x - 8, y);
+	FbClippedLine(x + 8, y, x + 13, y);
+	FbClippedLine(x - 9, y - 9, x - 6, y - 6);
+	FbClippedLine(x + 9, y - 9, x + 6, y - 6);
+	FbClippedLine(x - 9, y + 9, x - 6, y + 6);
+	FbClippedLine(x + 9, y + 9, x + 6, y + 6);
+
+	FbColor(COLOR_ORANGE);
+	FbMove(x - 4, y - 8);
+	FbFilledRectangle(9, 1);
+	FbMove(x - 6, y - 7);
+	FbFilledRectangle(13, 2);
+	FbMove(x - 7, y - 5);
+	FbFilledRectangle(15, 10);
+	FbMove(x - 6, y + 5);
+	FbFilledRectangle(13, 2);
+	FbMove(x - 4, y + 7);
+	FbFilledRectangle(9, 1);
+
+	FbColor(COLOR_YELLOW);
+	FbMove(x - 4, y - 6);
+	FbFilledRectangle(9, 2);
+	FbMove(x - 5, y - 4);
+	FbFilledRectangle(11, 8);
+	FbMove(x - 4, y + 4);
+	FbFilledRectangle(9, 2);
+
+	FbColor(COLOR_WHITE);
+	FbMove(x - 2, y - 4);
+	FbFilledRectangle(4, 3);
+}
+
 static void draw_sky(void)
 {
-	/* sun glow (draw first, behind sun body) */
-	FbColor(COLOR_YELLOW);
-	FbMove(127, 5);
-	FbFilledRectangle(22, 2);
-	FbMove(127, 23);
-	FbFilledRectangle(22, 2);
-	FbMove(127, 7);
-	FbFilledRectangle(2, 16);
-	FbMove(147, 7);
-	FbFilledRectangle(2, 16);
-	/* sun body */
-	FbMove(130, 8);
-	FbFilledRectangle(16, 14);
-	FbColor(COLOR_WHITE); /* bright center */
-	FbMove(133, 11);
-	FbFilledRectangle(10, 8);
+	draw_sun(137, 15);
 
 	/* draw and move clouds */
 	for (int i = 0; i < NUM_CLOUDS; i++) {
