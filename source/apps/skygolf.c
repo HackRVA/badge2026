@@ -1,6 +1,6 @@
 /**
- * Sky Golf 
- * This is mostly a port from skygolf in crisp-game-lib.
+ * Sky Golf
+ * Inspired by crisp-game-lib's skygolf
  *
  * Aim your shot angle, hold to set power, release to shoot.
  * Bounce the ball off platforms and into the flag hole.
@@ -12,9 +12,6 @@
  *   trees (green on red trunk) - obstacles
  *
  * Difficulty selects number of holes: Easy=3, Medium=6, Hard=9
- *
- * --
- *  Dustin Firebaugh
  */
 
 #include <stdbool.h>
@@ -24,7 +21,6 @@
 #include "button.h"
 #include "colors.h"
 #include "framebuffer.h"
-#include "palette.h"
 #include "rtc.h"
 #include "trig.h"
 #include "ui.h"
@@ -32,28 +28,21 @@
 #include "particle.h"
 #include "audio.h"
 
-static const struct palette pal = {
-	.colors = {
-		PACKRGB888(0, 0, 0),       /* 0 black */
-		PACKRGB888(135, 206, 235), /* 1 sky blue (background) */
-		PACKRGB888(110, 180, 210), /* 2 darker sky (horizon tint) */
-		PACKRGB888(0, 135, 81),    /* 3 green */
-		PACKRGB888(120, 80, 40),   /* 4 brown (trunk) */
-		PACKRGB888(96, 88, 79),    /* 5 dark grey */
-		PACKRGB888(195, 195, 198), /* 6 light grey */
-		PACKRGB888(255, 255, 255), /* 7 white */
-		PACKRGB888(237, 27, 81),   /* 8 red */
-		PACKRGB888(250, 200, 50),  /* 9 sun yellow */
-		PACKRGB888(230, 210, 130), /* 10 sand */
-		PACKRGB888(60, 170, 60),   /* 11 light green */
-		PACKRGB888(50, 120, 200),  /* 12 water blue */
-		PACKRGB888(131, 118, 156), /* 13 lavender */
-		PACKRGB888(240, 240, 240), /* 14 cloud white */
-		PACKRGB888(220, 225, 230), /* 15 cloud shadow */
-	},
-};
-
-#define PC(i) palette_color_from_index(pal, (i))
+#define COLOR_BLACK      PACKRGB888(0, 0, 0)
+#define COLOR_SKY_BLUE   PACKRGB888(135, 206, 235)
+#define COLOR_SKY_DARK   PACKRGB888(110, 180, 210)
+#define COLOR_GREEN      PACKRGB888(0, 135, 81)
+#define COLOR_BROWN      PACKRGB888(120, 80, 40)
+#define COLOR_DARK_GREY  PACKRGB888(96, 88, 79)
+#define COLOR_LIGHT_GREY PACKRGB888(195, 195, 198)
+#define COLOR_WHITE      PACKRGB888(255, 255, 255)
+#define COLOR_RED        PACKRGB888(237, 27, 81)
+#define COLOR_YELLOW     PACKRGB888(250, 200, 50)
+#define COLOR_SAND       PACKRGB888(230, 210, 130)
+#define COLOR_WATER      PACKRGB888(50, 120, 200)
+#define COLOR_LAVENDER   PACKRGB888(131, 118, 156)
+#define COLOR_CLOUD      PACKRGB888(240, 240, 240)
+#define COLOR_CLOUD_SH   PACKRGB888(220, 225, 230)
 
 #define FRAME_MS 33
 
@@ -63,10 +52,6 @@ static const struct palette pal = {
 #define TO_INT(x) ((x) >> FP)
 #define FP_MUL(a, b) (((a) * (b)) >> FP)
 
-/* screen is 160x128. The original game was 150x100.
- * we scale positions by ~1.07x horizontal, ~1.28x vertical
- * but to keep things simple, just use the badge screen directly.
- */
 #define MAX_PLATFORMS 4
 #define MAX_GROUNDS 25
 #define MAX_POWER 12
@@ -122,8 +107,6 @@ struct ball {
 static enum skygolf_state skygolf_state = SKYGOLF_INIT;
 static unsigned long long last_frame;
 
-/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
- * real sounds can be dropped into these later (same pattern as daywalker). */
 #define DEBUG_BEEP_ENABLED 0
 static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 {
@@ -498,7 +481,7 @@ static void init_clouds(void)
 static void draw_sky(void)
 {
 	/* sun glow (draw first, behind sun body) */
-	FbColor(PC(9));
+	FbColor(COLOR_YELLOW);
 	FbMove(127, 5);
 	FbFilledRectangle(22, 2);
 	FbMove(127, 23);
@@ -510,7 +493,7 @@ static void draw_sky(void)
 	/* sun body */
 	FbMove(130, 8);
 	FbFilledRectangle(16, 14);
-	FbColor(PC(7)); /* bright center */
+	FbColor(COLOR_WHITE); /* bright center */
 	FbMove(133, 11);
 	FbFilledRectangle(10, 8);
 
@@ -520,7 +503,7 @@ static void draw_sky(void)
 		int px = TO_INT(c->x);
 
 		/* cloud body: rounded-ish blob */
-		FbColor(PC(14)); /* cloud white */
+		FbColor(COLOR_CLOUD);
 		if (px >= -c->w && px < LCD_XSIZE) {
 			/* main body */
 			int cx = px;
@@ -544,7 +527,7 @@ static void draw_sky(void)
 				FbFilledRectangle(bw, ch / 2);
 			}
 			/* shadow on bottom edge */
-			FbColor(PC(15));
+			FbColor(COLOR_CLOUD_SH);
 			int sx = px + 2;
 			int sw = c->w - 4;
 			if (sx < 0) { sw += sx; sx = 0; }
@@ -564,25 +547,23 @@ static void draw_sky(void)
 	}
 }
 
-/* --- drawing --- */
-
 static void draw_ground_rect(int x, int y, int w, enum ground_type type)
 {
 	switch (type) {
 	case GROUND_FAIRWAY:
-		FbColor(PC(3)); /* green */
+		FbColor(COLOR_GREEN);
 		break;
 	case GROUND_SAND:
-		FbColor(PC(10)); /* sand */
+		FbColor(COLOR_SAND);
 		break;
 	case GROUND_WATER:
-		FbColor(PC(12)); /* water blue */
+		FbColor(COLOR_WATER);
 		break;
 	case GROUND_TREE:
-		FbColor(PC(3)); /* green */
+		FbColor(COLOR_GREEN);
 		break;
 	case GROUND_FLAG:
-		FbColor(PC(7)); /* white */
+		FbColor(COLOR_WHITE);
 		break;
 	}
 	if (x < 0) {
@@ -594,6 +575,7 @@ static void draw_ground_rect(int x, int y, int w, enum ground_type type)
 	if (w > 0) {
 		FbMove(x, y);
 		FbFilledRectangle(w, 3);
+		FbMove(x, y);
 	}
 }
 
@@ -601,13 +583,13 @@ static void draw_tree(int x, int y, int h)
 {
 	int h2 = h / 2;
 	/* trunk */
-	FbColor(PC(4)); /* brown */
+	FbColor(COLOR_BROWN);
 	if (x + 1 >= 0 && x + 4 < LCD_XSIZE) {
 		FbMove(x + 1, y - h2);
 		FbFilledRectangle(3, h2);
 	}
 	/* leaves */
-	FbColor(PC(3)); /* green */
+	FbColor(COLOR_GREEN);
 	if (x >= 0 && x + 5 < LCD_XSIZE) {
 		FbMove(x, y - h);
 		FbFilledRectangle(5, h2);
@@ -617,13 +599,13 @@ static void draw_tree(int x, int y, int h)
 static void draw_flag(int x, int y)
 {
 	/* pole */
-	FbColor(PC(7)); /* white */
+	FbColor(COLOR_WHITE);
 	if (x + 1 >= 0 && x + 3 < LCD_XSIZE) {
 		FbMove(x + 1, y - 10);
 		FbFilledRectangle(2, 10);
 	}
 	/* flag */
-	FbColor(PC(8)); /* red */
+	FbColor(COLOR_RED);
 	if (x + 3 >= 0 && x + 8 < LCD_XSIZE) {
 		FbMove(x + 3, y - 10);
 		FbFilledRectangle(5, 4);
@@ -636,7 +618,7 @@ static void draw_hole(void)
 		struct platform *plat = &platforms[p];
 
 		/* draw red base (clipped) */
-		FbColor(PC(8));
+		FbColor(COLOR_RED);
 		int rx = plat->x;
 		int rw = plat->num_grounds * 6;
 		if (rx < 0) { rw += rx; rx = 0; }
@@ -681,14 +663,14 @@ static void draw_ball(void)
 		return;
 
 	/* draw a 4x4 ball with outline */
-	FbColor(PC(0)); /* black outline */
+	FbColor(COLOR_BLACK);
 	FbMove(bx, by);
 	FbFilledRectangle(4, 4);
 
 	if (ball.state == BALL_SHOT && ball.base_power < FP_ONE)
-		FbColor(PC(10)); /* sand tint */
+		FbColor(COLOR_SAND);
 	else
-		FbColor(PC(7)); /* white */
+		FbColor(COLOR_WHITE);
 
 	FbMove(bx + 1, by);
 	FbFilledRectangle(2, 1);
@@ -706,7 +688,7 @@ static void draw_aim_line(int length)
 	int ex = bx + (length * cosine(ball.angle)) / 256;
 	int ey = by + (length * -sine(ball.angle)) / 256;
 
-	FbColor(PC(7)); /* white */
+	FbColor(COLOR_WHITE);
 	FbClippedLine(bx, by, ex, ey);
 }
 
@@ -721,11 +703,11 @@ static void draw_power_bar(void)
 	/* fill color ramps: green → yellow → red */
 	unsigned short fill_color;
 	if (power_pixels < MAX_POWER / 3)
-		fill_color = PC(3);
+		fill_color = COLOR_GREEN;
 	else if (power_pixels < (MAX_POWER * 2) / 3)
-		fill_color = PC(9);
+		fill_color = COLOR_YELLOW;
 	else
-		fill_color = PC(8);
+		fill_color = COLOR_RED;
 
 	struct ui_progress_bar bar = {
 		.x = (LCD_XSIZE - 120) / 2,
@@ -734,8 +716,8 @@ static void draw_power_bar(void)
 		.height = 10,
 		.outline_size = 1,
 		.fill_color = fill_color,
-		.empty_color = PC(5),
-		.outline_color = PC(0),
+		.empty_color = COLOR_DARK_GREY,
+		.outline_color = COLOR_BLACK,
 		.fill = ui_progress_bar_calculate_fill_percentage(
 			(power_pixels * 100) / MAX_POWER),
 	};
@@ -770,12 +752,10 @@ static void draw_hud_time(void)
 
 static void draw_hud(void)
 {
-	FbColor(PC(7)); /* white text on sky */
+	FbColor(COLOR_WHITE);
 	draw_hud_ball_count();
 	draw_hud_time();
 }
-
-/* --- game logic --- */
 
 static void go_to_next_hole(void);
 static void init_give_up(void);
@@ -848,7 +828,7 @@ static bool handle_water(void)
 {
 	sfx_water();
 	spawn_particles(TO_INT(ball.x) + 2, TO_INT(ball.y) + 4,
-		10, 100, PC(12)); /* big splash */
+		10, 100, COLOR_WATER); /* big splash */
 	if (ball_count <= 0) {
 		init_give_up();
 		return true;
@@ -863,7 +843,7 @@ static void handle_sand(int *vr_num)
 {
 	*vr_num = 5;
 	spawn_particles(TO_INT(ball.x) + 2, TO_INT(ball.y) + 4,
-		4, 60, PC(10)); /* yellow sand */
+		4, 60, COLOR_SAND); /* yellow sand */
 	sfx_sand();
 }
 
@@ -1049,33 +1029,31 @@ static void draw_menu(void)
 			.height = MENU_ITEM_HEIGHT,
 			.text = menu_items[i],
 			.outline_size = 1,
-			.outline_color = PC(12),
-			.fill_color = PC(2),
-			.text_color = PC(7),
+			.outline_color = COLOR_WATER,
+			.fill_color = COLOR_SKY_DARK,
+			.text_color = COLOR_WHITE,
 		};
 
 		if (i == current_menu_item) {
-			button.outline_color = PC(6);
-			button.fill_color = PC(13);
+			button.outline_color = COLOR_LIGHT_GREY;
+			button.fill_color = COLOR_LAVENDER;
 			if (current_menu_item_selected)
-				button.fill_color = PC(5);
+				button.fill_color = COLOR_DARK_GREY;
 		}
 
 		if (button.y < 0 || button.y > LCD_YSIZE)
 			continue;
-		ui_button_dither_fill(button, button.fill_color, PC(0), 1);
+		ui_button_dither_fill(button, button.fill_color, COLOR_BLACK, 1);
 		ui_button_draw_outline(button, button.outline_color);
 		ui_button_draw_label(button, button.text_color);
 	}
 }
 
-/* --- title / difficulty select screen --- */
-
 static int title_cursor; /* 0=easy, 1=medium, 2=hard */
 
 static void draw_title(void)
 {
-	FbColor(PC(7));
+	FbColor(COLOR_WHITE);
 	FbMove(ui_center_text_x("SKY GOLF", 0, LCD_XSIZE), 15);
 	FbWriteString("SKY GOLF");
 
@@ -1088,20 +1066,20 @@ static void draw_title(void)
 			.height = 18,
 			.text = labels[i],
 			.outline_size = 1,
-			.outline_color = PC(5),
-			.fill_color = PC(2),
-			.text_color = PC(7),
+			.outline_color = COLOR_DARK_GREY,
+			.fill_color = COLOR_SKY_DARK,
+			.text_color = COLOR_WHITE,
 		};
 		if (i == title_cursor) {
-			btn.outline_color = PC(10);
-			btn.fill_color = PC(3);
+			btn.outline_color = COLOR_SAND;
+			btn.fill_color = COLOR_GREEN;
 		}
 		ui_button_fill(btn, btn.fill_color);
 		ui_button_draw_outline(btn, btn.outline_color);
 		ui_button_draw_label(btn, btn.text_color);
 	}
 
-	FbColor(PC(7));
+	FbColor(COLOR_WHITE);
 	FbMove(ui_center_text_x("A:select B:back", 0, LCD_XSIZE), 115);
 	FbWriteString("A:select B:back");
 }
@@ -1135,7 +1113,7 @@ static void draw_hole_intro(void)
 
 	char buf[16];
 	hole_starting_ticks--;
-	FbColor(PC(7));
+	FbColor(COLOR_WHITE);
 	snprintf(buf, sizeof(buf), "HOLE %d", hole_count);
 	FbMove(ui_center_text_x(buf, 0, LCD_XSIZE), 118);
 	FbWriteString(buf);
@@ -1180,7 +1158,7 @@ void skygolf_cb(struct badge_app *app)
 	switch (skygolf_state) {
 	case SKYGOLF_INIT:
 		FbInit();
-		FbBackgroundColor(PC(1)); /* sky blue background */
+		FbBackgroundColor(COLOR_SKY_BLUE);
 		FbClear();
 		if (!clouds_inited)
 			init_clouds();
@@ -1249,7 +1227,7 @@ void skygolf_cb(struct badge_app *app)
 		FbClear();
 		draw_sky();
 		draw_hole();
-		FbColor(PC(7));
+		FbColor(COLOR_WHITE);
 		FbMove(ui_center_text_x("GO TO NEXT HOLE", 0, LCD_XSIZE), 55);
 		FbWriteString("GO TO NEXT HOLE");
 		draw_hud();
@@ -1263,10 +1241,10 @@ void skygolf_cb(struct badge_app *app)
 		FbClear();
 		draw_sky();
 		draw_hole();
-		FbColor(PC(8));
+		FbColor(COLOR_RED);
 		FbMove(ui_center_text_x("GIVE UP", 0, LCD_XSIZE), 55);
 		FbWriteString("GIVE UP");
-		FbColor(PC(7));
+		FbColor(COLOR_WHITE);
 		FbMove(ui_center_text_x("press A", 0, LCD_XSIZE), 70);
 		FbWriteString("press A");
 		FbSwapBuffers();
@@ -1279,7 +1257,7 @@ void skygolf_cb(struct badge_app *app)
 		FbClear();
 		draw_sky();
 		draw_hole();
-		FbColor(PC(7));
+		FbColor(COLOR_WHITE);
 		FbMove(ui_center_text_x("HOLE OUT!", 0, LCD_XSIZE), 55);
 		FbWriteString("HOLE OUT!");
 		draw_hud();
