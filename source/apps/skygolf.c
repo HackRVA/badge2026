@@ -1000,6 +1000,12 @@ static void update_fly_state(void)
 	handle_off_screen_bottom();
 }
 
+static void update_hole_intro(void)
+{
+	if (hole_starting_ticks > 0)
+		hole_starting_ticks--;
+}
+
 static void go_to_next_hole(void)
 {
 	skygolf_state = SKYGOLF_INGAME;
@@ -1156,6 +1162,7 @@ static void update_ingame(int frame_down_latches, int frame_up_latches)
 		update_fly_state();
 
 	update_clouds();
+	update_hole_intro();
 	sparkpool->config.move_particles(sparkpool);
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, frame_down_latches)) {
@@ -1172,7 +1179,6 @@ static void draw_hole_intro(void)
 		return;
 
 	char buf[16];
-	hole_starting_ticks--;
 	FbColor(COLOR_WHITE);
 	snprintf(buf, sizeof(buf), "HOLE %d", hole_count);
 	FbMove(ui_center_text_x(buf, 0, LCD_XSIZE), 5);
