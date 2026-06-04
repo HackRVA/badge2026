@@ -404,7 +404,7 @@ static void back_to_prev_pos(void)
 /* Check collision of ball (bx, by in pixels) against all platforms.
  * Returns the ground type at collision, or -1 if no collision.
  */
-static int check_platform_collision(int bx, int by, int *out_plat_y)
+static int check_platform_collision(int bx, int by)
 {
 	for (int p = 0; p < num_platforms; p++) {
 		struct platform *plat = &platforms[p];
@@ -427,9 +427,6 @@ static int check_platform_collision(int bx, int by, int *out_plat_y)
 			gi_lo = 0;
 		if (gi_hi >= plat->num_grounds)
 			gi_hi = plat->num_grounds - 1;
-
-		if (out_plat_y)
-			*out_plat_y = plat_top;
 
 		/* trees are vertical obstacles: any overlapped column whose trunk
 		 * the ball reaches hits, even when the ball's center is elsewhere. */
@@ -854,8 +851,7 @@ static void ball_step_horizontal(void)
 	int next_x = ball.x + ball.vx;
 	int bx = TO_INT(next_x);
 	int by = TO_INT(ball.y);
-	int plat_y;
-	int coll_h = check_platform_collision(bx, by, &plat_y);
+	int coll_h = check_platform_collision(bx, by);
 
 	if (coll_h >= 0 || (ball.vx < 0 && bx < 2) ||
 	    (ball.vx > 0 && bx > LCD_XSIZE - 6)) {
@@ -927,8 +923,7 @@ static bool ball_step_vertical(void)
 	int next_y = ball.y + ball.vy;
 	int bx = TO_INT(ball.x);
 	int by = TO_INT(next_y);
-	int plat_y;
-	int coll_v = check_platform_collision(bx, by, &plat_y);
+	int coll_v = check_platform_collision(bx, by);
 
 	if (coll_v < 0) {
 		ball.y = next_y;
