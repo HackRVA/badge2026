@@ -1160,7 +1160,7 @@ static void draw_hole_intro(void)
 	hole_starting_ticks--;
 	FbColor(COLOR_WHITE);
 	snprintf(buf, sizeof(buf), "HOLE %d", hole_count);
-	FbMove(ui_center_text_x(buf, 0, LCD_XSIZE), 118);
+	FbMove(ui_center_text_x(buf, 0, LCD_XSIZE), 5);
 	FbWriteString(buf);
 }
 
