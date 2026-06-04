@@ -575,6 +575,19 @@ static void draw_cloud(int x, int y, int w, int h, int variant)
 	draw_cloud_rect(x + 3, y + h, w - 6, 1);
 }
 
+static void update_cloud(struct cloud *c)
+{
+	c->x += c->speed;
+	if (TO_INT(c->x) > LCD_XSIZE + 10)
+		reset_cloud(c, -c->w - 5);
+}
+
+static void update_clouds(void)
+{
+	for (int i = 0; i < NUM_CLOUDS; i++)
+		update_cloud(&clouds[i]);
+}
+
 static void draw_clouds(void)
 {
 	for (int i = 0; i < NUM_CLOUDS; i++) {
@@ -585,10 +598,6 @@ static void draw_clouds(void)
 			bob = 3 - bob;
 
 		draw_cloud(px, c->y + bob, c->w, c->h, c->variant);
-
-		c->x += c->speed;
-		if (TO_INT(c->x) > LCD_XSIZE + 10)
-			reset_cloud(c, -c->w - 5);
 	}
 }
 
@@ -1133,6 +1142,7 @@ static void update_ingame(int frame_down_latches, int frame_up_latches)
 	else if (ball.state == BALL_FLY)
 		update_fly_state();
 
+	update_clouds();
 	sparkpool->config.move_particles(sparkpool);
 
 	if (BUTTON_PRESSED(BADGE_BUTTON_B, frame_down_latches)) {
@@ -1217,6 +1227,7 @@ void skygolf_cb(struct badge_app *app)
 		} else if (BUTTON_PRESSED(BADGE_BUTTON_B, dl))
 			skygolf_state = SKYGOLF_EXIT;
 		FbClear();
+		update_clouds();
 		draw_sky();
 		draw_menu();
 		FbSwapBuffers();
@@ -1236,6 +1247,7 @@ void skygolf_cb(struct badge_app *app)
 		else if (BUTTON_PRESSED(BADGE_BUTTON_B, dl))
 			skygolf_state = SKYGOLF_MENU;
 		FbClear();
+		update_clouds();
 		draw_sky();
 		draw_title();
 		FbSwapBuffers();
@@ -1263,6 +1275,7 @@ void skygolf_cb(struct badge_app *app)
 		if (BUTTON_PRESSED(BADGE_BUTTON_A, dl) || transition_ticks > 120)
 			go_to_next_hole();
 		FbClear();
+		update_clouds();
 		draw_sky();
 		draw_hole();
 		FbColor(COLOR_WHITE);
@@ -1277,6 +1290,7 @@ void skygolf_cb(struct badge_app *app)
 		if (BUTTON_PRESSED(BADGE_BUTTON_A, dl) || transition_ticks > 180)
 			skygolf_state = SKYGOLF_TITLE;
 		FbClear();
+		update_clouds();
 		draw_sky();
 		draw_hole();
 		FbColor(COLOR_RED);
@@ -1293,6 +1307,7 @@ void skygolf_cb(struct badge_app *app)
 		if (BUTTON_PRESSED(BADGE_BUTTON_A, dl) || transition_ticks > 300)
 			skygolf_state = SKYGOLF_TITLE;
 		FbClear();
+		update_clouds();
 		draw_sky();
 		draw_hole();
 		FbColor(COLOR_WHITE);
