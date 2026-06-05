@@ -27,6 +27,7 @@
 #include "xorshift.h"
 #include "particle.h"
 #include "audio.h"
+#include "music.h"
 
 #define COLOR_BLACK      PACKRGB888(0, 0, 0)
 #define COLOR_SKY_BLUE   PACKRGB888(135, 206, 235)
@@ -108,27 +109,126 @@ struct ball {
 static enum skygolf_state skygolf_state = SKYGOLF_INIT;
 static unsigned long long last_frame;
 
-#define DEBUG_BEEP_ENABLED 0
-static void sfx_debug_beep(uint16_t freq, uint16_t duration)
-{
-#if DEBUG_BEEP_ENABLED
-	audio_out_beep(freq, duration);
-#else
-	(void)freq;
-	(void)duration;
-#endif
-}
+static const struct audio_out_spec SFX_CHARGE_SPEC = {
+	.frequency_hz = NOTE_G4,
+	.duration_ms = 50,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -12,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
 
-static void sfx_charge(void)      { sfx_debug_beep(700, 30); }
-static void sfx_swing(void)       { sfx_debug_beep(1400, 40); }
-static void sfx_bounce(void)      { sfx_debug_beep(1000, 18); }
-static void sfx_sand(void)        { sfx_debug_beep(300, 40); }
-static void sfx_water(void)       { sfx_debug_beep(220, 90); }
-static void sfx_hole(void)        { sfx_debug_beep(2000, 220); }
-static void sfx_fail(void)        { sfx_debug_beep(160, 300); }
-static void sfx_next_hole(void)   { sfx_debug_beep(1500, 120); }
-static void sfx_menu_move(void)   { sfx_debug_beep(1200, 15); }
-static void sfx_menu_select(void) { sfx_debug_beep(1700, 40); }
+static const struct audio_out_spec SFX_SWING_SPEC = {
+	.frequency_hz = NOTE_C6,
+	.duration_ms = 70,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -6,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 4,
+	},
+};
+
+static const struct audio_out_spec SFX_BOUNCE_SPEC = {
+	.frequency_hz = NOTE_E5,
+	.duration_ms = 40,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -10,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_SAND_SPEC = {
+	.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x8,
+	.duration_ms = 90,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -12,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_NES_NOISE,
+	.nes_noise = {
+		.lfsr_val = UINT16_MAX,
+		.mode_flag = 0,
+	},
+};
+
+static const struct audio_out_spec SFX_WATER_SPEC = {
+	.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xA,
+	.duration_ms = 180,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -9,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_NES_NOISE,
+	.nes_noise = {
+		.lfsr_val = UINT16_MAX,
+		.mode_flag = 0,
+	},
+};
+
+static const struct audio_out_spec SFX_HOLE_SPEC = {
+	.frequency_hz = NOTE_C6,
+	.duration_ms = 220,
+	.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+	.amplitude_dBFS = -3,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_FAIL_SPEC = {
+	.frequency_hz = NOTE_C3,
+	.duration_ms = 500,
+	.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+	.amplitude_dBFS = -6,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 4,
+	},
+};
+
+static const struct audio_out_spec SFX_NEXT_HOLE_SPEC = {
+	.frequency_hz = NOTE_G5,
+	.duration_ms = 120,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -6,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_MENU_MOVE_SPEC = {
+	.frequency_hz = NOTE_C5,
+	.duration_ms = 20,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -15,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 8,
+	},
+};
+
+static const struct audio_out_spec SFX_MENU_SELECT_SPEC = {
+	.frequency_hz = NOTE_E5,
+	.duration_ms = 60,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -10,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 4,
+	},
+};
+
+static void sfx_charge(void)      { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_CHARGE_SPEC); }
+static void sfx_swing(void)       { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_SWING_SPEC); }
+static void sfx_bounce(void)      { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_BOUNCE_SPEC); }
+static void sfx_sand(void)        { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_SAND_SPEC); }
+static void sfx_water(void)       { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_WATER_SPEC); }
+static void sfx_hole(void)        { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_HOLE_SPEC); }
+static void sfx_fail(void)        { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_FAIL_SPEC); }
+static void sfx_next_hole(void)   { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_NEXT_HOLE_SPEC); }
+static void sfx_menu_move(void)   { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_MENU_MOVE_SPEC); }
+static void sfx_menu_select(void) { (void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_MENU_SELECT_SPEC); }
 
 #define NUM_MENU_ITEMS 2
 #define MENU_ITEM_SPACING 30
@@ -450,7 +550,7 @@ static int check_platform_collision(int bx, int by)
 				return GROUND_TREE;
 		}
 
-		/* ground surface — report the type under the ball's center */
+		/* ground surface -- report the type under the ball's center */
 		if (by + 4 >= plat_top) {
 			center_gi = (bx + 2 - plat_left) / 6;
 			if (center_gi < 0)
