@@ -1250,7 +1250,11 @@ void FbCircle(int cx, int cy, int r)
 	}
 }
 
-/* Circle outline via an efficient integer DDA algorithm (Casey Muratori). */
+/*
+ * Circle outline via an efficient integer DDA algorithm
+ * it also looks slightly different from the other circle.
+ * (picked up from Casey Muratori)
+ **/
 void FbDDACircle(int cx, int cy, int radius)
 {
 	int r2 = radius + radius;
@@ -1258,14 +1262,14 @@ void FbDDACircle(int cx, int cy, int radius)
 	int delta_y = -2, delta_x = r2 + r2 - 4, delta = r2 - 1;
 
 	while (y <= x) {
-		FbPoint(cx - x, cy - y);
-		FbPoint(cx + x, cy - y);
-		FbPoint(cx - x, cy + y);
-		FbPoint(cx + x, cy + y);
-		FbPoint(cx - y, cy - x);
-		FbPoint(cx + y, cy - x);
-		FbPoint(cx - y, cy + x);
-		FbPoint(cx + y, cy + x);
+		FbPlacePoint(G_Fb.color, cx - x, cy - y);
+		FbPlacePoint(G_Fb.color, cx + x, cy - y);
+		FbPlacePoint(G_Fb.color, cx - x, cy + y);
+		FbPlacePoint(G_Fb.color, cx + x, cy + y);
+		FbPlacePoint(G_Fb.color, cx - y, cy - x);
+		FbPlacePoint(G_Fb.color, cx + y, cy - x);
+		FbPlacePoint(G_Fb.color, cx - y, cy + x);
+		FbPlacePoint(G_Fb.color, cx + y, cy + x);
 		delta += delta_y;
 		delta_y -= 4;
 		++y;
@@ -1437,4 +1441,3 @@ void FbPaletteCycle(uint16_t *colormap, int start_index, int count)
         colormap[i] = colormap[((i - start_index) + 1) % count + start_index];
     }
 }
-
