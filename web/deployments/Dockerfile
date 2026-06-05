@@ -17,6 +17,7 @@ COPY . .
 
 RUN bash run_cmake_wasm.sh
 RUN cd web && go run ./cmd/generate/
+RUN cd web && bash ./scripts/build_user_docs.sh
 
 FROM golang:alpine AS server
 
