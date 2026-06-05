@@ -156,6 +156,8 @@ static unsigned short rotl(unsigned short x, int r)
 	r %= N_SLOTS;
 	if (r < 0)
 		r += N_SLOTS;
+	if (r == 0)
+		return (unsigned short)(x & FULL_MASK);
 	return (unsigned short)(((x << r) | (x >> (N_SLOTS - r))) & FULL_MASK);
 }
 
