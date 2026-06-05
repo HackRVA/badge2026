@@ -29,6 +29,7 @@ Controls:
 #include "xorshift.h"
 #include "rtc.h"
 #include "audio.h"
+#include "music.h"
 
 #define N_SLOTS 16
 #define FULL_MASK ((1u << N_SLOTS) - 1)
@@ -128,27 +129,164 @@ enum digipick_state_t {
 
 static enum digipick_state_t digipick_state = DIGIPICK_INIT;
 
-/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
- * real sounds can be dropped into these later (same pattern as daywalker). */
-#define DEBUG_BEEP_ENABLED 0
-static void sfx_debug_beep(uint16_t freq, uint16_t duration)
+static const struct audio_out_spec SFX_ROTATE_SPEC = {
+	.frequency_hz = NOTE_C6,
+	.duration_ms = 18,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -12,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 8,
+	},
+};
+
+static const struct audio_out_spec SFX_SELECT_SPEC = {
+	.frequency_hz = NOTE_G5,
+	.duration_ms = 45,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -10,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_INSERT_TONE_SPEC = {
+	.frequency_hz = NOTE_C5,
+	.duration_ms = 95,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -8,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_INSERT_CLICK_SPEC = {
+	.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x8,
+	.duration_ms = 45,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -14,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_NES_NOISE,
+	.nes_noise = {
+		.lfsr_val = UINT16_MAX,
+		.mode_flag = 0,
+	},
+};
+
+static const struct audio_out_spec SFX_DENY_SPEC = {
+	.frequency_hz = NOTE_C3,
+	.duration_ms = 150,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -8,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 4,
+	},
+};
+
+static const struct audio_out_spec SFX_DENY_BUZZ_SPEC = {
+	.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0xB,
+	.duration_ms = 110,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -12,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_NES_NOISE,
+	.nes_noise = {
+		.lfsr_val = UINT16_MAX,
+		.mode_flag = 0,
+	},
+};
+
+static const struct audio_out_spec SFX_RING_SOLVED_SPEC = {
+	.frequency_hz = NOTE_E6,
+	.duration_ms = 180,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -6,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_UNLOCK_LOW_SPEC = {
+	.frequency_hz = NOTE_C4,
+	.duration_ms = 450,
+	.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+	.amplitude_dBFS = -8,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 2,
+	},
+};
+
+static const struct audio_out_spec SFX_UNLOCK_HIGH_SPEC = {
+	.frequency_hz = NOTE_C6,
+	.duration_ms = 520,
+	.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+	.amplitude_dBFS = -3,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec SFX_UNDO_SPEC = {
+	.frequency_hz = NOTE_D4,
+	.duration_ms = 110,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.amplitude_dBFS = -10,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SAWTOOTH,
+};
+
+static const struct audio_out_spec SFX_HINT_SPEC = {
+	.frequency_hz = NOTE_A5,
+	.duration_ms = 90,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.amplitude_dBFS = -8,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static void sfx_rotate(void)
 {
-#if DEBUG_BEEP_ENABLED
-	audio_out_beep(freq, duration);
-#else
-	(void)freq;
-	(void)duration;
-#endif
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_ROTATE_SPEC);
 }
 
-static void sfx_rotate(void)      { sfx_debug_beep(1600, 12); }
-static void sfx_select(void)      { sfx_debug_beep(1200, 18); }
-static void sfx_insert(void)      { sfx_debug_beep(900, 40); }
-static void sfx_deny(void)        { sfx_debug_beep(160, 100); }
-static void sfx_ring_solved(void) { sfx_debug_beep(1500, 120); }
-static void sfx_unlock(void)      { sfx_debug_beep(2000, 240); }
-static void sfx_undo(void)        { sfx_debug_beep(300, 80); }
-static void sfx_hint(void)        { sfx_debug_beep(1100, 50); }
+static void sfx_select(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_SELECT_SPEC);
+}
+
+static void sfx_insert(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_INSERT_TONE_SPEC);
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_INSERT_CLICK_SPEC);
+}
+
+static void sfx_deny(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_DENY_SPEC);
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_DENY_BUZZ_SPEC);
+}
+
+static void sfx_ring_solved(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_RING_SOLVED_SPEC);
+}
+
+static void sfx_unlock(void)
+{
+	(void)audio_out_play(0, &SFX_UNLOCK_LOW_SPEC);
+	(void)audio_out_play(1, &SFX_UNLOCK_HIGH_SPEC);
+}
+
+static void sfx_undo(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_UNDO_SPEC);
+}
+
+static void sfx_hint(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_HINT_SPEC);
+}
 
 /* rotate a N_SLOTS-bit mask left by r */
 static unsigned short rotl(unsigned short x, int r)
