@@ -21,6 +21,8 @@ Controls:
 #include "rtc.h"
 #include "xorshift.h"
 #include "audio.h"
+#include "music.h"
+#include "utils.h"
 #include "ui.h"
 #include "particle.h"
 #include "key_value_storage.h"
@@ -81,23 +83,419 @@ static int rnd(int n)
 	return (int)(xorshift(&rng_state) % (unsigned int)n);
 }
 
-/* Sound effect stubs.  Flip DEBUG_BEEP_ENABLED to 1 to hear placeholder beeps;
- * real sounds can be dropped into these later (same pattern as daywalker). */
-#define DEBUG_BEEP_ENABLED 0
-static void sfx_debug_beep(uint16_t freq, uint16_t duration)
-{
-#if DEBUG_BEEP_ENABLED
-	audio_out_beep(freq, duration);
-#else
-	(void)freq;
-	(void)duration;
-#endif
-}
+static const struct audio_out_note BATPING_MOTH_PICKUP_NOTES[] = {
+	{
+		.v = 4,
+		.ms = 0,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_F4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 1,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_C5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 1,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_Ds5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 31,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_D4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 38,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_D5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 38,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_F5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 69,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_E5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 69,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_G5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 73,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_G4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 104,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_E4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 105,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_F5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 105,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_Gs5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 142,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_G5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 142,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_As5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 150,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_A4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 173,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_A5,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 173,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_C6,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 181,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_Fs4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 1,
+		.ms = 216,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_D6,
+			.duration_ms = 88,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 0,
+		.ms = 220,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_C6,
+			.duration_ms = 88,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 2,
+		.ms = 223,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_F6,
+			.duration_ms = 88,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_TRIANGLE,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 223,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_B4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.v = 4,
+		.ms = 254,
+		.spec = {
+			.callback = NULL,
+			.frequency_hz = NOTE_Gs4,
+			.duration_ms = 30,
+			.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+			.phase = 0,
+			.amplitude_dBFS = -6,
+			.restart = true,
+			.type = AUDIO_OUT_TYPE_SQUARE,
+			.square.duty_cycle = UINT8_MAX / 2,
+		}
+	},
+	{
+		.ms = 311,
+		.spec = {
+			.type = AUDIO_OUT_TYPE_NONE,
+		}
+	}
+};
 
-static void sfx_pulse(void) { sfx_debug_beep(1400, 18); }
-static void sfx_point(void) { sfx_debug_beep(1700, 30); }
-static void sfx_moth(void)  { sfx_debug_beep(2100, 45); }
-static void sfx_die(void)   { sfx_debug_beep(150, 320); }
+static const struct audio_out_section BATPING_MOTH_PICKUP = {
+	.length = ARRAY_SIZE(BATPING_MOTH_PICKUP_NOTES),
+	.notes = BATPING_MOTH_PICKUP_NOTES,
+	.next = NULL,
+};
+
+static const struct audio_out_spec BATPING_PULSE_SPEC = {
+	.frequency_hz = NOTE_C5,
+	.duration_ms = 90,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.phase = 0,
+	.amplitude_dBFS = -6,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_TRIANGLE,
+};
+
+static const struct audio_out_spec BATPING_PULSE_CLICK_SPEC = {
+	.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x8,
+	.duration_ms = 35,
+	.envelope = AUDIO_OUT_ENVELOPE_RAPID_FADE_OUT,
+	.phase = 0,
+	.amplitude_dBFS = -12,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_NES_NOISE,
+	.nes_noise = {
+		.lfsr_val = UINT16_MAX,
+		.mode_flag = 0,
+	},
+};
+
+static const struct audio_out_spec BATPING_DIE_CRACK_SPEC = {
+	.frequency_hz = AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x4,
+	.duration_ms = 120,
+	.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+	.phase = 0,
+	.amplitude_dBFS = -3,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_NES_NOISE,
+	.nes_noise = {
+		.lfsr_val = UINT16_MAX,
+		.mode_flag = 0,
+	},
+};
+
+static const struct audio_out_spec BATPING_DIE_DROP_SPEC = {
+	.frequency_hz = NOTE_C3,
+	.duration_ms = 500,
+	.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+	.phase = 0,
+	.amplitude_dBFS = -6,
+	.restart = true,
+	.type = AUDIO_OUT_TYPE_SQUARE,
+	.square = {
+		.duty_cycle = UINT8_MAX / 4,
+	},
+};
+
+static void sfx_pulse(void)
+{
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &BATPING_PULSE_SPEC);
+	(void)audio_out_play(AUDIO_OUT_VOICE_ANY, &BATPING_PULSE_CLICK_SPEC);
+}
+static void sfx_point(void)
+{
+}
+static void sfx_moth(void)
+{
+	(void)audio_out_music_play(&BATPING_MOTH_PICKUP, NULL);
+}
+static void sfx_die(void)
+{
+	(void)audio_out_play(0, &BATPING_DIE_CRACK_SPEC);
+	(void)audio_out_play(1, &BATPING_DIE_DROP_SPEC);
+}
 
 static void rect(int x, int y, int w, int h, unsigned short c)
 {
