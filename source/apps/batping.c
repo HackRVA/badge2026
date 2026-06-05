@@ -108,29 +108,11 @@ static void rect(int x, int y, int w, int h, unsigned short c)
 
 static void point(int x, int y, unsigned short c)
 {
+	if (x < 0 || x >= LCD_XSIZE || y < 0 || y >= LCD_YSIZE)
+		return;
+
 	FbColor(c);
 	FbPoint(x, y);
-}
-
-static void circle(int cx, int cy, int r, unsigned short c)
-{
-	int x = r, y = 0;
-	int d = 1 - r;
-
-	FbColor(c);
-	while (x >= y) {
-		FbPoint(cx + x, cy + y); FbPoint(cx + y, cy + x);
-		FbPoint(cx - y, cy + x); FbPoint(cx - x, cy + y);
-		FbPoint(cx - x, cy - y); FbPoint(cx - y, cy - x);
-		FbPoint(cx + y, cy - x); FbPoint(cx + x, cy - y);
-		y++;
-		if (d <= 0) {
-			d += 2 * y + 1;
-		} else {
-			x--;
-			d += 2 * (y - x) + 1;
-		}
-	}
 }
 
 /* draw a line of text horizontally centered within [box_x, box_x+box_w) */
@@ -581,7 +563,8 @@ static void draw_rings(int ox)
 	for (i = 0; i < ring_count; i++) {
 		unsigned short c = rings[i].r < rings[i].max_r / 2 ? CYAN : x11_deep_sky_blue;
 
-		circle(rings[i].x + ox, rings[i].y, rings[i].r, c);
+		FbColor(c);
+		FbDDACircle(rings[i].x + ox, rings[i].y, rings[i].r);
 	}
 }
 
