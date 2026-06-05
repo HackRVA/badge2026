@@ -585,16 +585,6 @@ static void draw_moths(int ox)
 	}
 }
 
-static void draw_particles(int ox)
-{
-	int i;
-
-	/* custom draw so we can apply the parallax offset (see BADGE-APP-HOWTO) */
-	for (i = 0; i < particlepool->nparticles; i++)
-		point((particlepool->p[i].x >> 8) + ox, particlepool->p[i].y >> 8,
-			(unsigned short)particlepool->p[i].color);
-}
-
 /* The bat sprite from daywalker: an 8x8 sprite, one palette-index nibble per
  * pixel (index 13 = lavender body, 7 = white eyes), two wing-flap frames. */
 static const unsigned short bat_palette[16] = {
@@ -721,7 +711,7 @@ static void draw_play(void)
 	draw_walls(ox);
 	draw_rings(ox);
 	draw_moths(ox);
-	draw_particles(ox);
+	particlepool->config.draw_particles(particlepool);
 	draw_bat(ox);
 	if (flash_timer > 0 && (flash_timer & 1))
 		rect(0, 0, LCD_XSIZE, LCD_YSIZE, CYAN);
