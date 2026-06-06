@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define PREPRODUCTION_FIRMWARE 1
+#define PREPRODUCTION_FIRMWARE 0
 
 #define MAX_APP_STACK_DEPTH 10
 
