@@ -121,7 +121,7 @@ void prv_exit(void)
 
 void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 {
-    extern const struct asset2 RVAsec_14;
+    extern const struct asset2 raventoast160x128;
 
     /* Allow the user to fast-forward at any point. */
     int down_latches = button_down_latches();
@@ -268,7 +268,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
     case SPLASH_STATE_RVASEC: {
         FbBackgroundColor(G_Fb.transIndex);
         FbMove(0, 0);
-        FbImage2(&RVAsec_14, 0);
+        FbImage2(&raventoast160x128, 0);
         FbSwapBuffers();
 
         led_pwm_enable(BADGE_LED_RGB_RED, 15 * 255 / 100);
