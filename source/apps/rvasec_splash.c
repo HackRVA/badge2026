@@ -29,6 +29,7 @@
 #define SPLASH_WAIT_POST_LOADBAR_FRAMES (2 * BADGE_FRAME_RATE_FPS)
 #define SPLASH_WORD_THING_FRAMES (3)
 #define SPLASH_WAIT_BLINK_FRAMES (2 * BADGE_FRAME_RATE_FPS)
+#define SPLASH_RVASEC_SILENT_FRAMES (3 * BADGE_FRAME_RATE_FPS)
 
 #define SPLASH_BOOT_AUDIO_MS     (100)
 #define SPLASH_FINISHED_AUDIO_MS (2000)
@@ -274,6 +275,17 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         led_pwm_enable(BADGE_LED_RGB_RED, 15 * 255 / 100);
         led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255 / 100);
         led_pwm_enable(BADGE_LED_RGB_BLUE, 10 * 255 / 100);
+#if TARGET_SIMULATOR
+	if (silent_startup && (SPLASH_RVASEC_SILENT_FRAMES < ++wait)) {
+		/* We need this for --silent-start option to work, otherwise
+		 * we get stuck in SPLASH_STATE_RVASEC because normally without
+		 * --silent-start, it is the audio code that gets us to the
+		 * done state.
+		 */
+		wait = 0;
+		m_splash_state = SPLASH_STATE_DONE;
+	}
+#endif
     } break;
 
     case SPLASH_STATE_DONE: {
