@@ -73,9 +73,45 @@ void display_init_device(void) {
     lcd_hardwareReset();
     lcd_initialize();
     lcd_setSleepMode(LCD_SLEEP_OUT);
+    lcd_setFrameControl(LCD_FRMCTR_A | LCD_FRMCTR_B | LCD_FRMCTR_CD,
+                        0x05, 0x3C, 0x3C);
+    lcd_setDisplayInversionControl(LCD_INVCTR_NLA_DOT | LCD_INVCTR_NLB_DOT
+                                   | LCD_INVCTR_NLC_COL);
+    /* Power sequence. */
+    lcd_writeCommandByte(0xC0);
+    lcd_writeData((uint8_t[]) {0x28, 0x08, 0x04}, 3);
+    lcd_writeCommandByte(0xC1);
+    lcd_writeData((uint8_t[]) {0xc0}, 1);
+    lcd_writeCommandByte(0xC2);
+    lcd_writeData((uint8_t[]) {0x0D, 0x00}, 2);
+    lcd_writeCommandByte(0xC3);
+    lcd_writeData((uint8_t[]) {0x8D, 0x2A}, 2);
+    lcd_writeCommandByte(0xC4);
+    lcd_writeData((uint8_t[]) {0x8D, 0xEE}, 2);
+
+    /* VCOM (this addresses the flickering on rev B displays. */
+    lcd_writeCommandByte(0xC5);
+    lcd_writeData((uint8_t[]) {0x14}, 1);
+
     update_madctl();
+
+    /* Set gamma per Orient Display. */
+    lcd_writeCommandByte(0xE0); // Gamma +
+    lcd_writeData((uint8_t[]) {
+                      0x04, 0x22, 0x07, 0x0A,
+                      0x2E, 0x30, 0x25, 0x2A,
+                      0x28, 0x26, 0x2E, 0x3A,
+                      0x00, 0x01, 0x03, 0x13
+                  }, 16);
+    lcd_writeCommandByte(0xE1); // Gamma -
+    lcd_writeData((uint8_t[]) {
+                      0x04, 0x16, 0x06, 0x0D,
+                      0x2D, 0x26, 0x23, 0x27,
+                      0x27, 0x25, 0x2D, 0x3B,
+                      0x00, 0x01, 0x04, 0x13
+                  }, 16);
+
     lcd_setInterfacePixelFormat(LCD_PIXEL_FORMAT_565);
-    lcd_setGammaPredefined(LCD_GAMMA_PREDEFINED_3);
     lcd_setDisplayInversion(LCD_INVERSION_OFF);
     lcd_setTearingEffectLine(LCD_TEARING_OFF);
     lcd_setDisplayMode(LCD_DISPLAY_ON);
