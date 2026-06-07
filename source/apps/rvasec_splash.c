@@ -357,9 +357,9 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         FbColor(WHITE);
         FbWriteString("Press any button\nto continue...");
 #if PREPRODUCTION_FIRMWARE
-        brand_preproduction_firmware(!((wait / 5) & 0x01) 
-                                     || (wait > SPLASH_WAIT_BLINK_FRAMES));
-        wait++;
+        brand_preproduction_firmware(!((m_wait / 5) & 0x01) 
+                                     || (m_wait > SPLASH_WAIT_BLINK_FRAMES));
+        m_wait++;
 #endif
         FbSwapBuffers();
         if (down_latches) {
@@ -395,8 +395,8 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         FbImage1bit2(&sponsor_logo, 0);
         FbSwapBuffers();
 #if TARGET_SIMULATOR
-        if (silent_startup && (SPLASH_WAIT_SPONSOR_FRAMES < ++wait)) {
-            wait = 0;
+        if (silent_startup && (SPLASH_WAIT_SPONSOR_FRAMES < ++m_wait)) {
+            m_wait = 0;
             m_splash_state = SPLASH_STATE_RVASEC;
         }
 #endif
@@ -444,13 +444,13 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
         led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255 / 100);
         led_pwm_enable(BADGE_LED_RGB_BLUE, 10 * 255 / 100);
 #if TARGET_SIMULATOR
-	if (silent_startup && (SPLASH_RVASEC_SILENT_FRAMES < ++wait)) {
+	if (silent_startup && (SPLASH_RVASEC_SILENT_FRAMES < ++m_wait)) {
 		/* We need this for --silent-start option to work, otherwise
 		 * we get stuck in SPLASH_STATE_RVASEC because normally without
 		 * --silent-start, it is the audio code that gets us to the
 		 * done state.
 		 */
-		wait = 0;
+		m_wait = 0;
 		m_splash_state = SPLASH_STATE_DONE;
 	}
 #endif
