@@ -9,6 +9,7 @@
 #include "badge.h"
 #include "key_value_storage.h"
 #include "microban_assets/microban_assets.h"
+#include "audio.h"
 
 #define TILE_SIZE 16
 
@@ -306,6 +307,20 @@ static bool tile_valid(Point coord) {
 
 static void set_tile(Point coord, Tile tile) {
     current_level_data[coord.y*level_width() + coord.x] = tile;
+    if ((BLOCK == tile) || (BLOCK_ON_TARGET == tile)) {
+        /* SFX moved block */
+        struct audio_out_spec moved_spec = {
+            .frequency_hz = 4000,
+            .duration_ms = 200,
+            .amplitude_dBFS = -9,
+            .restart = true,
+            .type = AUDIO_OUT_TYPE_NES_NOISE,
+            .envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+            .nes_noise.lfsr_val = 0x0101,
+            .nes_noise.mode_flag = 0,
+        };
+        (void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 1, &moved_spec);
+    }
 }
 
 static void set_level(int levelNo) {
@@ -657,6 +672,25 @@ static void process_input_GAMEPLAY(void) {
 
         if (moved) {
             moves += 1;
+            struct audio_out_spec moved_spec = {
+                .frequency_hz = 320,
+                .duration_ms = 20,
+                .envelope = AUDIO_OUT_ENVELOPE_NONE,
+                .amplitude_dBFS = 3,
+                .type = AUDIO_OUT_TYPE_TRIANGLE,
+                .restart = true,
+            };
+            (void) audio_out_play(AUDIO_OUT_VOICE_ANY, &moved_spec);
+        } else {
+            struct audio_out_spec failed_spec = {
+                .frequency_hz = 100,
+                .duration_ms = 100,
+                .envelope = AUDIO_OUT_ENVELOPE_NONE,
+                .amplitude_dBFS = 0,
+                .type = AUDIO_OUT_TYPE_SAWTOOTH,
+                .restart = true,
+            };
+            (void) audio_out_play(AUDIO_OUT_VOICE_ANY, &failed_spec);
         }
 
         bool level_complete = check_level();
@@ -916,7 +950,7 @@ static void draw_main_menu(void) {
     if (!screen_changed)
         return;
 
-    char buf[20];
+    char buf[32];
 
     FbBackgroundColor(BLACK);
     FbClear();
