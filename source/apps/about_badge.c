@@ -47,7 +47,8 @@ static void draw_screen(void)
 	FbClear();
 	FbMove(2, 2);
 	FbWriteString("THIS BADGE WAS\nBUILT AND\nPROGRAMMED BY\nHACKRVA MEMBERS\n"
-			"\nVISIT\n\nhttps://\nbadge2026.hackrva\n.org\n\nFOR MORE\nINFORMATION");
+			"\nVISIT\n\nhttps://\nbadge2026.hackrva\n.org\n\nFOR MORE\nINFORMATION\n"
+			"\nv2026.0");
 	FbSwapBuffers();
 	screen_changed = 0;
 }
