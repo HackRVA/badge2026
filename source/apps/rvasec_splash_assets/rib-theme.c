@@ -2427,8 +2427,23 @@ static const struct audio_out_note RIB_THEME_NOTES[] = {
 		}
 	},
 	{
-		.v = 7,
 		.ms = 20000,
+		.spec = {
+			.type = AUDIO_OUT_TYPE_NONE,
+		}
+	}
+};
+
+const struct audio_out_section RIB_THEME = {
+	.length = ARRAY_SIZE(RIB_THEME_NOTES),
+	.notes = RIB_THEME_NOTES,
+	.next = NULL,
+};
+
+static const struct audio_out_note RIB_CRASHOUT_NOTES[] = {
+	{
+		.v = 7,
+		.ms = 0,
 		.spec = {
 			.callback = NULL,
 			.frequency_hz = 24000,
@@ -2443,15 +2458,16 @@ static const struct audio_out_note RIB_THEME_NOTES[] = {
 		}
 	},
 	{
-		.ms = 22000,
+		.ms = 2000,
 		.spec = {
 			.type = AUDIO_OUT_TYPE_NONE,
 		}
 	}
 };
 
-const struct audio_out_section RIB_THEME = {
-	.length = ARRAY_SIZE(RIB_THEME_NOTES),
-	.notes = RIB_THEME_NOTES,
+const struct audio_out_section RIB_CRASHOUT = {
+	.length = ARRAY_SIZE(RIB_CRASHOUT_NOTES),
+	.notes = RIB_CRASHOUT_NOTES,
 	.next = NULL,
 };
+
