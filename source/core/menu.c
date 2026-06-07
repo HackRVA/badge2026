@@ -73,43 +73,48 @@
 
 extern const struct menu_t schedule_m[]; /* defined in core/schedule.c */
 
-static const struct menu_t games_m[] = {
-	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
-	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
-	{"mixtape", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = mixtape_cb}, NULL },
-	{"Microban", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = microban_cb }, NULL },
-	{"badgemon", VERT_ITEM, FUNCTION, { .func = badgemon_cb }, NULL, },
-	/* {"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, }, */
-	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
+static const struct menu_t legacy_games_m[] = {
+	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, NULL, },
+	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, NULL, },
 	{"Moon Patrol", VERT_ITEM, FUNCTION, { .func = moonpatrol_cb }, NULL, },
 	{"AA Gunner", VERT_ITEM, FUNCTION, { .func = aagunner_cb }, NULL, },
-	{"Clue", VERT_ITEM, FUNCTION, { .func = clue_cb }, NULL, },
-	// {"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
-	{"Asteroids", VERT_ITEM, FUNCTION, { .func = asteroids_cb }, NULL, },
 	{"Lunar Rescue",  VERT_ITEM, FUNCTION, { .func = lunarlander_cb}, NULL, },
 	{"Battlezone", VERT_ITEM, FUNCTION, { .func = battlezone_cb }, NULL, },
-	{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, NULL, },
-	{"Smashout",      VERT_ITEM, FUNCTION, { .func = smashout_cb }, NULL, },
-	{"Simon Says",      VERT_ITEM, FUNCTION, { .func = simonSays_cb }, NULL, },
-	{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
-	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
+	/* {"Badge Monsters",VERT_ITEM, FUNCTION, { .func = badge_monsters_cb }, NULL, }, */
+	//{"Clue", VERT_ITEM, FUNCTION, { .func = clue_cb }, NULL, },
+	// {"Badgey", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
+	//{"Slot Machine", VERT_ITEM, FUNCTION, { .func = slot_machine_cb }, NULL, },
+	//{"Simon Says",      VERT_ITEM, FUNCTION, { .func = simonSays_cb }, NULL, },
 	/* {"Hacking Sim",   VERT_ITEM, FUNCTION, { .func = hacking_simulator_cb }, NULL, }, */
-	{"Game of Life", VERT_ITEM, FUNCTION, { .func = game_of_life_cb }, NULL, },
-	{"digipick", VERT_ITEM, FUNCTION, { .func = digipick_cb }, NULL, },
-	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
-	{"SCREAMO", VERT_ITEM, FUNCTION, { .func = screamo_cb }, NULL, },
-	{"Daywalker", VERT_ITEM, FUNCTION, { .func = daywalker_cb}, NULL },
-	{"skygolf", VERT_ITEM, FUNCTION, { .func = skygolf_cb}, NULL },
-	{"batping", VERT_ITEM, FUNCTION, { .func = batping_cb}, NULL },
-	{"blackjack", VERT_ITEM, FUNCTION, { .func = blackjack_cb}, NULL },
-#ifdef BUILD_IMAGE_TEST_PROGRAM
-	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
-#endif
 	// {"Etch-a-Sketch", VERT_ITEM, FUNCTION, { .func = etch_a_sketch_cb }, NULL, },
 	// {"Magic-8-Ball",     VERT_ITEM, FUNCTION, { .func = magic_8_ball_cb }, NULL, },
 	// {"Goodbye Gulag", VERT_ITEM, FUNCTION, { .func = gulag_cb }, NULL, },
 	// {"Pong", VERT_ITEM, FUNCTION, { .func = pong_cb }, NULL, },
 	// {"Tank vs Tank", VERT_ITEM, FUNCTION, { .func = tank_vs_tank_cb }, NULL, },
+	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
+	//{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
+	{"Back",         VERT_ITEM|LAST_ITEM, BACK, { NULL }, NULL, },
+};
+
+static const struct menu_t games_m[] = {
+#ifdef BUILD_IMAGE_TEST_PROGRAM
+	{"Image Test", VERT_ITEM, FUNCTION, { .func = image_test_cb }, NULL },
+#endif
+	// {"Sample App", VERT_ITEM, FUNCTION, { .func = myprogram_cb }, NULL },
+	{"badgemon", VERT_ITEM, FUNCTION, { .func = badgemon_cb }, NULL, },
+	{"mixtape", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = mixtape_cb}, NULL },
+	{"Drum Machine", VERT_ITEM, FUNCTION, { .func = drum_machine_cb }, NULL, },
+	{"SCREAMO", VERT_ITEM, FUNCTION, { .func = screamo_cb }, NULL, },
+	{"RVAsec Quest", VERT_ITEM, FUNCTION, { .func = badgey_cb }, NULL, },
+	{"Microban", VERT_ITEM | TAPE_DECK, FUNCTION, { .func = microban_cb }, NULL },
+	{"Daywalker", VERT_ITEM, FUNCTION, { .func = daywalker_cb}, NULL },
+	{"Asteroids", VERT_ITEM, FUNCTION, { .func = asteroids_cb }, NULL, },
+	{"skygolf", VERT_ITEM, FUNCTION, { .func = skygolf_cb}, NULL },
+	{"batping", VERT_ITEM, FUNCTION, { .func = batping_cb}, NULL },
+	{"blackjack", VERT_ITEM, FUNCTION, { .func = blackjack_cb}, NULL },
+	{"digipick", VERT_ITEM, FUNCTION, { .func = digipick_cb }, NULL, },
+	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
+	{"Legacy Games", VERT_ITEM, MENU, { .menu = legacy_games_m }, NULL, },
 	{"Back",         VERT_ITEM|LAST_ITEM, BACK, { NULL }, NULL, },
 };
 
