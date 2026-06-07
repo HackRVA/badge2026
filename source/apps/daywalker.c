@@ -108,11 +108,18 @@ static const struct palette daywalker_palette = {
 
 #define PC(i) palette_color_from_index(daywalker_palette, (i))
 
-#define DEBUG_BEEP_ENABLED 0
+#define DEBUG_BEEP_ENABLED 1
 static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 {
 #if DEBUG_BEEP_ENABLED
-	audio_out_beep(freq, duration);
+	struct audio_out_spec beep_spec = {
+		.frequency_hz = freq,
+		.duration_ms = duration,
+		.envelope = AUDIO_OUT_ENVELOPE_NONE,
+		.amplitude_dBFS = -3,
+		.type = AUDIO_OUT_TYPE_SAWTOOTH,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &beep_spec);
 #else
 	(void)freq;
 	(void)duration;
@@ -120,11 +127,46 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 }
 
 static void sfx_enemy_die(void)    { sfx_debug_beep(380,  60); }
-static void sfx_player_hurt(void)  { sfx_debug_beep(180, 120); }
-static void sfx_player_death(void) { sfx_debug_beep(100, 500); }
-static void sfx_boss_spawn(void)   { sfx_debug_beep(140, 350); }
+static void sfx_player_hurt(void)
+{
+	struct audio_out_spec hurt_spec = {
+		.frequency_hz = 100,
+		.duration_ms = 120,
+		.envelope = AUDIO_OUT_ENVELOPE_NONE,
+		.amplitude_dBFS = 3,
+		.type = AUDIO_OUT_TYPE_SAWTOOTH,
+	};
+	(void) audio_out_play(0, &hurt_spec);
+}
+static void sfx_boss_spawn(void)
+{ 
+	struct audio_out_spec hurt_spec = {
+		.frequency_hz = 50,
+		.duration_ms = 1200,
+		.envelope = AUDIO_OUT_ENVELOPE_NONE,
+		.amplitude_dBFS = 3,
+		.type = AUDIO_OUT_TYPE_SAWTOOTH,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 4, &hurt_spec);
+ }
+
 static void sfx_bolt_fire(void)    { sfx_debug_beep(1800, 18); }
-static void sfx_chain_cast(void)   { sfx_debug_beep(2200, 35); }
+
+static void sfx_chain_cast(void)
+{ 
+	struct audio_out_spec chain_cast_spec = {
+		.frequency_hz = 5000,
+		.duration_ms = 70,
+		.amplitude_dBFS = -12,
+		.restart = true,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.envelope = AUDIO_OUT_ENVELOPE_NONE,
+		.nes_noise.lfsr_val = UINT16_MAX,
+		.nes_noise.mode_flag = 0,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &chain_cast_spec);
+ }
+
 static void sfx_aura_pulse(void)
 {
 	struct audio_out_spec pulse_spec = {
@@ -155,8 +197,32 @@ static void sfx_chain_hit(void)    { prv_sfx_any_hit(AUDIO_OUT_SPEC_NES_NOISE_FR
 static void sfx_bolt_hit(void)     { prv_sfx_any_hit(AUDIO_FS); }
 static void sfx_aura_hit(void)     { prv_sfx_any_hit(AUDIO_OUT_SPEC_NES_NOISE_FREQ_0x6); }
 
-static void sfx_gem(void)          { sfx_debug_beep(1400, 25); }
-static void sfx_pickup_heal(void)  { sfx_debug_beep(1000, 90); }
+static void sfx_gem(void)
+{ 
+	struct audio_out_spec gem_spec = {
+		.frequency_hz = NOTE_B6,
+		.duration_ms = 250,
+		.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
+		.amplitude_dBFS = 0,
+		.type = AUDIO_OUT_TYPE_TRIANGLE,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 2, &gem_spec);
+ }
+
+static void sfx_pickup_heal(void)
+{
+	struct audio_out_spec hit_spec = {
+		.frequency_hz = AUDIO_FS,
+		.duration_ms = 400,
+		.amplitude_dBFS = -9,
+		.restart = true,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
+		.nes_noise.lfsr_val = 0x0101,
+		.nes_noise.mode_flag = 0,
+	};
+	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 1, &hit_spec);
+ }
 
 static void sfx_pickup_zap(void)
 {
@@ -194,9 +260,28 @@ static void sfx_pickup_zap(void)
 	(void) audio_out_play(1, &boom_spec);
 	(void) audio_out_play(2, &rumble_spec);
 }
+static void sfx_player_death(void) { 
+	struct audio_out_spec rumble_spec = {
+		.frequency_hz = 150,
+		.duration_ms = 4000,
+		.amplitude_dBFS = 6,
+		.restart = true,
+		.type = AUDIO_OUT_TYPE_NES_NOISE,
+		.envelope = AUDIO_OUT_ENVELOPE_SLOW_FADE_OUT,
+		.nes_noise.lfsr_val = UINT16_MAX,
+		.nes_noise.mode_flag = 0,
+	};
+	(void) audio_out_play(0, &rumble_spec);
+	(void) audio_out_stop(1);
+	(void) audio_out_stop(2);
+	(void) audio_out_stop(3);
+	(void) audio_out_stop(4);
+	(void) audio_out_stop(5);
+	(void) audio_out_stop(6);
+	(void) audio_out_stop(7);
+ }
 
 static void sfx_level_up(void)     { sfx_debug_beep(1500, 180); }
-static void sfx_upgrade_pick(void) { sfx_debug_beep(1200, 60); }
 
 static void prv_sfx_menu_select_cb(int voice, const struct audio_out_spec *spec)
 {
@@ -225,6 +310,8 @@ static void sfx_menu_select(void)
 {
 	audio_out_play(AUDIO_OUT_VOICE_ANY, &SFX_MENU_SELECT_SPEC);
 };
+
+static void sfx_upgrade_pick(void) { sfx_menu_select(); }
 
 static unsigned int rng_state;
 
