@@ -1,5 +1,5 @@
-#include<stdio.h>
-#include<string.h>
+#include <stdio.h>
+#include <string.h>
 #include "colors.h"
 #include "utils.h"
 #include "menu.h"
@@ -312,7 +312,7 @@ static void set_tile(Point coord, Tile tile) {
         struct audio_out_spec moved_spec = {
             .frequency_hz = 4000,
             .duration_ms = 200,
-            .amplitude_dBFS = -9,
+            .amplitude_dBFS = -6,
             .restart = true,
             .type = AUDIO_OUT_TYPE_NES_NOISE,
             .envelope = AUDIO_OUT_ENVELOPE_MED_FADE_OUT,
@@ -674,9 +674,9 @@ static void process_input_GAMEPLAY(void) {
             moves += 1;
             struct audio_out_spec moved_spec = {
                 .frequency_hz = 320,
-                .duration_ms = 20,
+                .duration_ms = 50,
                 .envelope = AUDIO_OUT_ENVELOPE_NONE,
-                .amplitude_dBFS = 3,
+                .amplitude_dBFS = 6,
                 .type = AUDIO_OUT_TYPE_TRIANGLE,
                 .restart = true,
             };
