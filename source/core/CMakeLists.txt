@@ -17,10 +17,11 @@ target_sources(${PRODUCT} PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/palette.c
         ${CMAKE_CURRENT_LIST_DIR}/ui.c
 	${CMAKE_CURRENT_LIST_DIR}/stacktrace.c
-	${CMAKE_CURRENT_LIST_DIR}/RVAsec-14.c
 	${CMAKE_CURRENT_LIST_DIR}/particle.c
         )
 
+target_add_png_badge_asset(${PRODUCT} 8 ${CMAKE_CURRENT_LIST_DIR}/rvasec_15.png)
+target_add_png_badge_asset(${PRODUCT} 4 ${CMAKE_CURRENT_LIST_DIR}/blinkops.png)
 
 # Define a test executable for the off-target key-value storage test
 # and a_star.

@@ -12,7 +12,8 @@
 #include "trig.h"
 /* #include "new_badge_monsters/new_badge_monsters.h" */
 #include "badgemon.h"
-#include <rvasec_splash_assets/sponsor_logo.h>
+#include "rvasec_15_asset.h"
+#include "blinkops_asset.h"
 #include <string.h>
 
 #define SCREEN_ORIENTATION_LANDSCAPE 1 /* 0 = portrait, 1 = landscape */
@@ -214,8 +215,6 @@ void nametag_screensaver(void)
 
 void disp_asset_saver(void)
 {
-    extern const struct asset2 RVAsec_14;
-
     static unsigned char imgnum = 0;
     if(!animation_count){
         uint8_t random;
@@ -227,15 +226,15 @@ void disp_asset_saver(void)
 
     switch(imgnum){
 	case 0:
-            FbMove(0,0);
-            FbImage2(&RVAsec_14, 0);
+            FbMove(0, 0);
+            FbImage2(&rvasec_15, 0);
             break;
 
 	case 1:
-            FbMove((LCD_XSIZE - sponsor_logo.x) / 2,
-                   (LCD_YSIZE - sponsor_logo.y) / 2);
+            FbMove((LCD_XSIZE - blinkops.x) / 2,
+                   (LCD_YSIZE - blinkops.y) / 2);
             FbColor(WHITE);
-            FbImage1bit2(&sponsor_logo, 0);
+            FbImage2(&blinkops, 0);
             break;
 
         case 2:
