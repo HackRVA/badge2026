@@ -92,7 +92,6 @@ static const struct menu_t legacy_games_m[] = {
 	// {"Pong", VERT_ITEM, FUNCTION, { .func = pong_cb }, NULL, },
 	// {"Tank vs Tank", VERT_ITEM, FUNCTION, { .func = tank_vs_tank_cb }, NULL, },
 	// {"Rover Adventure", VERT_ITEM|DEFAULT_ITEM, FUNCTION, { .func = rover_adventure_cb }, NULL, },
-	//{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
 	{"Back",         VERT_ITEM|LAST_ITEM, BACK, { NULL }, NULL, },
 };
 
@@ -110,9 +109,10 @@ static const struct menu_t games_m[] = {
 	{"Daywalker", VERT_ITEM, FUNCTION, { .func = daywalker_cb}, NULL },
 	{"Asteroids", VERT_ITEM, FUNCTION, { .func = asteroids_cb }, NULL, },
 	{"skygolf", VERT_ITEM, FUNCTION, { .func = skygolf_cb}, NULL },
+	{"Puzzle Attack", VERT_ITEM, FUNCTION, { .func = puzzle_attack_cb }, NULL },
 	{"batping", VERT_ITEM, FUNCTION, { .func = batping_cb}, NULL },
-	{"blackjack", VERT_ITEM, FUNCTION, { .func = blackjack_cb}, NULL },
 	{"digipick", VERT_ITEM, FUNCTION, { .func = digipick_cb }, NULL, },
+	{"blackjack", VERT_ITEM, FUNCTION, { .func = blackjack_cb}, NULL },
 	{"2048", VERT_ITEM, FUNCTION, { .func = twenty_forty_eight_cb }, NULL },
 	{"Legacy Games", VERT_ITEM, MENU, { .menu = legacy_games_m }, NULL, },
 	{"Back",         VERT_ITEM|LAST_ITEM, BACK, { NULL }, NULL, },
