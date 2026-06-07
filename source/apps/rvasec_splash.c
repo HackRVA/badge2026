@@ -78,8 +78,8 @@ static const char *splash_word_things[] = {
     "preparing to install",
 };
 
-static unsigned int wait = 0;
-static unsigned char loading_txt_idx = 0;
+static unsigned int m_wait = 0;
+static unsigned char m_load_txt_idx = 0;
 static enum splash_state {
     SPLASH_STATE_NO_INIT,
     SPLASH_STATE_LOADBAR,
@@ -123,7 +123,7 @@ void prv_start_fireworks(void)
             int elevation = (random % 64) - 32;
             random = random_insecure_u32_congruence(random);
             int vel = 100 + (random % 50);
-            int vx, vy, vz;
+            int32_t vx, vy, vz;
             prv_spark_xyz_from_aev(&vx, &vy, &vz, azimuth, elevation, vel);
             m_sparks->config.add_3d_particle(
                 m_sparks,
@@ -148,7 +148,7 @@ void prv_slow_spark(struct particle *p)
     while (azimuth < 0) azimuth += 128;
     while (elevation < 0) elevation += 128;
     vel -= SPLASH_FIREWORKS_DECAY_SPEED;
-    int vx, vy, vz;
+    int32_t vx, vy, vz;
     prv_spark_xyz_from_aev(&vx, &vy, &vz, azimuth, elevation, vel);
     p->vx = vx;
     p->vy = vy;
@@ -163,11 +163,11 @@ void prv_run_fireworks(void)
         struct particle *p = m_sparks->p + i;
 
         /* Slow down even minimum gravity. */
-        if (0 != (wait % SPLASH_FIREWORKS_GRAVITY_DECAY_FACTOR)) {
+        if (0 != (m_wait % SPLASH_FIREWORKS_GRAVITY_DECAY_FACTOR)) {
             p->vy -= m_sparks->config.gravityy;
         }
         /* Decay speed. */
-        if (0 != (wait % SPLASH_FIREWORKS_DECAY_SPEED_FACTOR)) {
+        if (0 != (m_wait % SPLASH_FIREWORKS_DECAY_SPEED_FACTOR)) {
             prv_slow_spark(p);
         }
 
@@ -268,8 +268,8 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 
     switch (m_splash_state) {
         case SPLASH_STATE_NO_INIT: {
-        loading_txt_idx = 0;
-        wait = 0;
+        m_load_txt_idx = 0;
+        m_wait = 0;
         m_sparks = NULL;
         display_rect(0, 0, LCD_XSIZE, LCD_YSIZE);
         display_color(0);
@@ -316,7 +316,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
             = LCD_XSIZE - ((SPLASH_LOADBAR_MARGIN_X + 1) * 2) - 1 
               - SPLASH_LOADBAR_FINAL_EMPTY_PX;
         const unsigned char load_bar_px 
-            = MIN(load_bar_size * wait / load_bar_frames, load_bar_size);
+            = MIN(load_bar_size * m_wait / load_bar_frames, load_bar_size);
         FbFilledRectangle(load_bar_px, 18);
 
         FbColor(WHITE);
@@ -330,24 +330,24 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 
         FbColor(WHITE);
         FbMove((LCD_XSIZE 
-                - (strnlen(splash_word_things[loading_txt_idx], 160 / 8) * 8))
+                - (strnlen(splash_word_things[m_load_txt_idx], 160 / 8) * 8))
                / 2,
                SPLASH_SHIFT_DOWN + SPLASH_LOADBAR_HEIGHT_PX + 4);
-        FbWriteLine(splash_word_things[loading_txt_idx]);
+        FbWriteLine(splash_word_things[m_load_txt_idx]);
         FbSwapBuffers();
 
-        if((loading_txt_idx < (ARRAY_SIZE(splash_word_things) - 1U))
-           && (0 == (wait % SPLASH_WORD_THING_FRAMES))) {
-            loading_txt_idx++;
-        } else if (load_bar_frames + SPLASH_WAIT_POST_LOADBAR_FRAMES <= wait) {
-            wait = 0;
+        if((m_load_txt_idx < (ARRAY_SIZE(splash_word_things) - 1U))
+           && (0 == (m_wait % SPLASH_WORD_THING_FRAMES))) {
+            m_load_txt_idx++;
+        } else if (load_bar_frames + SPLASH_WAIT_POST_LOADBAR_FRAMES <= m_wait) {
+            m_wait = 0;
             m_splash_state = SPLASH_STATE_WAIT_FOR_USER;
             led_pwm_enable(BADGE_LED_RGB_RED, 2 * 255/100);
             led_pwm_enable(BADGE_LED_RGB_GREEN, 20 * 255/100);
             led_pwm_disable(BADGE_LED_RGB_BLUE);
             break;
         }
-        wait++;
+        m_wait++;
 
     } break;
 
@@ -363,7 +363,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 #endif
         FbSwapBuffers();
         if (down_latches) {
-            wait = 0;
+            m_wait = 0;
             m_splash_state = SPLASH_STATE_HACK;
             led_pwm_enable(BADGE_LED_RGB_RED, 50 * 255/100);
             led_pwm_enable(BADGE_LED_RGB_GREEN, 50 * 255/100);
@@ -381,8 +381,8 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
                ((LCD_YSIZE - hack_logo.y) / 2));
         FbImage2(&hack_logo, 0);
         FbSwapBuffers();
-        if ((SPLASH_WAIT_HACK_FRAMES < ++wait)) {
-            wait = 0;
+        if ((SPLASH_WAIT_HACK_FRAMES < ++m_wait)) {
+            m_wait = 0;
             m_splash_state = SPLASH_STATE_SPONSOR;
         }
     } break;
@@ -420,7 +420,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
                ((LCD_YSIZE - rvasec15_raven.y)));
         FbImage2(&rvasec15_raven, 0);
 
-        int rise = MIN(wait / BADGE_FRAME_RATE_FPS, GLASS_RISE_PX);
+        int rise = MIN(m_wait / BADGE_FRAME_RATE_FPS, GLASS_RISE_PX);
         FbTransparentIndex(prv_find_trans_idx(&rvasec15_glass, MAGENTA));
         FbMove(13,
                ((LCD_YSIZE - rvasec15_glass.y) + GLASS_RISE_PX - rise));
@@ -428,7 +428,7 @@ void rvasec_splash_cb(__attribute__((unused)) struct badge_app *app)
 
         FbTransparentIndex(0);
         FbSwapBuffers();
-        wait += 1;
+        m_wait += 1;
     } break;
 
     case SPLASH_STATE_RVASEC: {
