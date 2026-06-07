@@ -118,6 +118,7 @@ static void sfx_debug_beep(uint16_t freq, uint16_t duration)
 		.envelope = AUDIO_OUT_ENVELOPE_NONE,
 		.amplitude_dBFS = -3,
 		.type = AUDIO_OUT_TYPE_SAWTOOTH,
+		.restart = true,
 	};
 	(void) audio_out_play(AUDIO_OUT_VOICE_ANY, &beep_spec);
 #else
@@ -135,6 +136,7 @@ static void sfx_player_hurt(void)
 		.envelope = AUDIO_OUT_ENVELOPE_NONE,
 		.amplitude_dBFS = 3,
 		.type = AUDIO_OUT_TYPE_SAWTOOTH,
+		.restart = true,
 	};
 	(void) audio_out_play(0, &hurt_spec);
 }
@@ -146,6 +148,7 @@ static void sfx_boss_spawn(void)
 		.envelope = AUDIO_OUT_ENVELOPE_NONE,
 		.amplitude_dBFS = 3,
 		.type = AUDIO_OUT_TYPE_SAWTOOTH,
+		.restart = true,
 	};
 	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 4, &hurt_spec);
  }
@@ -205,13 +208,14 @@ static void sfx_gem(void)
 		.envelope = AUDIO_OUT_ENVELOPE_FAST_FADE_OUT,
 		.amplitude_dBFS = 0,
 		.type = AUDIO_OUT_TYPE_TRIANGLE,
+		.restart = true,
 	};
 	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 2, &gem_spec);
  }
 
 static void sfx_pickup_heal(void)
 {
-	struct audio_out_spec hit_spec = {
+	struct audio_out_spec heal_spec = {
 		.frequency_hz = AUDIO_FS,
 		.duration_ms = 400,
 		.amplitude_dBFS = -9,
@@ -221,7 +225,7 @@ static void sfx_pickup_heal(void)
 		.nes_noise.lfsr_val = 0x0101,
 		.nes_noise.mode_flag = 0,
 	};
-	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 1, &hit_spec);
+	(void) audio_out_play(AUDIO_OUT_VOICE_COUNT - 1, &heal_spec);
  }
 
 static void sfx_pickup_zap(void)
