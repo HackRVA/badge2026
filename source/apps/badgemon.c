@@ -675,7 +675,11 @@ static void badgemon_init(void)
 	register_ir_packet_callback(ir_packet_callback);
 
 	sparkle_cooldown = rtc_get_ms_since_boot();
-	initial_mon = badge_system_data()->badgeId % 16;
+	uint32_t random = badge_system_data()->badgeId;
+	for (uint32_t i = 0; i < badge_system_data()->badgeId % 256 + 128; i++) {
+		random = random_insecure_u32_congruence(random);
+	};
+	initial_mon = random % 16;
 	current_monster_id = initial_mon;
 	set_shiny(initial_mon, true);
 	set_unlocked(initial_mon, true);
