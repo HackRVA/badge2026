@@ -99,6 +99,34 @@ struct menu_t myBadgeid_m[] = {
     {"Back", VERT_ITEM|LAST_ITEM|DEFAULT_ITEM, BACK, {NULL}, NULL },
 };
 
+static void get_flag_cb(struct badge_app *app)
+{
+    char a[32];
+    char b[32];
+    char flag[32];
+
+    flash_kv_get_binary("keys/a", &a, sizeof(a));
+    flash_kv_get_binary("keys/b", &b, sizeof(b));
+
+    for (size_t i = 0; i < sizeof(a); i++) {
+        flag[i] = a[i] ^ b[i];
+        if (flag[i] < ' ' || flag[i] > '~') {
+            flag[i] = '?';
+        }
+    }
+
+    memcpy(app->menu[0].name, flag, 16);
+    memcpy(app->menu[1].name, flag + 16, 16);
+
+    pop_app();
+}
+
+struct menu_t get_flag_m[] = {
+    {"check", VERT_ITEM, FUNCTION, { .func = get_flag_cb }, NULL},
+    {"check", VERT_ITEM, FUNCTION, { .func = get_flag_cb }, NULL},
+    {"Back", VERT_ITEM|LAST_ITEM|DEFAULT_ITEM, BACK, {NULL}, NULL },
+};
+
 void backlight_cb(struct badge_app *app);
 
 const struct menu_t backlightList_m[] = {

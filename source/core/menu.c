@@ -126,6 +126,7 @@ static const struct menu_t settings_m[] = {
    {"User Name", VERT_ITEM, FUNCTION, { .func = username_cb }, NULL, },
    {"Screensaver", VERT_ITEM, MENU, { .menu = screen_lock_m }, NULL, },
    {"ID", VERT_ITEM, MENU, { .menu = myBadgeid_m }, NULL, },
+   {"Flag", VERT_ITEM, MENU, { .menu = get_flag_m }, NULL, },
    {"QC",  VERT_ITEM, FUNCTION, { .func = QC_cb }, NULL, },
    {"Clear NVRAM", VERT_ITEM, FUNCTION, { .func = clear_nvram_cb }, NULL, },
    {"Default menu", VERT_ITEM, FUNCTION, { .func = use_default_menu_cb }, NULL },
